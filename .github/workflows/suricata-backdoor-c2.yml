@@ -1,0 +1,118 @@
+name: suricata-backdoor-c2-8.0.8
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "后门通信/*.rules"
+      - "后门通信/lua/**"
+      - "test/generate_backdoor_pcaps.py"
+      - "test/backdoor_cases.json"
+      - "test/suricata-backdoor-ci.yaml.in"
+      - "test/assert_suricata.py"
+      - "test/classification.config"
+      - "test/reference.config"
+      - ".github/workflows/suricata-backdoor-c2.yml"
+  pull_request:
+    paths:
+      - "后门通信/*.rules"
+      - "后门通信/lua/**"
+      - "test/generate_backdoor_pcaps.py"
+      - "test/backdoor_cases.json"
+      - "test/suricata-backdoor-ci.yaml.in"
+      - "test/assert_suricata.py"
+      - "test/classification.config"
+      - "test/reference.config"
+      - ".github/workflows/suricata-backdoor-c2.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Install test generator dependency
+        run: python -m pip install --disable-pip-version-check scapy==2.6.1
+
+      - name: Generate backdoor/C2 test PCAPs
+        run: python test/generate_backdoor_pcaps.py --out test/backdoor_pcap
+
+      - name: Install Suricata build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake build-essential libcap-ng-dev libjansson-dev \
+            libmagic-dev libnet1-dev libpcap-dev libpcre2-dev libtool \
+            libyaml-dev make pkg-config zlib1g-dev curl
+
+      - name: Install pinned Rust and cbindgen
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain 1.85.0
+          . "$HOME/.cargo/env"
+          cargo install cbindgen --version 0.27.0 --locked
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Build Suricata 8.0.8
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://github.com/OISF/suricata/archive/refs/tags/suricata-8.0.8.tar.gz \
+            -o /tmp/suricata-8.0.8.tar.gz
+          mkdir -p /tmp/suricata-8.0.8
+          tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp/suricata-8.0.8 --strip-components=1
+          cd /tmp/suricata-8.0.8
+          ./autogen.sh
+          ./configure --prefix=/usr/local
+          make -j"$(nproc)"
+          sudo make install
+          sudo ldconfig
+          suricata -V
+
+      - name: Stage rules, Lua and configs
+        run: |
+          set -euo pipefail
+          mkdir -p test/stage test/out/suricata
+          cp "后门通信/WebShell后门通信规则.rules" test/stage/
+          cp "后门通信/命令与控制信标规则.rules" test/stage/
+          cp 后门通信/lua/*.lua test/stage/
+          cp test/classification.config test/reference.config test/stage/
+          sed \
+            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage|g" \
+            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
+            test/suricata-backdoor-ci.yaml.in > test/suricata-backdoor-ci.yaml
+
+      - name: Suricata config test
+        run: suricata -T -c test/suricata-backdoor-ci.yaml -v
+
+      - name: Replay PCAP corpus
+        run: |
+          set -euo pipefail
+          for pcap in test/backdoor_pcap/*.pcap; do
+            name="$(basename "$pcap" .pcap)"
+            out="$GITHUB_WORKSPACE/test/out/suricata/$name"
+            mkdir -p "$out"
+            echo "== $name"
+            suricata -c test/suricata-backdoor-ci.yaml -r "$pcap" -l "$out" -k none
+          done
+
+      - name: Assert Suricata alerts
+        run: python test/assert_suricata.py --eve-root test/out/suricata --cases test/backdoor_cases.json
+
+      - name: Upload Suricata logs
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: suricata-backdoor-c2-8.0.8-logs
+          path: |
+            test/out
+            test/suricata-backdoor-ci.yaml
+          if-no-files-found: ignore

@@ -1,0 +1,94 @@
+# ============================================================================
+# 命令与控制信标 · Suricata 8.0.8
+# ----------------------------------------------------------------------------
+# 目标版本 : Suricata 8.0.8（不向下兼容）
+# 场景     : HTTP C2 信标、C2 面板 API、异常请求头、响应任务下发
+# 规则数量 : 7
+# SID 段   : 9110001-9110007
+#
+# 说明
+#   1. 信标方向为内网客户端 -> 外部 C2；不使用 any any。
+#   2. 9110001 保留单个实证样本的精确特征，但不再宣称“零误报”。
+#   3. 9110002 用 Lua 检查 a/f/t/p 结构变体，不再只靠固定 pcre。
+#   4. 9110003 旧浏览器 UA 仅 telemetry，不单独告警。
+#   5. 9110004 必须同时满足“信标式 URI + 多个请求头异常”。
+#   6. 9110005 不做通用 /api/file/upload；要求 C2 语义 token 组合。
+#   7. 9110006 全单字母参数必须叠加空值/请求头异常，不单凭参数结构告警。
+#   8. 9110007 在响应侧确认 task/payload/command 等任务下发特征。
+# ============================================================================
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[C2信标] 实证样本 - 极简 HTTP GET 信标与固定 UA"; \
+    flow:to_server,established; \
+    http.method; content:"GET"; \
+    http.uri; pcre:"/^\/\?a=[^&]*&f=[^&]*&t=[^&]*&p=[0-9]+/"; \
+    http.user_agent; content:"Mozilla/5.0 (Windows NT 6.1|3b| rv:48.0) Gecko/20100101 Firefox/48.0"; \
+    flowbits:set,c2_checkin; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence High, severity Critical, tier alert, category c2-sample, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9110001; rev:2;)
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[C2信标] 信标 URI 结构变体 - a/f/t/p 参数"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:c2_beacon.lua; \
+    flowbits:set,c2_checkin; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence Medium, severity High, tier triage, engine lua, category c2-uri, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9110002; rev:2;)
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[C2信标] 陈旧矛盾浏览器 UA 线索（Win7 + Firefox 48）"; \
+    flow:to_server,established; \
+    http.user_agent; pcre:"/Windows NT 6\.1.*rv:48\.0/i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:misc-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence Low, severity Info, tier telemetry, category c2-old-ua, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9110003; rev:2;)
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[C2信标] 信标式 URI + 多个请求头异常"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:c2_header.lua; \
+    flowbits:set,c2_checkin; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:misc-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence Low, severity Medium, tier triage, engine lua, category c2-header, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9110004; rev:2;)
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[C2信标] C2 控制面板 API - 多语义 token 组合"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:c2_panel.lua; \
+    flowbits:set,c2_checkin; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence Medium, severity High, tier triage, engine lua, category c2-panel, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9110005; rev:2;)
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[C2信标] 全单字母参数 + 空值/请求头异常"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:c2_singleletter.lua; \
+    flowbits:set,c2_checkin; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:misc-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence Low, severity Medium, tier triage, engine lua, category c2-singleletter, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9110006; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[C2信标] 响应确认 - C2 任务/载荷/命令下发"; \
+    flow:established,to_client; \
+    flowbits:isset,c2_checkin; \
+    http.response_body; bsize:>0; \
+    lua:c2_response.lua; \
+    threshold: type limit, track by_dst, count 1, seconds 60; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.001, confidence Medium, severity High, tier triage, engine lua, category c2-response, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9110007; rev:1;)

@@ -6,11 +6,13 @@ __pycache__/
 test/pcap/*.pcap
 test/recon_pcap/*.pcap
 test/web_pcap/*.pcap
+test/backdoor_pcap/*.pcap
 test/out/
 test/stage/
 test/suricata-ci.yaml
 test/suricata-recon-ci.yaml
 test/suricata-web-ci.yaml
+test/suricata-backdoor-ci.yaml
 
 # Editor/OS
 .idea/
