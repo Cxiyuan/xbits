@@ -1,0 +1,162 @@
+# ============================================================================
+# Web 漏洞利用载荷 · Suricata 8.0.8
+# ----------------------------------------------------------------------------
+# 目标版本 : Suricata 8.0.8（不向下兼容）
+# 场景     : SQL 注入、路径穿越/LFI、Log4Shell、命令注入、
+#            Java 反序列化/框架利用、SSRF、XXE、SSTI、WebShell 上传
+# 规则数量 : 9
+# SID 段   : 9103001-9103023（保留的核心 SID）
+#            9103101-9103104（新增能力）
+#
+# 设计原则
+#   1. 只检测 $EXTERNAL_NET -> $HOME_NET 的外部入站请求，不使用 any any。
+#   2. 不再把“URI 里出现 information_schema/fastjson/ognl/thinkphp”当成攻击；
+#      这些词在文档、参数名、正常 API 中非常常见。
+#   3. 每条规则由 Lua 同时检查 URI、请求体、Cookie/请求头，并做 URL 解码、
+#      空白/注释归一化；请求体只在有需要时读取，最多 16 KiB。
+#   4. 规则只负责触发和分级；具体语法上下文在 Lua 中判断。
+#   5. 不使用 detection_filter；threshold 只做每源每规则每分钟去重。
+#
+# 能力边界
+#   - 未解密 HTTPS 看不到 URI/Body/Header；
+#   - Suricata 8.0.8 的 suricata.http Lua API 以 HTTP/1 事务为主，
+#     HTTP/2/HTTP/3 载荷规则不自动覆盖；
+#   - 不做跨包聚合，不判断响应侧是否利用成功；
+#   - WebShell/上传、SSRF、SSTI 等存在业务白名单误报，使用 tier triage。
+#
+# 原规则中被合并/删除的 SID：
+#   9103002-9103007 -> 合并进 9103001（SQLi 统一上下文检测）
+#   9103009-9103012 -> 合并进 9103008（Traversal/LFI 统一检测）
+#   9103014        -> 合并进 9103013（Log4Shell 嵌套/编码变体）
+#   9103016-9103017 -> 合并进 9103015（命令注入统一检测）
+#   9103019/9103020/9103021/9103022/9103023
+#                  -> 合并进 9103018（Java 反序列化/框架利用）
+#   9103018 原 Shiro rememberMe URI 规则无服务端可观测性，相关能力
+#   合并到 9103018 的框架检测中；仅凭 rememberMe Cookie 长度不作为告警。
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# SQL 注入：URI / 请求体 / Cookie / 请求头
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] SQL 注入 - UNION/报错/时间/布尔/元数据探测"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_sqli.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence High, severity Critical, tier alert, engine lua, category sqli, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9103001; rev:2;)
+
+# ---------------------------------------------------------------------------
+# 路径穿越 / 本地文件包含：URI / 请求体 / Cookie
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] 路径穿越 / 本地文件包含 - 敏感文件与协议包装器"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_traversal.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence High, severity High, tier alert, engine lua, category traversal-lfi, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9103008; rev:2;)
+
+# ---------------------------------------------------------------------------
+# Log4Shell：URI / 任意请求头 / 请求体，支持嵌套与编码
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] Log4Shell - JNDI 查找表达式（含头部/Body/嵌套混淆）"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_log4shell.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence High, severity Critical, tier alert, engine lua, category log4shell, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9103013; rev:2;)
+
+# ---------------------------------------------------------------------------
+# 命令注入：URI / 请求体 / Cookie / 请求头
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] 命令注入 - Shell 元字符与系统命令"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_cmdi.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence High, severity Critical, tier alert, engine lua, category command-injection, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9103015; rev:2;)
+
+# ---------------------------------------------------------------------------
+# Java 反序列化 / Fastjson / OGNL / ThinkPHP / Java 序列化
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] Java 反序列化/框架利用 - Fastjson/OGNL/ThinkPHP/Java 序列化"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_deser.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence High, severity Critical, tier alert, engine lua, category java-deser, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9103018; rev:2;)
+
+# ---------------------------------------------------------------------------
+# SSRF：URL 参数指向内网/云元数据/危险协议
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] SSRF - 参数指向内网/云元数据/危险协议"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_ssrf.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence Medium, severity High, tier triage, engine lua, category ssrf, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9103101; rev:1;)
+
+# ---------------------------------------------------------------------------
+# XXE：XML 外部实体
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] XXE - XML 外部实体声明"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_xxe.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence High, severity High, tier alert, engine lua, category xxe, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9103102; rev:1;)
+
+# ---------------------------------------------------------------------------
+# SSTI：模板表达式/危险对象访问
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] SSTI - 模板表达式与危险对象访问"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_ssti.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence Medium, severity High, tier triage, engine lua, category ssti, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9103103; rev:1;)
+
+# ---------------------------------------------------------------------------
+# WebShell 上传：multipart 文件名 + 脚本代码标记
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[Web漏洞利用] WebShell 上传 - 脚本文件名与代码标记"; \
+    flow:to_server,established; \
+    http.uri.raw; bsize:>0; \
+    lua:web_upload.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:web-application-attack; \
+    metadata:attack_tactic TA0001, attack_technique T1190, confidence Medium, severity High, tier triage, engine lua, category webshell-upload, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9103104; rev:1;)
