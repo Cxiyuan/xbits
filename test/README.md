@@ -1,8 +1,12 @@
 # test · 测试与流量模拟
 
-本目录只用于 CI 与本地预检，不属于检测逻辑。当前检测逻辑在
-`DNS隧道与带外检测/`（Suricata 8.0.8）。若后续某个场景使用 Zeek，
-`.zeek` 脚本放在该场景目录内（如 `<场景>/zeek/`），不创建仓库根级 `zeek/`。
+本目录只用于 CI 与本地预检，不属于检测逻辑。当前场景：
+
+- `DNS隧道与带外检测/`（Suricata 8.0.8）
+- `侦察与攻击工具指纹/`（Suricata 8.0.8）
+
+若后续某个场景使用 Zeek，`.zeek` 脚本放在该场景目录内（如 `<场景>/zeek/`），
+不创建仓库根级 `zeek/`。
 
 ## 1. 测试数据来源调研
 
@@ -47,15 +51,43 @@ python3 test/generate_pcaps.py --out test/pcap
 | `dot_positive.pcap` / `dot_negative.pcap` | TLS 853 + ALPN `dot` + DNS SNI / 无 ALPN + 非 DNS SNI | 命中/不命中 9109101 |
 | `doh_positive.pcap` / `doh_negative.pcap` | POST `/dns-query` / POST `/api` + DoH Content-Type | 命中/不命中 9109102 |
 
-## 3. CI 断言
+## 3. 侦察与攻击工具指纹场景
 
-- `cases.json`：Suricata 每个 PCAP 的 `require` / `forbid` SID。
+生成命令：
+
+```bash
+python3 -m pip install scapy==2.6.1
+python3 test/generate_recon_pcaps.py --out test/recon_pcap
+```
+
+| PCAP | 场景 | 期望 |
+|---|---|---|
+| `recon_tools_positive.pcap` | 26 个保留工具的默认 UA，路径 `/` | 命中 9101001-9101027（不含已删除的 9101017） |
+| `recon_sqlmap_sensitive.pcap` | sqlmap + `/.git/config` + HTTP 200 | 9101004/9101101/9101102 |
+| `recon_nuclei_sensitive_403.pcap` | Nuclei + `/.env` + HTTP 403 | 9101005/9101101/9101107 |
+| `recon_generic_path_rate.pcap` | python-requests 25 次 `/.env` | 9101103/9101104 |
+| `recon_path_no_ua_rate.pcap` | 无 UA、25 次 `/.git/config` | 9101103/9101104 |
+| `recon_curl_rate.pcap` | 外部 curl 60 次 `/api` | 9101028 |
+| `recon_outbound_tool.pcap` | 内网主机 → 外部，sqlmap UA | 9101105；不命中 9101004 |
+| `recon_internal_tool.pcap` | 内网主机 → 内网，gobuster UA | 9101106；不命中 9101002 |
+| `recon_httpx_python_negative.pcap` | `python-httpx/0.27.0` | 不命中 9101019 |
+| `recon_browser_negative.pcap` | 正常 Chrome UA | 不命中任何工具 SID |
+| `recon_empty_ua_negative.pcap` | 空 User-Agent | 不命中 9101028/9101101/9101103 |
+| `recon_no_ua_negative.pcap` | 无 User-Agent | 不命中 9101028/9101101/9101103 |
+| `recon_healthcheck_negative.pcap` | `kube-probe` + `/healthz` | 不命中 9101106/9101103 |
+
+断言文件为 `recon_cases.json`；检测规则/Lua 在 `侦察与攻击工具指纹/`。
+
+## 4. CI 断言
+
+- `cases.json`：DNS 场景每个 PCAP 的 `require` / `forbid` SID。
+- `recon_cases.json`：侦察场景每个 PCAP 的 `require` / `forbid` SID。
 - `assert_suricata.py`：解析 `eve.json`，断言 `alert.signature_id`。
 
-当前场景没有 Zeek 内容，因此没有 Zeek 断言文件。后续某场景加入 Zeek 时，
+当前没有 Zeek 内容，因此没有 Zeek 断言文件。后续某场景加入 Zeek 时，
 在该场景的测试目录中增加 `zeek_cases.json` 与 `assert_zeek.py`（或等价断言）。
 
-## 4. 本地运行（预检，不作为最终验证）
+## 5. 本地运行（预检，不作为最终验证）
 
 本地预检需要精确版本：
 
@@ -67,13 +99,22 @@ for pcap in test/pcap/*.pcap; do
   suricata -c test/suricata-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
 done
 python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/cases.json
+
+# 侦察场景
+suricata -T -c test/suricata-recon-ci.yaml
+for pcap in test/recon_pcap/*.pcap; do
+  name=$(basename "$pcap" .pcap)
+  suricata -c test/suricata-recon-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+done
+python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_cases.json
 ```
 
 **最终验证只认 GitHub Actions**：
 
-- `.github/workflows/suricata-dns-tunnel.yml`：本场景的规则/Lua/dataset/测试断言变更时自动运行。
-- 后续场景（如 `侦察与攻击工具指纹`）若使用 Suricata，新增该场景的 Suricata workflow；
-  若使用 Zeek，在该场景目录加入 `.zeek` 并新增该场景的 Zeek workflow；两种都用就都跑。
+- `.github/workflows/suricata-dns-tunnel.yml`：DNS 场景规则/Lua/dataset/测试断言变更时运行。
+- `.github/workflows/suricata-recon-tools.yml`：侦察场景规则/Lua/测试断言变更时运行。
+- 后续场景若使用 Suricata，新增该场景的 Suricata workflow；若使用 Zeek，
+  在该场景目录加入 `.zeek` 并新增该场景的 Zeek workflow；两种都用就都跑。
 - 不创建仓库根级 `zeek/` 目录，也不为“未来可能用到”的 Zeek 预建空 CI。
 
 本地结果仅作提交前预检；CI 未通过不得声称已验证。

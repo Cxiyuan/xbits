@@ -1,0 +1,416 @@
+# ============================================================================
+# 侦察与攻击工具指纹 · Suricata 8.0.8
+# ----------------------------------------------------------------------------
+# 目标版本 : Suricata 8.0.8（不向下兼容）
+# 场景     : HTTP 侦察/扫描工具指纹、敏感路径探测、脚本化客户端
+# 规则数量 : 35
+# SID 段   : 9101001-9101029（工具/脚本客户端）
+#            9101101-9101107（上下文、响应确认、外联与内网）
+#
+# 检测分层
+#   tier alert     : 已知工具默认 UA 的精确前缀/边界匹配；来源受控
+#   tier triage    : 已知工具 + 敏感路径/响应确认；外部源敏感路径高频探测
+#   tier telemetry : 互联网测绘爬虫、masscan/zgrab、通用脚本客户端高频访问
+#
+# 方向约定
+#   $EXTERNAL_NET -> $HOME_NET : 外部对内部服务的侦察
+#   $CLIENT_NET  -> $EXTERNAL_NET : 内网主机外联/外发扫描
+#   $HOME_NET    -> $HOME_NET : 内网横向扫描
+#   $HOME_NET    -> $EXTERNAL_NET : 内部服务返回给外部客户端的响应
+#
+# 说明
+#   1. User-Agent 可被任意伪造。本文件命中表示“工具/行为线索”，不是攻击成功。
+#   2. Suricata 8.0.8 仍支持 threshold / detection_filter；二者未弃用。
+#      本文件全部使用 threshold，不使用 detection_filter，避免“达到阈值后每条都告警”。
+#   3. 所有 UA 规则使用 ^ 锚定或分隔符边界，避免 httpx 命中 python-httpx、
+#      Java/ 命中正常 Java 客户端等子串误报。
+#   4. 未覆盖 HTTPS 加密流量中的 UA。TLS 流量需要在 Suricata 解密后，
+#      或使用 JA3/JA4、SNI、连接行为等旁路信号，不能宣称已覆盖。
+#   5. 授权扫描器、API 网关、健康检查应通过 $SCANNER_NET / 全局 suppress
+#      或 event_filter 抑制；不要在规则里放行整个云厂商或公共后缀。
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# 词表/目录爆破工具：T1595.003 Wordlist Scanning
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - ffuf 目录与参数爆破工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Fuzz Faster U Fool"; nocase; fast_pattern; \
+    pcre:"/^Fuzz Faster U Fool\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.003, confidence High, severity High, tier alert, tool ffuf, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101001; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - gobuster 目录爆破工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"gobuster/"; nocase; fast_pattern; \
+    pcre:"/^gobuster\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.003, confidence High, severity High, tier alert, tool gobuster, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101002; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - feroxbuster 递归目录爆破工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"feroxbuster/"; nocase; fast_pattern; \
+    pcre:"/^feroxbuster\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.003, confidence High, severity High, tier alert, tool feroxbuster, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101003; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - DirBuster 目录爆破工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"DirBuster"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])DirBuster\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.003, confidence High, severity Medium, tier alert, tool dirbuster, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101008; rev:2;)
+
+# ---------------------------------------------------------------------------
+# 漏洞扫描/利用工具
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - sqlmap 自动化 SQL 注入工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"sqlmap/"; nocase; fast_pattern; \
+    pcre:"/^sqlmap\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1190, confidence High, severity High, tier alert, tool sqlmap, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101004; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Nuclei 模板化漏洞扫描器"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Nuclei"; nocase; fast_pattern; \
+    pcre:"/^Nuclei(?:\b|[\/ -])/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity High, tier alert, tool nuclei, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101005; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Nmap NSE 脚本扫描"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Nmap Scripting Engine"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Nmap Scripting Engine\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool nmap-nse, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101006; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Acunetix / AWVS 商业漏扫"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Acunetix"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Acunetix\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool acunetix, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101007; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Nikto Web 漏洞扫描器"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Nikto/"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Nikto\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool nikto, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101009; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - WPScan WordPress 扫描器"; \
+    flow:to_server,established; \
+    http.user_agent; content:"WPScan"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])WPScan\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool wpscan, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101010; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Nessus 商业漏扫"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Nessus"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Nessus\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool nessus, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101015; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - OpenVAS / GVM 漏扫"; \
+    flow:to_server,established; \
+    http.user_agent; content:"OpenVAS"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])OpenVAS\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool openvas, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101016; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - WhatWeb 指纹识别工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"WhatWeb/"; nocase; fast_pattern; \
+    pcre:"/^WhatWeb\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Low, tier alert, tool whatweb, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101018; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - httpx 批量探测工具（排除 python-httpx）"; \
+    flow:to_server,established; \
+    http.user_agent; content:"httpx"; nocase; fast_pattern; \
+    pcre:"/^httpx(?:\/|$)/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool httpx, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101019; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Arjun 参数发现工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Arjun/"; nocase; fast_pattern; \
+    pcre:"/^Arjun\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Low, tier alert, tool arjun, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101020; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - wafw00f WAF 识别工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"wafw00f"; nocase; fast_pattern; \
+    pcre:"/^wafw00f(?:\/|\b)/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Low, tier alert, tool wafw00f, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101021; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - commix 命令注入利用工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"commix"; nocase; fast_pattern; \
+    pcre:"/^commix(?:\/|\b)/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1190, confidence High, severity High, tier alert, tool commix, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101022; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - XSStrike XSS 检测工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"XSStrike"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])XSStrike\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1190, confidence High, severity Medium, tier alert, tool xsstrike, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101023; rev:2;)
+
+# ---------------------------------------------------------------------------
+# 互联网测绘/资产扫描：保留线索，不直接升级为攻击告警
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 互联网测绘 - Shodan 搜索引擎爬虫"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Shodan/"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Shodan\//i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.001, confidence High, severity Info, tier telemetry, tool shodan, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101024; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 互联网测绘 - Censys 互联网测绘爬虫"; \
+    flow:to_server,established; \
+    http.user_agent; content:"CensysInspect/"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])CensysInspect\//i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.001, confidence High, severity Info, tier telemetry, tool censys, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101025; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 互联网测绘 - Expanse 互联网测绘爬虫"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Expanse/"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Expanse\//i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.001, confidence High, severity Info, tier telemetry, tool expanse, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101026; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 互联网测绘 - l9explore 资产探测工具"; \
+    flow:to_server,established; \
+    http.user_agent; content:"l9explore"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])l9explore\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.001, confidence High, severity Info, tier telemetry, tool l9explore, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101027; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 互联网测绘 - zgrab 互联网指纹扫描器"; \
+    flow:to_server,established; \
+    http.user_agent; content:"zgrab/"; nocase; fast_pattern; \
+    pcre:"/^zgrab\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.001, confidence High, severity Low, tier telemetry, tool zgrab, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101014; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 端口扫描 - masscan HTTP banner 模式"; \
+    flow:to_server,established; \
+    http.user_agent; content:"masscan/"; nocase; fast_pattern; \
+    pcre:"/^masscan\/[0-9]/i"; \
+    threshold: type limit, track by_src, count 1, seconds 300; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.001, confidence High, severity Low, tier telemetry, tool masscan, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101011; rev:2;)
+
+# ---------------------------------------------------------------------------
+# 旧式自动化攻击脚本：保留精确 token，避免泛化
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - ZmEu 自动化攻击脚本"; \
+    flow:to_server,established; \
+    http.user_agent; content:"ZmEu"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])ZmEu\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool zmeu, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101012; rev:2;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 攻击工具指纹 - Morfeus 自动化攻击脚本"; \
+    flow:to_server,established; \
+    http.user_agent; content:"Morfeus"; nocase; fast_pattern; \
+    pcre:"/(?:^|[\s(])Morfeus\b/i"; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, tool morfeus, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101013; rev:2;)
+
+# ---------------------------------------------------------------------------
+# 通用脚本客户端：只做 telemetry；用 type both 限频，不做 detection_filter
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 外部源高频脚本化 HTTP 客户端访问（非攻击确认）"; \
+    flow:to_server,established; \
+    http.user_agent; bsize:>0; \
+    pcre:"/^(?:curl\/|wget\/|python-requests\/|python-urllib\/|go-http-client\/|java\/|okhttp\/|aiohttp\/|libwww-perl\/|lwp::simple\/)/i"; \
+    threshold: type both, track by_src, count 50, seconds 60; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence Low, severity Info, tier telemetry, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101028; rev:3;)
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[侦察] 内网主机高频使用脚本化 HTTP 客户端外联（非攻击确认）"; \
+    flow:to_server,established; \
+    http.user_agent; bsize:>0; \
+    pcre:"/^(?:curl\/|wget\/|python-requests\/|python-urllib\/|go-http-client\/|java\/|okhttp\/|aiohttp\/|libwww-perl\/|lwp::simple\/)/i"; \
+    threshold: type both, track by_src, count 60, seconds 60; \
+    classtype:network-scan; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence Low, severity Low, tier telemetry, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9101029; rev:3;)
+
+# ---------------------------------------------------------------------------
+# 上下文关联：已知攻击工具 + 敏感路径
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 已知攻击工具探测敏感路径"; \
+    flow:to_server,established; \
+    http.uri; bsize:>0; \
+    lua:recon_context.lua; \
+    flowbits:set,recon_sensitive_probe; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity High, tier alert, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101101; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any ( \
+    msg:"[侦察] 已知攻击工具敏感路径访问成功（HTTP 200）"; \
+    flow:established,to_client; \
+    flowbits:isset,recon_sensitive_probe; \
+    http.stat_code; content:"200"; \
+    lua:recon_context.lua; \
+    threshold: type limit, track by_dst, count 1, seconds 60; \
+    classtype:successful-recon-limited; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Critical, tier alert, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101102; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any ( \
+    msg:"[侦察] 已知攻击工具敏感路径被保护但仍被探测（HTTP 401/403）"; \
+    flow:established,to_client; \
+    flowbits:isset,recon_sensitive_probe; \
+    http.stat_code; pcre:"/^(?:401|403)$/"; \
+    lua:recon_context.lua; \
+    threshold: type limit, track by_dst, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity Medium, tier alert, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101107; rev:1;)
+
+# ---------------------------------------------------------------------------
+# 无 UA 依赖：外部源高频探测敏感路径，响应侧确认
+# ---------------------------------------------------------------------------
+
+alert http $EXTERNAL_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 外部源高频探测敏感路径"; \
+    flow:to_server,established; \
+    http.uri; bsize:>0; \
+    lua:recon_path.lua; \
+    threshold: type both, track by_src, count 20, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence Medium, severity Medium, tier triage, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101103; rev:1;)
+
+alert http $HOME_NET any -> $EXTERNAL_NET any ( \
+    msg:"[侦察] 外部源高频敏感路径探测收到响应（200/401/403/404）"; \
+    flow:established,to_client; \
+    http.stat_code; pcre:"/^(?:200|401|403|404)$/"; \
+    lua:recon_path.lua; \
+    threshold: type both, track by_dst, count 20, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence Medium, severity Medium, tier triage, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101104; rev:1;)
+
+# ---------------------------------------------------------------------------
+# 方向补齐：内网外联/内网横向使用已知工具 UA
+# ---------------------------------------------------------------------------
+
+alert http $CLIENT_NET any -> $EXTERNAL_NET any ( \
+    msg:"[侦察] 内网主机外联使用攻击工具 User-Agent"; \
+    flow:to_server,established; \
+    http.user_agent; bsize:>0; \
+    lua:recon_ua.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence High, severity High, tier alert, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101105; rev:1;)
+
+alert http $HOME_NET any -> $HOME_NET any ( \
+    msg:"[侦察] 内网主机使用攻击工具扫描内网"; \
+    flow:to_server,established; \
+    http.user_agent; bsize:>0; \
+    lua:recon_ua.lua; \
+    threshold: type limit, track by_src, count 1, seconds 60; \
+    classtype:attempted-recon; \
+    metadata:attack_tactic TA0043, attack_technique T1595.002, confidence Medium, severity Medium, tier triage, engine lua, created_at 2026_11_07, updated_at 2026_11_07; \
+    sid:9101106; rev:1;)
