@@ -9,7 +9,6 @@
 -- ============================================================================
 
 local http = require("suricata.http")
-local base64 = require("suricata.base64")
 
 local MAX_BODY = 16384
 
@@ -151,12 +150,54 @@ local function valid_base64(value)
     return value:match("^[A-Za-z0-9+/]+={0,2}$") ~= nil
 end
 
+local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+-- 纯 Lua base64 解码：避免沙箱 base64 库在异常输入上 luaL_error，
+-- 也避免依赖 Rust base64 的具体 padding 模式。
+local function b64decode(value)
+    local clean = value:gsub("[^%w%+/=]", "")
+    local out = {}
+    local function val(ch)
+        if ch == "" or ch == "=" then
+            return -1
+        end
+        local pos = B64:find(ch, 1, true)
+        if pos == nil then
+            return -1
+        end
+        return pos - 1
+    end
+
+    for i = 1, #clean, 4 do
+        local c1 = clean:sub(i, i)
+        local c2 = clean:sub(i + 1, i + 1)
+        local c3 = clean:sub(i + 2, i + 2)
+        local c4 = clean:sub(i + 3, i + 3)
+        local v1, v2 = val(c1), val(c2)
+        if v1 < 0 or v2 < 0 then
+            break
+        end
+        out[#out + 1] = string.char(v1 * 4 + math.floor(v2 / 16))
+        local v3 = val(c3)
+        if v3 < 0 then
+            break
+        end
+        out[#out + 1] = string.char((v2 % 16) * 16 + math.floor(v3 / 4))
+        local v4 = val(c4)
+        if v4 < 0 then
+            break
+        end
+        out[#out + 1] = string.char((v3 % 4) * 64 + v4)
+    end
+    return table.concat(out)
+end
+
 local function decoded_has_command(value)
     if not valid_base64(value) then
         return false
     end
-    local decoded = base64.decode_padopt(value)
-    if type(decoded) ~= "string" or #decoded == 0 then
+    local decoded = b64decode(value)
+    if #decoded == 0 then
         return false
     end
     return value_has_command(decoded)
