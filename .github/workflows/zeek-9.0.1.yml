@@ -6,11 +6,13 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - "zeek/*.zeek"
       - "zeek/**/*.zeek"
       - "test/zeek_cases.json"
       - "test/assert_zeek.py"
   pull_request:
     paths:
+      - "zeek/*.zeek"
       - "zeek/**/*.zeek"
       - "test/zeek_cases.json"
       - "test/assert_zeek.py"

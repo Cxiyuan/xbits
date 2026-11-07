@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - "DNS隧道与带外检测/*.rules"
       - "DNS隧道与带外检测/**/*.rules"
       - "DNS隧道与带外检测/lua/**"
       - "DNS隧道与带外检测/dns_tunnel_allow.lst"
@@ -16,6 +17,7 @@ on:
       - ".github/workflows/suricata-8.0.8.yml"
   pull_request:
     paths:
+      - "DNS隧道与带外检测/*.rules"
       - "DNS隧道与带外检测/**/*.rules"
       - "DNS隧道与带外检测/lua/**"
       - "DNS隧道与带外检测/dns_tunnel_allow.lst"
