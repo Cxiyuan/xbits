@@ -10,6 +10,7 @@
 -- ============================================================================
 
 local http = require("suricata.http")
+local rule = require("suricata.rule")
 
 local MAX_BODY = 8192
 
@@ -442,12 +443,22 @@ function match(args)
         return 0
     end
 
-    -- 响应侧：抑制 SPA/登录页/WAF 页造成的软 404。
-    local response_line = tx:response_line()
-    if type(response_line) == "string" and #response_line > 0 then
-        local body = read_body(tx, MAX_BODY)
-        if is_soft_404(tx, body) then
-            return 0
+    -- 只有 9101102（2xx 访问成功）需要做软 404 抑制。
+    -- 9101101（探测）和 9101107（401/403 被保护但仍被探测）不能被
+    -- 登录页/WAF 页误抑制，因此按当前规则 SID 分支。
+    local sid = 0
+    local sig = rule.get_rule()
+    if sig ~= nil and type(sig) ~= "string" then
+        sid = sig:sid()
+    end
+
+    if sid == 9101102 then
+        local response_line = tx:response_line()
+        if type(response_line) == "string" and #response_line > 0 then
+            local body = read_body(tx, MAX_BODY)
+            if is_soft_404(tx, body) then
+                return 0
+            end
         end
     end
 
