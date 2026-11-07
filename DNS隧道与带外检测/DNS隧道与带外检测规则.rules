@@ -47,9 +47,9 @@ alert dns $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道] 多级单字符标签查询(非PTR/白名单外)"; \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     pcre:"/^\.(?:[0-9a-z]\.){6,}/i"; \
     dns.rrtype:!12; \
-    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     lua:dns_compact_labels.lua; \
     flowbits:set,dns_susp; \
     classtype:non-standard-protocol; \
@@ -67,9 +67,9 @@ alert dns $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道] 32位十六进制首标签(非PTR/白名单外)"; \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     pcre:"/^\.[0-9a-f]{32}\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i"; \
     dns.rrtype:!12; \
-    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     lua:dns_tunnel_request.lua; \
     flowbits:set,dns_susp; \
     classtype:misc-activity; \
@@ -86,9 +86,9 @@ alert dns $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道] UUID 格式首标签(非PTR/白名单外)"; \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     pcre:"/^\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i"; \
     dns.rrtype:!12; \
-    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     lua:dns_tunnel_request.lua; \
     flowbits:set,dns_susp; \
     classtype:misc-activity; \
@@ -144,9 +144,9 @@ alert dns $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道] 超长单标签查询(线索级)"; \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     pcre:"/^\.[^.]{60,63}\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i"; \
     dns.rrtype:!12; \
-    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
     lua:dns_tunnel_request.lua; \
     flowbits:set,dns_susp; \
     classtype:non-standard-protocol; \
@@ -165,9 +165,10 @@ alert dns $CLIENT_NET any -> any 53 ( \
 alert dns $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道] 高频长域名查询(线索级, 需SIEM聚合)"; \
     flow:to_server; \
-    dns.query; to_lowercase; dotprefix; bsize:>41; \
-    dns.rrtype:!12; \
+    dns.query; to_lowercase; dotprefix; \
     dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    bsize:>41; \
+    dns.rrtype:!12; \
     threshold: type both, track by_src, count 200, seconds 60; \
     classtype:non-standard-protocol; \
     metadata:attack_tactic TA0011, attack_technique T1071.004, confidence Low, severity Low, tier telemetry, created_at 2026_10_18, updated_at 2026_11_07; \
@@ -216,8 +217,8 @@ alert dns $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道-配套] TXT 查询突发(线索级)"; \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
-    dns.rrtype:16; \
     dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    dns.rrtype:16; \
     threshold: type both, track by_src, count 50, seconds 60; \
     lua:dns_txt_burst.lua; \
     classtype:non-standard-protocol; \
@@ -255,8 +256,8 @@ alert dns:request_complete $CLIENT_NET any -> any 53 ( \
     msg:"[DNS隧道-Lua] 请求侧编码/结构评分"; \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
-    dns.rrtype:!12; \
     dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    dns.rrtype:!12; \
     lua:dns_tunnel_request.lua; \
     flowbits:set,dns_susp; \
     classtype:non-standard-protocol; \
@@ -278,6 +279,7 @@ alert dns:response_complete any 53 -> $CLIENT_NET any ( \
     msg:"[DNS隧道-Lua] 响应侧 TXT/NULL 大载荷"; \
     flow:to_client; \
     dns.queries.rrname; \
+    bsize:>0; \
     lua:dns_tunnel_response.lua; \
     classtype:trojan-activity; \
     metadata:attack_tactic TA0011, attack_technique T1071.004, confidence High, severity High, tier triage, engine lua, created_at 2026_11_07; \
@@ -293,6 +295,7 @@ alert dns:response_complete any 53 -> $CLIENT_NET any ( \
     msg:"[DNS隧道-Lua] 请求+响应确认的隧道"; \
     flow:to_client; \
     dns.queries.rrname; \
+    bsize:>0; \
     flowbits:isset,dns_susp; \
     lua:dns_tunnel_confirm.lua; \
     classtype:trojan-activity; \
