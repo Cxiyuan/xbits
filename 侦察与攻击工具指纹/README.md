@@ -6,6 +6,7 @@
 - 规则：`侦察与攻击工具指纹规则.rules`
 - Lua：`lua/recon_ua.lua`、`lua/recon_context.lua`、`lua/recon_path.lua`
 - 缺陷分析：`误报分析与规则缺陷.md`
+- Lua 强化空间：`Lua强化空间分析.md`
 - 测试：`../test/generate_recon_pcaps.py`、`../test/recon_cases.json`
 
 ## 1. 检测分层
