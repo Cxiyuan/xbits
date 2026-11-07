@@ -92,14 +92,31 @@ jobs:
         run: |
           set +e
           echo "== dump tls config"
-          suricata --dump-config 2>/dev/null | grep -A10 -i "app-layer.protocols.tls" || true
+          suricata --dump-config -c test/suricata-ci.yaml 2>/dev/null | grep -A10 -i "app-layer" || true
           rm -rf /tmp/tlsdbg
           mkdir -p /tmp/tlsdbg
           suricata -c test/suricata-ci.yaml -r test/pcap/dot_positive.pcap -l /tmp/tlsdbg -k none -vvv || true
           echo "== eve"
           cat /tmp/tlsdbg/eve.json || true
           echo "== suricata.log (tail)"
-          tail -100 /tmp/tlsdbg/suricata.log 2>/dev/null || true
+          tail -60 /tmp/tlsdbg/suricata.log 2>/dev/null || true
+          echo "== try same TLS on port 443"
+          python3 - <<'PY'
+          from scapy.all import rdpcap, wrpcap, TCP
+          pkts = rdpcap('test/pcap/dot_positive.pcap')
+          for p in pkts:
+              if p.haslayer(TCP):
+                  if p[TCP].dport == 853:
+                      p[TCP].dport = 443
+                  if p[TCP].sport == 853:
+                      p[TCP].sport = 443
+          wrpcap('/tmp/tls443.pcap', pkts)
+          PY
+          printf '%s\n' 'alert tls any any -> any 443 (msg:"tls443"; tls.alpn; content:"dot"; sid:9999001; rev:1;)' > /tmp/tls443.rules
+          rm -rf /tmp/tlsdbg443; mkdir -p /tmp/tlsdbg443
+          suricata -c test/suricata-ci.yaml -S /tmp/tls443.rules -r /tmp/tls443.pcap -l /tmp/tlsdbg443 -k none || true
+          echo "== eve 443"
+          cat /tmp/tlsdbg443/eve.json || true
 
       - name: Upload Suricata logs
         if: always()
