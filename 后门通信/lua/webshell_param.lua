@@ -17,8 +17,8 @@ local CORE_PARAMS = {
     cmd = true, exec = true, command = true, execute = true,
     shell = true, pass = true, password = true, pwd = true,
     z0 = true, z1 = true, z2 = true, z3 = true,
-    action = true, method = true, func = true, function = true,
-    eval = true, code = true, run = true, do = true,
+    action = true, method = true, func = true, ["function"] = true,
+    eval = true, code = true, run = true, ["do"] = true,
 }
 
 local TOOL_PARAMS = {
