@@ -69,9 +69,9 @@ event dns_request(c: connection, msg: dns_msg, query: string, qtype: count, qcla
     }
 }
 
-event dns_message(c: connection, msg: dns_msg)
+event dns_message(c: connection, is_orig: bool, msg: dns_msg, len: count)
 {
-    if ( ! msg?$rcode || msg$rcode != 3 ) {
+    if ( is_orig || ! msg?$rcode || msg$rcode != 3 ) {
         return;
     }
 
