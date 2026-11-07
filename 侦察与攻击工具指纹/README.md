@@ -127,5 +127,5 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_
 ```
 
 最终验证只认 `.github/workflows/suricata-recon-tools.yml` 的 GitHub Actions 结果。
-当前已验证：commit `59f895c`，run 42371163842，13/13 用例通过：
-<https://github.com/Cxiyuan/ips/actions/runs/42371163842>。
+当前已验证：commit `7828369`，run 42371958233，14/14 用例通过：
+<https://github.com/Cxiyuan/ips/actions/runs/42371958233>。
