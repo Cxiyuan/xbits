@@ -77,7 +77,8 @@ python3 test/assert_zeek.py --log-root test/out/zeek --cases test/zeek_cases.jso
 
 - `.github/workflows/suricata-8.0.8.yml`：规则/Lua/dataset/测试断言变更时自动运行。
 - `.github/workflows/zeek-9.0.1.yml`：当前 Zeek 侧还没有正式检测内容，工作流处于**休眠**状态；
-  仅在手动 `workflow_dispatch` 或 `zeek/**`、Zeek 断言文件变更时运行。后续补齐 Zeek 规则/脚本后再启用。
+  仅在手动 `workflow_dispatch` 或 `zeek/*.zeek`、Zeek 断言文件变更时运行。后续补齐 Zeek 规则/脚本后再启用；
+  启用时把 `test/generate_pcaps.py` 加入该 workflow 的 paths。
 
 本地结果仅作提交前预检；CI 未通过不得声称已验证。
 
