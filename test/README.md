@@ -1,7 +1,8 @@
 # test · 测试与流量模拟
 
-本目录只用于 CI 与本地预检，不属于检测逻辑。检测逻辑在
-`DNS隧道与带外检测/`（Suricata 8.0.8）与 `zeek/`（Zeek 9.0.1）。
+本目录只用于 CI 与本地预检，不属于检测逻辑。当前检测逻辑在
+`DNS隧道与带外检测/`（Suricata 8.0.8）。若后续某个场景使用 Zeek，
+`.zeek` 脚本放在该场景目录内（如 `<场景>/zeek/`），不创建仓库根级 `zeek/`。
 
 ## 1. 测试数据来源调研
 
@@ -39,7 +40,9 @@ python3 test/generate_pcaps.py --out test/pcap
 | `uuid_valid.pcap` / `uuid_invalid.pcap` | 合法/非法 UUID | 命中/不命中 9109003 |
 | `compact_positive.pcap` / `compact_negative.pcap` | 随机十六进制单字符流 / `a.b.c.d.e.f.g` | 命中/不命中 9109001 |
 | `long_positive.pcap` / `long_negative.pcap` | 61 字符随机字母数字 / 高连字符 | 命中/不命中 9109006 |
+| `long_multilevel.pcap` | 61 字符标签 + `.abc.def.co.uk` | 命中 9109006/9109201 |
 | `oob_positive.pcap` / `oob_negative.pcap` | `abc123.oast.pro` / 根域+短 token+MX | 命中/不命中 9109004 |
+| `oob_other_positive.pcap` | `abc123.interact.sh` | 命中 9109005 |
 | `txt_burst_positive.pcap` / `txt_burst_negative.pcap` | 50 条子域 TXT / 50 条 `_dmarc` TXT | 命中/不命中 9109103 |
 | `dot_positive.pcap` / `dot_negative.pcap` | TLS 853 + ALPN `dot` + DNS SNI / 无 ALPN + 非 DNS SNI | 命中/不命中 9109101 |
 | `doh_positive.pcap` / `doh_negative.pcap` | POST `/dns-query` / POST `/api` + DoH Content-Type | 命中/不命中 9109102 |
@@ -48,8 +51,9 @@ python3 test/generate_pcaps.py --out test/pcap
 
 - `cases.json`：Suricata 每个 PCAP 的 `require` / `forbid` SID。
 - `assert_suricata.py`：解析 `eve.json`，断言 `alert.signature_id`。
-- `zeek_cases.json`：Zeek 每个 PCAP 的 `require` / `forbid` notice 类型。
-- `assert_zeek.py`：解析 `notice.log`，断言 `note` 字段。
+
+当前场景没有 Zeek 内容，因此没有 Zeek 断言文件。后续某场景加入 Zeek 时，
+在该场景的测试目录中增加 `zeek_cases.json` 与 `assert_zeek.py`（或等价断言）。
 
 ## 4. 本地运行（预检，不作为最终验证）
 
@@ -63,26 +67,18 @@ for pcap in test/pcap/*.pcap; do
   suricata -c test/suricata-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
 done
 python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/cases.json
-
-# Zeek 9.0.1
-for pcap in test/pcap/*.pcap; do
-  name=$(basename "$pcap" .pcap)
-  mkdir -p "test/out/zeek/$name"
-  (cd "test/out/zeek/$name" && zeek -b -Cr "$OLDPWD/$pcap" "$OLDPWD/zeek/dns_tunnel_detect.zeek")
-done
-python3 test/assert_zeek.py --log-root test/out/zeek --cases test/zeek_cases.json
 ```
 
 **最终验证只认 GitHub Actions**：
 
-- `.github/workflows/suricata-8.0.8.yml`：规则/Lua/dataset/测试断言变更时自动运行。
-- `.github/workflows/zeek-9.0.1.yml`：当前 Zeek 侧还没有正式检测内容，工作流处于**休眠**状态；
-  仅在手动 `workflow_dispatch` 或 `zeek/*.zeek`、Zeek 断言文件变更时运行。后续补齐 Zeek 规则/脚本后再启用；
-  启用时把 `test/generate_pcaps.py` 加入该 workflow 的 paths。
+- `.github/workflows/suricata-dns-tunnel.yml`：本场景的规则/Lua/dataset/测试断言变更时自动运行。
+- 后续场景（如 `侦察与攻击工具指纹`）若使用 Suricata，新增该场景的 Suricata workflow；
+  若使用 Zeek，在该场景目录加入 `.zeek` 并新增该场景的 Zeek workflow；两种都用就都跑。
+- 不创建仓库根级 `zeek/` 目录，也不为“未来可能用到”的 Zeek 预建空 CI。
 
 本地结果仅作提交前预检；CI 未通过不得声称已验证。
 
 ## 5. 许可与安全
 
 - 生成的 PCAP 只包含 RFC 5737/1918 地址与虚构域名，不含真实客户数据。
-- 测试脚本不参与检测；检测逻辑只在规则/Lua/Zeek 内。
+- 测试脚本不参与检测；检测逻辑只在规则/Lua（以及场景内 Zeek）中。

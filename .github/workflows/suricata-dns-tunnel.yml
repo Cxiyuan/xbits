@@ -1,4 +1,4 @@
-name: suricata-8.0.8
+name: suricata-dns-tunnel-8.0.8
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
       - "test/suricata-ci.yaml.in"
       - "test/classification.config"
       - "test/reference.config"
-      - ".github/workflows/suricata-8.0.8.yml"
+      - ".github/workflows/suricata-dns-tunnel.yml"
   pull_request:
     paths:
       - "DNS隧道与带外检测/*.rules"
@@ -27,7 +27,7 @@ on:
       - "test/suricata-ci.yaml.in"
       - "test/classification.config"
       - "test/reference.config"
-      - ".github/workflows/suricata-8.0.8.yml"
+      - ".github/workflows/suricata-dns-tunnel.yml"
 
 jobs:
   test:
@@ -116,7 +116,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4.4.3
         with:
-          name: suricata-8.0.8-logs
+          name: suricata-dns-tunnel-8.0.8-logs
           path: |
             test/out
             test/suricata-ci.yaml

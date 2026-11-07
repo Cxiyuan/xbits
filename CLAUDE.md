@@ -5,7 +5,7 @@
 本仓库维护 DNS 隧道与带外探测（OOB）检测能力，交付物是**检测引擎内**的规则与脚本：
 
 - **Suricata 8.0.8**：规则文件 + 规则内嵌 Lua（`lua:` / `luaxform`）
-- **Zeek 9.0.1**：Zeek 脚本（`.zeek`）与配套检测逻辑
+- **Zeek 9.0.1**：当某个场景选择 Zeek 时，交付该场景内的 Zeek 脚本与检测逻辑
 
 检测逻辑必须运行在 Suricata 或 Zeek 引擎内，**不交付**脱离检测引擎的日志分析脚本、独立 Python 工具或离线扫描器。
 
@@ -35,18 +35,15 @@
 - 覆盖请求侧、响应侧、OOB、TXT 突发、DoT/DoH、Lua 二次过滤与 `flowbits` 联合确认路径。
 - 上传 `eve.json`、`fast.log`、`stats.log`、测试报告作为 Actions artifacts。
 
-### 3.2 CI 必须覆盖的 Zeek 9.0.1 检查（有 Zeek 检测内容时）
+### 3.2 CI 必须覆盖的 Zeek 9.0.1 检查（场景使用 Zeek 时）
 
-> 当前项目只有 Suricata 规则/Lua，Zeek 侧尚无正式检测内容。Zeek workflow 处于休眠状态：
-> 默认不在 push/PR 自动运行，仅手动触发或在 `zeek/**`、Zeek 断言文件变更时运行。
-> 后续补齐 Zeek 规则/脚本后，再启用并纳入必跑检查。
-
+- **不创建仓库根级 `zeek/` 目录**。Zeek 脚本放在对应场景目录内（如 `<场景>/zeek/`）。
+- 只有场景包含 `.zeek` 文件时，才为该场景建立/运行 Zeek CI；只跑该场景的 PCAP 与断言。
 - 安装精确版本 Zeek 9.0.1。
 - 加载 Zeek 脚本（`zeek -b`）无语法/加载错误。
 - 用回归 PCAP 运行 `zeek -b -Cr <pcap> <scripts>`，断言 `dns.log` / `notice.log` / 自定义日志字段。
-- 覆盖 DNS 查询/响应、qtype、rcode、answers、TXT/NULL 负载、OOB 域名等路径。
 - 上传 Zeek 日志与测试报告作为 Actions artifacts。
-- Zeek CI 未启用期间，不得用“Zeek 已验证”作为结论。
+- 场景没有 Zeek 内容时，不创建/不运行 Zeek CI，也不得声称“Zeek 已验证”。
 
 ### 3.3 CI 工程要求
 
@@ -70,13 +67,14 @@ ips/
 │   ├── 验证用例与上线清单.md
 │   ├── 能力边界与外挂扩展方案.md
 │   └── Lua强化检测场景.md
-├── zeek/                            # Zeek 9.0.1 脚本（如新增）
+├── 侦察与攻击工具指纹/              # 示例：未来场景（按需新增）
 ├── test/                            # PCAP、EVE/Zeek 断言、测试脚本
 └── .github/workflows/               # CI
 ```
 
 - 规则与文档文件**不使用数字前缀编号**（不要 `01-`、`03-` 这类命名）。
-- 新增 Zeek 检测放在 `zeek/`；新增测试放在 `test/`；不要在检测目录里混入规则外分析脚本。
+- 规则/脚本按场景归档：场景目录内放 Suricata 规则/Lua，和/或 `zeek/` 子目录；**不要创建仓库根级 `zeek/`**。
+- 新增测试放在 `test/`；不要在检测目录里混入规则外分析脚本。
 
 ## 5. 规则与脚本规范
 
@@ -103,6 +101,7 @@ ips/
 
 ### 5.3 Zeek 脚本
 
+- 放在对应场景目录的 `zeek/` 子目录（如 `DNS隧道与带外检测/zeek/`），不要建根级 `zeek/`。
 - 只使用 Zeek 9.0.1 的 API、事件与日志字段。
 - 脚本加载与 PCAP 回归必须进 CI。
 - 检测输出写入 Zeek 日志/Notice 时，字段命名稳定、可断言。
