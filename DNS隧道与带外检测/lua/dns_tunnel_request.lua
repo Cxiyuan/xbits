@@ -29,7 +29,7 @@ local LABEL_LONG = 30
 local ENCODED_LABEL_MIN = 10
 local DEPTH_SUSPECT = 5
 local NAME_LONG = 60
-local A_ENTROPY_MIN = 3.8
+local A_ENTROPY_MIN = 3.4
 local A_LABEL_MIN = 40
 local A_ENCODED_TOTAL = 40
 
@@ -253,6 +253,7 @@ function match(args)
     end
 
     local uuid = is_rfc4122(a.left)
+    local hex32 = (#a.left == 32 and a.hex >= 0.99)
 
     -- A/AAAA 的容错更低：没有强证据就交给响应侧确认
     if qtype == "A" or qtype == "AAAA" then
@@ -289,6 +290,9 @@ function match(args)
     end
     if uuid then
         score = score + 0.5
+    end
+    if hex32 then
+        score = score + 1.0
     end
 
     if score >= SCORE_THRESHOLD then

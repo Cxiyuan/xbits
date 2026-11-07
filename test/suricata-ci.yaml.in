@@ -15,6 +15,13 @@ rule-files:
 classification-file: __RULE_DIR__/classification.config
 reference-config-file: __RULE_DIR__/reference.config
 
+app-layer:
+  protocols:
+    tls:
+      enabled: yes
+      detection-ports:
+        dp: 443, 853
+
 security:
   lua:
     allow-rules: yes
