@@ -120,8 +120,14 @@ local function value_has_command(value)
         end
     end
     for _, cmd in ipairs(COMMANDS) do
+        if value == cmd then
+            return true
+        end
         local escaped = cmd:gsub("(%W)", "%%%1")
         if value:find("%f[%w]" .. escaped .. "%f[%W]") then
+            return true
+        end
+        if value:find("%f[%w]" .. escaped .. "$") then
             return true
         end
         if value:find(escaped, 1, true) and cmd:find(" ") then
