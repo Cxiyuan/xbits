@@ -75,8 +75,8 @@ event http_reply(c: connection, version: string, code: count, reason: string)
         st$fb += 1;
     }
 
-    -- Suricata 的 threshold 与 Zeek 的计数窗口可能相差一个流；
-    -- 在 50/51 两个相邻连接上各输出一次，保证社区 ID 可关联。
+    # Suricata 的 threshold 与 Zeek 的计数窗口可能相差一个流；
+    # 在 50/51 两个相邻连接上各输出一次，保证社区 ID 可关联。
     if ( st$total >= 50 && st$total <= 51 && (st$nf + st$fb) >= 40 ) {
         emit(c, "scan_404_burst", st$nf + st$fb);
         st$logged = T;
