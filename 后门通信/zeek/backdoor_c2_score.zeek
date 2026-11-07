@@ -22,7 +22,7 @@ export {
     };
 
     type C2Stats: record {
-        count: count &default=0;
+        requests: count &default=0;
         uris: set[string];
         logged: bool &default=F;
     };
@@ -80,9 +80,9 @@ event http_request(c: connection, method: string, original_URI: string,
         c2stats[s] = C2Stats();
     }
     local st = c2stats[s];
-    st$count += 1;
+    st$requests += 1;
     add st$uris[unescaped_URI];
-    if ( ! st$logged && st$count >= 10 && |st$uris| <= 3 ) {
+    if ( ! st$logged && st$requests >= 10 && |st$uris| <= 3 ) {
         emit(c, "c2_repeated_http", 0, st$count, "9110002,9110005,9110007");
         st$logged = T;
     }
