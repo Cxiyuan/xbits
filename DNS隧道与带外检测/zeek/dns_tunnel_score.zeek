@@ -1,3 +1,7 @@
+@load base/frameworks/logging
+@load base/protocols/conn
+@load base/protocols/dns
+
 module DNS_Tunnel_Correlation;
 
 export {
@@ -27,6 +31,7 @@ export {
 
 event zeek_init()
 {
+    print("ZEEK_INIT " + "LOADED");
     Log::create_stream(DNS_Tunnel_Correlation::LOG, [$columns=Info, $path="dns_correlation"]);
 }
 

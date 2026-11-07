@@ -1,3 +1,7 @@
+@load base/frameworks/logging
+@load base/protocols/conn
+@load base/protocols/http
+
 module Backdoor_Correlation;
 
 export {
@@ -34,6 +38,7 @@ export {
 
 event zeek_init()
 {
+    print("ZEEK_INIT " + "LOADED");
     Log::create_stream(Backdoor_Correlation::LOG, [$columns=Info, $path="backdoor_correlation"]);
 }
 

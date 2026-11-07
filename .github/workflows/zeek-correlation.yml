@@ -85,7 +85,7 @@ jobs:
             -v "$PWD:/work" \
             -w "/work/test/zeek_out/${{ matrix.case }}" \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr "/work/${{ matrix.pcap }}" "/work/${{ matrix.script }}" LogAscii::use_json=T
+            sh -c 'pwd; zeek -b -Cr "/work/${{ matrix.pcap }}" "/work/${{ matrix.script }}" LogAscii::use_json=T; echo ZEEK_RC=$?; find . -maxdepth 1 -ls'
           echo "PWD=$(pwd)"
           ls -la "test/zeek_out/${{ matrix.case }}"
           find "test/zeek_out/${{ matrix.case }}" -maxdepth 2 -type f -print

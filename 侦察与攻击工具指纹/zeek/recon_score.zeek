@@ -1,3 +1,7 @@
+@load base/frameworks/logging
+@load base/protocols/conn
+@load base/protocols/http
+
 module Recon_Correlation;
 
 export {
@@ -28,6 +32,7 @@ export {
 
 event zeek_init()
 {
+    print("ZEEK_INIT " + "LOADED");
     Log::create_stream(Recon_Correlation::LOG, [$columns=Info, $path="recon_correlation"]);
 }
 
