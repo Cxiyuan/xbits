@@ -31,7 +31,6 @@ export {
 
 event zeek_init()
 {
-    print("ZEEK_INIT " + "LOADED");
     Log::create_stream(DNS_Tunnel_Correlation::LOG, [$columns=Info, $path="dns_correlation"]);
 }
 

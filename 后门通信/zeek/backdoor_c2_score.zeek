@@ -38,7 +38,6 @@ export {
 
 event zeek_init()
 {
-    print("ZEEK_INIT " + "LOADED");
     Log::create_stream(Backdoor_Correlation::LOG, [$columns=Info, $path="backdoor_correlation"]);
 }
 

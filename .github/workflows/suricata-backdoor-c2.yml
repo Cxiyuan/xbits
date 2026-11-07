@@ -6,6 +6,8 @@ on:
     paths:
       - "后门通信/*.rules"
       - "后门通信/lua/**"
+      - "后门通信/zeek/**"
+      - "test/assert_zeek.py"
       - "test/generate_backdoor_pcaps.py"
       - "test/backdoor_cases.json"
       - "test/suricata-backdoor-ci.yaml.in"
@@ -17,6 +19,8 @@ on:
     paths:
       - "后门通信/*.rules"
       - "后门通信/lua/**"
+      - "后门通信/zeek/**"
+      - "test/assert_zeek.py"
       - "test/generate_backdoor_pcaps.py"
       - "test/backdoor_cases.json"
       - "test/suricata-backdoor-ci.yaml.in"
@@ -107,6 +111,29 @@ jobs:
       - name: Assert Suricata alerts
         run: python test/assert_suricata.py --eve-root test/out/suricata --cases test/backdoor_cases.json
 
+      - name: Zeek correlation + community-id linkage
+        run: |
+          set -euo pipefail
+          mkdir -p test/zeek_out/backdoor test/zeek_out/c2
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work/test/zeek_out/backdoor \
+            zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
+            zeek -b -Cr /work/test/backdoor_pcap/ws_cmd_query.pcap /work/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
+          python test/assert_zeek.py \
+            --log test/zeek_out/backdoor/backdoor_correlation.log \
+            --scenario backdoor-c2 \
+            --eve-root test/out/suricata \
+            --case ws_cmd_query
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work/test/zeek_out/c2 \
+            zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
+            zeek -b -Cr /work/test/backdoor_pcap/c2_periodic.pcap /work/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
+          python test/assert_zeek.py \
+            --log test/zeek_out/c2/backdoor_correlation.log \
+            --scenario backdoor-c2
+
       - name: Upload Suricata logs
         if: always()
         uses: actions/upload-artifact@v4.4.3
@@ -114,5 +141,6 @@ jobs:
           name: suricata-backdoor-c2-8.0.8-logs
           path: |
             test/out
+            test/zeek_out
             test/suricata-backdoor-ci.yaml
           if-no-files-found: ignore

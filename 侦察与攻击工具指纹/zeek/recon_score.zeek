@@ -32,7 +32,6 @@ export {
 
 event zeek_init()
 {
-    print("ZEEK_INIT " + "LOADED");
     Log::create_stream(Recon_Correlation::LOG, [$columns=Info, $path="recon_correlation"]);
 }
 
