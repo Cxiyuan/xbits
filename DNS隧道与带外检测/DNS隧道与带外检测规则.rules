@@ -1,0 +1,301 @@
+# ============================================================================
+# DNS 隧道与带外探测检测规则（Suricata 8.0.8）
+# ----------------------------------------------------------------------------
+# 内容 : 7 条结构化检测规则 + 3 条配套规则 + 3 条规则内嵌 Lua 规则
+# 目标平台: Suricata 8.0.8（锁定版本，不向下兼容）
+#
+# 检测设计说明
+#   - 来源限定 $CLIENT_NET，不再 any any -> any any
+#   - 增加 dns.rrtype 约束，排除 PTR（修复 ip6.arpa 必现误报）
+#   - 增加 to_lowercase + dotprefix + dataset 白名单（消除大小写失配、
+#      合法哈希/GUID/长标签误报）
+#   - OOB 域名 pcre 增加结尾 $ 锚定（修复 "前缀相同" 误报）
+#   - 高频规则改 threshold type both 并提高阈值（修复 NAT 告警风暴）
+#   - 增加 tier 元数据，区分直接告警与线索
+#   - 增加规则内嵌 Lua：请求侧熵/字符集评分、响应侧 TXT/NULL 载荷分类、
+#      联合确认，以及 OOB/TXT 突发/DoT/DoH 的二次过滤
+#      （Python 不支持规则内嵌；Suricata 的检测脚本扩展是 Lua）
+#
+# qtype 数字对照（dns.rrtype 使用数字，语义明确）：
+#   A=1  NS=2  CNAME=5  SOA=6  NULL=10  PTR=12  MX=15  TXT=16  AAAA=28
+#
+# 部署前置
+#   1) suricata.yaml 的 vars.address-groups 中定义 CLIENT_NET，例如：
+#        CLIENT_NET: "[10.10.0.0/16,10.20.0.0/16]"
+#      未定义时 Suricata 会因 unknown variable 拒绝加载。
+#   2) 本文件同目录放置 dns_tunnel_allow.lst（白名单，见 README 3.2），
+#      以及 dns_tunnel_request.lua / dns_tunnel_response.lua（Lua 规则脚本）。
+#   3) 仅支持 Suricata 8.0.8（已按该版本关键字语义校验：dns.rrtype、
+#      dataset match subdomain、to_lowercase、dotprefix）。不同版本请勿混用。
+#      上线前用 suricata -T 校验。
+#   4) 不要与旧规则包同时加载（SID 相同）。
+#
+# 校验
+#   suricata -T -c /etc/suricata/suricata.yaml \
+#             -S /etc/suricata/rules/DNS隧道与带外检测规则.rules -v
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 多级单字符标签（原 SID 9109001）
+# 保留特征，但：
+#   - 排除 PTR，ip6.arpa 反向解析不再命中
+#   - 查白名单，避免 CDN/内网命名误报
+#   - 只检测客户端网段
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道] 多级单字符标签查询(非PTR/白名单外)"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    pcre:"/^\.(?:[0-9a-z]\.){6,}/i"; \
+    dns.rrtype:!12; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    lua:dns_compact_labels.lua; \
+    flowbits:set,dns_susp; \
+    classtype:non-standard-protocol; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence Medium, severity High, tier triage, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109001; rev:2;)
+
+
+# ----------------------------------------------------------------------------
+# 32 位十六进制首标签（原 SID 9109002）
+#   - 结尾 $ 锚定，要求至少两级注册域，避免半截匹配
+#   - 排除 PTR，查白名单
+# 说明：合法 CDN/SaaS 常用 32 位 token 做子域，仍需 L3 统计与人工研判。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道] 32位十六进制首标签(非PTR/白名单外)"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    pcre:"/^\.[0-9a-f]{32}\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i"; \
+    dns.rrtype:!12; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    lua:dns_tunnel_request.lua; \
+    flowbits:set,dns_susp; \
+    classtype:misc-activity; \
+    metadata:attack_tactic TA0043, attack_technique T1590, confidence High, severity High, tier triage, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109002; rev:2;)
+
+
+# ----------------------------------------------------------------------------
+# UUID 格式首标签（原 SID 9109003）
+#   - 结尾 $ 锚定 + 非 PTR + 白名单
+# 说明：设备管理/MDM/IoT 平台大量使用 GUID 子域，本条仅作线索。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道] UUID 格式首标签(非PTR/白名单外)"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    pcre:"/^\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i"; \
+    dns.rrtype:!12; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    lua:dns_tunnel_request.lua; \
+    flowbits:set,dns_susp; \
+    classtype:misc-activity; \
+    metadata:attack_tactic TA0043, attack_technique T1590, confidence High, severity High, tier triage, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109003; rev:2;)
+
+
+# ----------------------------------------------------------------------------
+# OAST 家族平台（原 SID 9109004）
+#   - pcre 结尾 $：x.oast.pro.attacker.tld 不再命中
+#   - 补全 interactsh 的 oast.online / oast.me
+#   - content 设 fast_pattern，避免每条 DNS 查询都跑完整 pcre
+#   - classtype 提升为 trojan-activity（原 misc-activity 在部分 SIEM 被降级）
+# 运营：红队/扫描器/邮件沙箱请按源+时间抑制，不要加白名单。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS带外] OAST/Interactsh 回连域名"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    content:"oast"; nocase; fast_pattern; \
+    pcre:"/^\.(?:[a-z0-9-]+\.)*(?:oastify\.com|oast\.(?:live|site|pro|fun|online|me))$/i"; \
+    lua:dns_oob_request.lua; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0043, attack_technique T1590, confidence High, severity Critical, tier alert, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109004; rev:2;)
+
+
+# ----------------------------------------------------------------------------
+# 其他公共 OOB 平台（原 SID 9109005）
+#   - pcre 结尾 $：interact.sh.attacker.tld 不再命中
+# 运营：canarytokens.com 常被邮件安全沙箱/URL 检测设备引爆，属于
+#       "自己人触发"，应抑制安全设备源，而不是放行域名。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS带外] 其他公共 OOB 平台回连域名"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    pcre:"/^\.(?:[a-z0-9-]+\.)*(?:interact\.sh|ceye\.io|dnslog\.cn|dnslog\.top|burpcollaborator\.net|requestrepo\.com|xss\.ht|canarytokens\.com)$/i"; \
+    lua:dns_oob_request.lua; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0043, attack_technique T1590, confidence High, severity Critical, tier alert, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109005; rev:2;)
+
+
+# ----------------------------------------------------------------------------
+# 超长单标签（原 SID 9109006）
+#   - DNS 单标签上限 63，实际覆盖 60-63
+#   - 排除 PTR + 白名单
+#   - 降为 tier telemetry：低置信规则不直接进告警队列
+# 说明：AV/EDR 的 URL 信誉查询会构造 60+ 字符的 base64 子域，必须白名单。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道] 超长单标签查询(线索级)"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    pcre:"/^\.[^.]{60,63}\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i"; \
+    dns.rrtype:!12; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    lua:dns_tunnel_request.lua; \
+    flowbits:set,dns_susp; \
+    classtype:non-standard-protocol; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence Low, severity Medium, tier telemetry, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109006; rev:2;)
+
+
+# ----------------------------------------------------------------------------
+# 高频长域名（原 SID 9109007）
+#   - threshold 改为 type both：达到阈值后每个窗口最多一次，不再逐条告警
+#   - 阈值 100 -> 200（起点值，按现网基线校准）
+#   - 排除 PTR + 白名单 + tier telemetry
+# 注意：NAT/代理/解析器出口场景下 by_src 无意义，频次检测应移到
+#       SIEM/Zeek 按 client_ip + 注册域 聚合。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道] 高频长域名查询(线索级, 需SIEM聚合)"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; bsize:>41; \
+    dns.rrtype:!12; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    threshold: type both, track by_src, count 200, seconds 60; \
+    classtype:non-standard-protocol; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence Low, severity Low, tier telemetry, created_at 2026_10_18, updated_at 2026_11_07; \
+    sid:9109007; rev:2;)
+
+
+# ============================================================================
+# 配套规则（新增，原 7 条之外）
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# DNS over TLS 出站（可见性缺口）
+# 若环境有批准的 DoT 解析器，请改白名单/抑制，不要直接关规则。
+# ----------------------------------------------------------------------------
+alert tls $CLIENT_NET any -> any 853 ( \
+    msg:"[DNS带外-配套] 未授权 DNS over TLS (TCP/853) 出站"; \
+    flow:to_server,established; \
+    tls.alpn; content:"dot"; \
+    lua:dns_dot_policy.lua; \
+    classtype:policy-violation; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence High, severity Medium, tier alert, created_at 2026_11_07; \
+    sid:9109101; rev:1;)
+
+
+# ----------------------------------------------------------------------------
+# DoH 请求（Content-Type: application/dns-message）
+# 覆盖 POST /dns-query；GET ?dns= 形式建议在代理侧做 URI 检测，避免误报。
+# ----------------------------------------------------------------------------
+alert http $CLIENT_NET any -> any any ( \
+    msg:"[DNS带外-配套] 未授权 DNS over HTTPS 请求(application/dns-message)"; \
+    flow:to_server,established; \
+    http.request_header; content:"application/dns-message"; nocase; \
+    lua:dns_doh_policy.lua; \
+    classtype:policy-violation; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence High, severity Medium, tier alert, created_at 2026_11_07; \
+    sid:9109102; rev:1;)
+
+
+# ----------------------------------------------------------------------------
+# TXT 查询突发（线索级）
+# 适用：TXT 隧道 / Cobalt Strike DNS beacon 一类高频 TXT 查询。
+# 注意：邮件服务器做 SPF/DKIM/DMARC 查询也会产生 TXT 流量，建议把
+#       邮件网关排除出 $CLIENT_NET，或在 SIEM 侧按资产角色过滤。
+# ----------------------------------------------------------------------------
+alert dns $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道-配套] TXT 查询突发(线索级)"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    dns.rrtype:16; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    threshold: type both, track by_src, count 50, seconds 60; \
+    lua:dns_txt_burst.lua; \
+    classtype:non-standard-protocol; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence Low, severity Low, tier telemetry, created_at 2026_11_07; \
+    sid:9109103; rev:1;)
+
+
+# ============================================================================
+# 规则内嵌 Lua 扩展（Suricata 8.0.8，Lua 5.4）
+# ----------------------------------------------------------------------------
+# 作用：把"熵/字符集/标签结构评分"和"响应侧 TXT/NULL 载荷"放进规则内部，
+#       由规则直接调用 Lua，减少规则数量与误报，补足纯正则的能力边界。
+# 部署：把 lua/*.lua 复制到 default-rule-path（通常 /etc/suricata/rules/），
+#       与规则同目录。主要脚本：
+#       dns_tunnel_request / dns_tunnel_response / dns_tunnel_confirm /
+#       dns_compact_labels / dns_oob_request / dns_txt_burst /
+#       dns_dot_policy / dns_doh_policy
+# 依赖：Suricata 8.0 起 Lua 规则默认启用；若 security.lua.allow-rules
+#       被显式关闭，需要打开。
+# 说明：Lua 沙箱无 io/os，不能读白名单文件；白名单仍由规则里的 dataset
+#       完成，Lua 内只保留一份高频域静态安全网。
+#       关键：Lua 规则必须带 buffer（请求 dns.query，响应 dns.queries.rrname）；
+#       只有 hook 没有 buffer 的规则会被当作 straight match，脚本不会执行。
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 请求侧编码/结构评分（Lua）
+# - 单事务内计算标签熵、字符集占比、最长标签、层级深度
+# - 覆盖 base32/base64url/多段中等长度拆分标签/长标签
+#   （极短标签拆分仍是聚合盲区，见 `能力边界与外挂扩展方案.md`）
+# - dataset 白名单先过滤；Lua 再做评分
+# 注意：这是单事务评分；慢速/低频隧道不在规则层能力范围。
+# ----------------------------------------------------------------------------
+alert dns:request_complete $CLIENT_NET any -> any 53 ( \
+    msg:"[DNS隧道-Lua] 请求侧编码/结构评分"; \
+    flow:to_server; \
+    dns.query; to_lowercase; dotprefix; \
+    dns.rrtype:!12; \
+    dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
+    lua:dns_tunnel_request.lua; \
+    flowbits:set,dns_susp; \
+    classtype:non-standard-protocol; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence Medium, severity High, tier triage, engine lua, created_at 2026_11_07; \
+    sid:9109201; rev:1;)
+
+
+# ----------------------------------------------------------------------------
+# 响应侧 TXT/NULL 大载荷（Lua）
+# - 在 dns:response_complete 事务里同时拿到 query 与 answers
+# - 统计 TXT/NULL 的 addr 字节量、answer 数、最小 TTL
+# - 载荷内容分类：SPF/DKIM/DMARC/域名验证前缀、人类可读文本不计为大载荷
+# - CNAME target 的熵/长度分析（补 CNAME 隧道）
+# - 跳过任意位置的服务标签、punycode、高连字符标签
+# - qname 无结构特征时不因 TXT 大而告警（避免域名验证/SPF 误报）
+# 注意：TXT addr 为 Suricata Lua 拼接后的字符串，长度按字符数近似字节。
+# ----------------------------------------------------------------------------
+alert dns:response_complete any 53 -> $CLIENT_NET any ( \
+    msg:"[DNS隧道-Lua] 响应侧 TXT/NULL 大载荷"; \
+    flow:to_client; \
+    dns.queries.rrname; \
+    lua:dns_tunnel_response.lua; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence High, severity High, tier triage, engine lua, created_at 2026_11_07; \
+    sid:9109202; rev:1;)
+
+# ----------------------------------------------------------------------------
+# 请求 + 响应确认（Lua）
+# - 请求侧规则命中后设置 flowbits:dns_susp
+# - 响应侧只有出现编码载荷 / 低 TTL / 异常 CNAME 时才升级为高置信
+# - A/AAAA 正常响应不会升级，降低 CDN/缓存 token 误报
+# ----------------------------------------------------------------------------
+alert dns:response_complete any 53 -> $CLIENT_NET any ( \
+    msg:"[DNS隧道-Lua] 请求+响应确认的隧道"; \
+    flow:to_client; \
+    dns.queries.rrname; \
+    flowbits:isset,dns_susp; \
+    lua:dns_tunnel_confirm.lua; \
+    classtype:trojan-activity; \
+    metadata:attack_tactic TA0011, attack_technique T1071.004, confidence High, severity High, tier alert, engine lua, created_at 2026_11_07; \
+    sid:9109203; rev:1;)
+

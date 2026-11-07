@@ -1,0 +1,82 @@
+{
+  "tunnel_32hex": {
+    "require": [9109002, 9109201, 9109202, 9109203],
+    "forbid": []
+  },
+  "tunnel_base32_normal_a": {
+    "require": [9109201],
+    "forbid": [9109203]
+  },
+  "spf_txt": {
+    "require": [],
+    "forbid": [9109202, 9109203]
+  },
+  "verify_txt": {
+    "require": [],
+    "forbid": [9109202, 9109203]
+  },
+  "dmarc_txt": {
+    "require": [],
+    "forbid": [9109202, 9109203]
+  },
+  "cname_tunnel": {
+    "require": [9109202, 9109203],
+    "forbid": []
+  },
+  "uuid_valid": {
+    "require": [9109003, 9109201],
+    "forbid": []
+  },
+  "uuid_invalid": {
+    "require": [],
+    "forbid": [9109003, 9109201]
+  },
+  "compact_positive": {
+    "require": [9109001],
+    "forbid": []
+  },
+  "compact_negative": {
+    "require": [],
+    "forbid": [9109001]
+  },
+  "long_positive": {
+    "require": [9109006, 9109201],
+    "forbid": []
+  },
+  "long_negative": {
+    "require": [],
+    "forbid": [9109006, 9109201]
+  },
+  "oob_positive": {
+    "require": [9109004],
+    "forbid": []
+  },
+  "oob_negative": {
+    "require": [],
+    "forbid": [9109004]
+  },
+  "txt_burst_positive": {
+    "require": [9109103],
+    "forbid": []
+  },
+  "txt_burst_negative": {
+    "require": [],
+    "forbid": [9109103]
+  },
+  "dot_positive": {
+    "require": [9109101],
+    "forbid": []
+  },
+  "dot_negative": {
+    "require": [],
+    "forbid": [9109101]
+  },
+  "doh_positive": {
+    "require": [9109102],
+    "forbid": []
+  },
+  "doh_negative": {
+    "require": [],
+    "forbid": [9109102]
+  }
+}

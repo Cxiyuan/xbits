@@ -1,0 +1,96 @@
+name: suricata-8.0.8
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Install test generator dependency
+        run: python -m pip install --disable-pip-version-check scapy==2.6.1
+
+      - name: Generate test PCAPs
+        run: python test/generate_pcaps.py --out test/pcap
+
+      - name: Install Suricata build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake build-essential libcap-ng-dev libjansson-dev \
+            libmagic-dev libnet1-dev libpcap-dev libpcre2-dev libtool \
+            libyaml-dev make pkg-config zlib1g-dev curl
+
+      - name: Install pinned Rust and cbindgen
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain 1.85.0
+          . "$HOME/.cargo/env"
+          cargo install cbindgen --version 0.27.0 --locked
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Build Suricata 8.0.8
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://github.com/OISF/suricata/archive/refs/tags/suricata-8.0.8.tar.gz \
+            -o /tmp/suricata-8.0.8.tar.gz
+          tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp
+          cd /tmp/suricata-8.0.8
+          ./autogen.sh
+          ./configure --prefix=/usr/local
+          make -j"$(nproc)"
+          sudo make install
+          sudo ldconfig
+          suricata -V
+
+      - name: Stage rules, dataset and Lua
+        run: |
+          set -euo pipefail
+          mkdir -p test/stage test/out/suricata
+          cp "DNS隧道与带外检测/DNS隧道与带外检测规则.rules" test/stage/
+          cp "DNS隧道与带外检测/dns_tunnel_allow.lst" test/stage/
+          cp DNS隧道与带外检测/lua/*.lua test/stage/
+          cp test/classification.config test/reference.config test/stage/
+          sed \
+            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage|g" \
+            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
+            test/suricata-ci.yaml.in > test/suricata-ci.yaml
+
+      - name: Suricata config test
+        run: suricata -T -c test/suricata-ci.yaml -v
+
+      - name: Replay PCAP corpus
+        run: |
+          set -euo pipefail
+          for pcap in test/pcap/*.pcap; do
+            name="$(basename "$pcap" .pcap)"
+            out="$GITHUB_WORKSPACE/test/out/suricata/$name"
+            mkdir -p "$out"
+            echo "== $name"
+            suricata -c test/suricata-ci.yaml -r "$pcap" -l "$out" -k none
+          done
+
+      - name: Assert Suricata alerts
+        run: python test/assert_suricata.py --eve-root test/out/suricata --cases test/cases.json
+
+      - name: Upload Suricata logs
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: suricata-8.0.8-logs
+          path: |
+            test/out
+            test/suricata-ci.yaml
+          if-no-files-found: ignore
