@@ -4,6 +4,7 @@
 
 - `DNS隧道与带外检测/`（Suricata 8.0.8）
 - `侦察与攻击工具指纹/`（Suricata 8.0.8）
+- `Web漏洞利用/`（Suricata 8.0.8）
 
 若后续某个场景使用 Zeek，`.zeek` 脚本放在该场景目录内（如 `<场景>/zeek/`），
 不创建仓库根级 `zeek/`。
@@ -94,16 +95,42 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 
 断言文件为 `recon_cases.json`，当前共 29 个 PCAP；检测规则/Lua 在 `侦察与攻击工具指纹/`。
 
-## 4. CI 断言
+## 4. Web 漏洞利用场景
+
+生成命令：
+
+```bash
+python3 -m pip install scapy==2.6.1
+python3 test/generate_web_pcaps.py --out test/web_pcap
+```
+
+| PCAP 组 | 场景 | 期望 |
+|---|---|---|
+| `web_sqli_*` | URI/Body 的 UNION、时间、布尔、元数据、报错注入 | 9103001 |
+| `web_traversal_*` / `web_lfi_wrapper` | 路径穿越、编码穿越、Body 穿越、PHP 包装器 | 9103008 |
+| `web_log4shell_*` | Header、嵌套 Header、Body 的 JNDI | 9103013 |
+| `web_cmdi_*` | URI/Body 的命令注入 | 9103015 |
+| `web_deser_*` | Fastjson、OGNL、ThinkPHP、Java 序列化 | 9103018 |
+| `web_ssrf_metadata` | 云元数据 SSRF | 9103101 |
+| `web_xxe` | XML 外部实体 | 9103102 |
+| `web_ssti` | 模板危险对象访问 | 9103103 |
+| `web_upload_webshell` | 脚本扩展名 + PHP 代码 | 9103104 |
+| `web_*_negative` | 正常 SQL 元数据词、相对路径、`${env:}`、`&id=2`、安全 `@type`、外链 URL、普通 XML、`{{name}}`、PDF 上传 | 不命中对应规则 |
+
+断言文件为 `web_cases.json`，共 34 个 PCAP；检测规则/Lua 在 `Web漏洞利用/`。
+正例同时 forbid 其他类别 SID，避免跨类别误报；反例 forbid 全部 9 个 SID。
+
+## 5. CI 断言
 
 - `cases.json`：DNS 场景每个 PCAP 的 `require` / `forbid` SID。
 - `recon_cases.json`：侦察场景每个 PCAP 的 `require` / `forbid` SID。
+- `web_cases.json`：Web 漏洞利用场景每个 PCAP 的 `require` / `forbid` SID。
 - `assert_suricata.py`：解析 `eve.json`，断言 `alert.signature_id`。
 
 当前没有 Zeek 内容，因此没有 Zeek 断言文件。后续某场景加入 Zeek 时，
 在该场景的测试目录中增加 `zeek_cases.json` 与 `assert_zeek.py`（或等价断言）。
 
-## 5. 本地运行（预检，不作为最终验证）
+## 6. 本地运行（预检，不作为最终验证）
 
 本地预检需要精确版本：
 
@@ -123,19 +150,28 @@ for pcap in test/recon_pcap/*.pcap; do
   suricata -c test/suricata-recon-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
 done
 python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_cases.json
+
+# Web 漏洞利用场景
+suricata -T -c test/suricata-web-ci.yaml
+for pcap in test/web_pcap/*.pcap; do
+  name=$(basename "$pcap" .pcap)
+  suricata -c test/suricata-web-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+done
+python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/web_cases.json
 ```
 
 **最终验证只认 GitHub Actions**：
 
 - `.github/workflows/suricata-dns-tunnel.yml`：DNS 场景规则/Lua/dataset/测试断言变更时运行。
 - `.github/workflows/suricata-recon-tools.yml`：侦察场景规则/Lua/测试断言变更时运行。
+- `.github/workflows/suricata-web-exploit.yml`：Web 漏洞利用场景规则/Lua/测试断言变更时运行。
 - 后续场景若使用 Suricata，新增该场景的 Suricata workflow；若使用 Zeek，
   在该场景目录加入 `.zeek` 并新增该场景的 Zeek workflow；两种都用就都跑。
 - 不创建仓库根级 `zeek/` 目录，也不为“未来可能用到”的 Zeek 预建空 CI。
 
 本地结果仅作提交前预检；CI 未通过不得声称已验证。
 
-## 5. 许可与安全
+## 7. 许可与安全
 
 - 生成的 PCAP 只包含 RFC 5737/1918 地址与虚构域名，不含真实客户数据。
 - 测试脚本不参与检测；检测逻辑只在规则/Lua（以及场景内 Zeek）中。
