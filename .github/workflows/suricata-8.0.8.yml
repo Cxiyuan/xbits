@@ -46,7 +46,8 @@ jobs:
           curl -fsSL \
             https://github.com/OISF/suricata/archive/refs/tags/suricata-8.0.8.tar.gz \
             -o /tmp/suricata-8.0.8.tar.gz
-          tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp
+          mkdir -p /tmp/suricata-8.0.8
+          tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp/suricata-8.0.8 --strip-components=1
           cd /tmp/suricata-8.0.8
           ./autogen.sh
           ./configure --prefix=/usr/local
