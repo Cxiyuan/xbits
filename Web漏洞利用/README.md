@@ -108,3 +108,11 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/web_ca
 最终验证只认 `.github/workflows/suricata-web-exploit.yml`。
 当前已验证：commit `b933f57`，run `42377078821`，34/34 用例通过：
 <https://github.com/Cxiyuan/ips/actions/runs/42377078821>。
+
+## 8. Zeek 关联分析
+
+- 脚本：`zeek/web_exploit_chain.zeek`；
+- 关联请求 URI/Header/Body 与响应状态，输出 `web_correlation.log`；
+- 含 `community_id`、`related_sids`，与 Suricata EVE 的 `community_id` 对齐；
+- 覆盖 Suricata 单请求规则之外的响应关联；
+- CI：web workflow 内运行 Zeek 9.0.1 + community-id 断言。

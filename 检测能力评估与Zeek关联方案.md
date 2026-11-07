@@ -1,6 +1,36 @@
 # 全场景检测能力评估与 Zeek 关联分析方案
 
 ## 0. 结论
+## 0.1 实施状态（2026-11-08）
+
+已按场景引入 Zeek 9.0.1 关联脚本，并与 Suricata 8.0.8 的 EVE `community_id` 联动：
+
+- DNS：`DNS隧道与带外检测/zeek/dns_tunnel_score.zeek`
+- 侦察：`侦察与攻击工具指纹/zeek/recon_score.zeek`
+- Web：`Web漏洞利用/zeek/web_exploit_chain.zeek`
+- 后门/C2：`后门通信/zeek/backdoor_c2_score.zeek`
+
+联动机制：
+
+1. 四个 Suricata CI 配置均开启 `eve-log.community-id: true`；
+2. Zeek 脚本用 `community_id_v1(c$id)` 写入 `*_correlation.log`；
+3. Zeek 日志同时带 `related_sids`（对应场景 Suricata SID）；
+4. CI 用 `test/assert_zeek.py` 校验 Zeek 事件，并与同一 PCAP 的 Suricata EVE
+   告警 `community_id` 求交集；交集为空即失败；
+5. Zeek 9.0.1 以固定 Docker digest 运行，`zeek -b -Cr` 加载脚本；
+6. 不在仓库根级创建 `zeek/`，脚本均在场景目录内。
+
+已验证的 linkage CI：
+
+- DNS：run `42390068900` success
+- 侦察：run `42393276047` success
+- Web：run `42390068901` success
+- 后门/C2：run `42390068823` success
+
+> 该联动是 **telemetry 层联动**：Suricata/Lua 给单事件告警，Zeek 给跨流/聚合
+> notice，两者通过 `community_id` + `related_sids` 在 SIEM/日志层关联。
+> Zeek 不直接读取 Suricata 的规则内存/flowbits，也不替代 Suricata 规则。
+
 
 当前仓库共有 4 个场景、5 个规则文件、**74 条 Suricata 规则、33 个 Lua 脚本、102 个 PCAP 回归用例**：
 
@@ -25,7 +55,7 @@
 Zeek 可以弥补其中一部分——尤其是 **跨流聚合、周期/抖动、唯一 URI/404 比例、文件与上传链、跨协议关联**；
 但 Zeek **不能替代** TLS 解密、资产上下文和标注语料，也不能保证“零误报”。
 
-**Zeek 脚本需要开发。当前仓库没有任何 `.zeek` 文件。**
+**Zeek 脚本已开发并接入各场景 CI。**
 
 ---
 
@@ -204,16 +234,16 @@ Suricata 规则 + Lua 的强项是：
 
 ## 4. Zeek 脚本是否需要开发
 
-**需要。**
+**已开发并接入 CI。**
 
-当前仓库没有任何 `.zeek` 文件，也没有 Zeek CI。按项目约束：
+当前四个场景均已有 `.zeek` 脚本；按项目约束：
 
 - 不创建仓库根级 `zeek/`；
 - Zeek 脚本放在对应场景的 `zeek/` 子目录；
-- 只有场景包含 `.zeek` 时才创建/运行该场景的 Zeek CI；
+- 只有场景包含 `.zeek` 时才创建/运行该场景的 Zeek CI；当前四个 Suricata 场景均已满足；
 - CI 必须精确安装 **Zeek 9.0.1**，`zeek -b -Cr <pcap> <scripts>` 加载并断言 `notice.log`/自定义日志。
 
-### 4.1 建议脚本
+### 4.1 已落地脚本
 
 | 场景 | 建议脚本 | 作用 |
 |---|---|---|
@@ -315,6 +345,6 @@ Zeek 9.0.1（场景内脚本）
 - **没有达到“极致”**：缺跨流/时间聚合、攻击链、加密可见性、资产上下文和真实误报率；
 - **Zeek 能显著补强** DNS/扫描/信标/文件/攻击链关联；
 - **Zeek 不能替代** TLS 解密、资产上下文、标注语料；
-- 当前 **没有任何 Zeek 脚本**，需要开发；
+- 当前 **四个场景的 Zeek 脚本已开发并接入 Suricata CI**；
 - Zeek 脚本必须放在各场景 `zeek/` 子目录（或新建 `攻击链关联/zeek/`），不得建根级 `zeek/`；
 - 在 Zeek 9.0.1 CI 通过前，不能声称 Zeek 已验证，也不能声称整体“零误报”。

@@ -152,18 +152,57 @@ python3 test/generate_backdoor_pcaps.py --out test/backdoor_pcap
 
 断言文件为 `backdoor_cases.json`，共 17 个 PCAP；规则/Lua 在 `后门通信/`。
 
-## 6. CI 断言
+## 6. Zeek 关联分析
+
+每个场景的 Zeek 脚本与对应 Suricata CI 运行在同一个 PCAP 上：
+
+| 场景 | Zeek 脚本 | 关联日志 |
+|---|---|---|
+| DNS | `DNS隧道与带外检测/zeek/dns_tunnel_score.zeek` | `dns_correlation.log` |
+| 侦察 | `侦察与攻击工具指纹/zeek/recon_score.zeek` | `recon_correlation.log` |
+| Web | `Web漏洞利用/zeek/web_exploit_chain.zeek` | `web_correlation.log` |
+| 后门/C2 | `后门通信/zeek/backdoor_c2_score.zeek` | `backdoor_correlation.log` |
+
+联动机制：
+
+- Suricata EVE 开启 `community-id: true`；
+- Zeek 日志字段 `community_id` 由 `community_id_v1(c$id)` 生成；
+- Zeek 日志字段 `related_sids` 记录对应场景 Suricata SID；
+- `test/assert_zeek.py` 断言 Zeek 事件，并与同一 PCAP 的 Suricata EVE
+  `community_id` 求交集；交集为空即失败；
+- Zeek 9.0.1 使用固定 Docker digest，
+  `zeek -b -Cr <pcap> <script>` 加载运行。
+
+本地运行示例：
+
+```bash
+mkdir -p test/zeek_out/dns
+docker run --rm -v "$PWD:/work" -w /work/test/zeek_out/dns \
+  zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
+  zeek -b -Cr /work/test/pcap/txt_burst_positive.pcap \
+  /work/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek LogAscii::use_json=T
+python test/assert_zeek.py \
+  --log test/zeek_out/dns/dns_correlation.log \
+  --scenario dns-tunnel \
+  --eve-root test/out/suricata --case txt_burst_positive
+```
+
+注意：Zeek `-b` 模式不会自动加载 base 脚本，脚本内已显式
+`@load base/frameworks/logging` / `base/protocols/conn` / `base/protocols/dns|http`。
+
+## 7. CI 断言
 
 - `cases.json`：DNS 场景每个 PCAP 的 `require` / `forbid` SID。
 - `recon_cases.json`：侦察场景每个 PCAP 的 `require` / `forbid` SID。
 - `web_cases.json`：Web 漏洞利用场景每个 PCAP 的 `require` / `forbid` SID。
 - `backdoor_cases.json`：后门通信/C2 信标场景每个 PCAP 的 `require` / `forbid` SID。
+- `assert_zeek.py`：断言 Zeek `*_correlation.log`，并校验 Suricata EVE `community_id` 交集。
 - `assert_suricata.py`：解析 `eve.json`，断言 `alert.signature_id`。
 
 当前没有 Zeek 内容，因此没有 Zeek 断言文件。后续某场景加入 Zeek 时，
 在该场景的测试目录中增加 `zeek_cases.json` 与 `assert_zeek.py`（或等价断言）。
 
-## 7. 本地运行（预检，不作为最终验证）
+## 8. 本地运行（预检，不作为最终验证）
 
 本地预检需要精确版本：
 
@@ -207,13 +246,15 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdo
 - `.github/workflows/suricata-recon-tools.yml`：侦察场景规则/Lua/测试断言变更时运行。
 - `.github/workflows/suricata-web-exploit.yml`：Web 漏洞利用场景规则/Lua/测试断言变更时运行。
 - `.github/workflows/suricata-backdoor-c2.yml`：后门通信/C2 信标场景规则/Lua/测试断言变更时运行。
+- 上述四个 Suricata workflow 内均包含 Zeek 关联与 community-id 断言；
+  没有独立根级 Zeek CI。
 - 后续场景若使用 Suricata，新增该场景的 Suricata workflow；若使用 Zeek，
   在该场景目录加入 `.zeek` 并新增该场景的 Zeek workflow；两种都用就都跑。
 - 不创建仓库根级 `zeek/` 目录，也不为“未来可能用到”的 Zeek 预建空 CI。
 
 本地结果仅作提交前预检；CI 未通过不得声称已验证。
 
-## 8. 许可与安全
+## 9. 许可与安全
 
 - 生成的 PCAP 只包含 RFC 5737/1918 地址与虚构域名，不含真实客户数据。
 - 测试脚本不参与检测；检测逻辑只在规则/Lua（以及场景内 Zeek）中。

@@ -130,3 +130,13 @@ suricata -T -c /etc/suricata/suricata.yaml \
 - **可运营**：白名单有 owner、有到期时间、有周复核；抑制有工单号、有失效时间。
 
 如果有人承诺"这 7 条规则改完就绝对零误报"，那一定是以牺牲召回为代价的。本包选择的是"分层降噪 + 可度量精度"，而不是"把规则改到不敢报"。
+
+## 7. Zeek 关联分析
+
+- 脚本：`zeek/dns_tunnel_score.zeek`；
+- 按源统计 DNS 查询总量、NXDOMAIN、TXT 突发；跳过 `_` 服务标签；
+- 输出 `dns_correlation.log`，含 `community_id` 与 `related_sids`；
+- 与 Suricata EVE 的 `community_id` 关联，覆盖 Suricata 单事务无法完成的
+  per-client 聚合；
+- CI：DNS workflow 内运行 Zeek 9.0.1（固定 Docker digest），
+  `zeek -b -Cr` + `test/assert_zeek.py` 断言 community-id 交集。

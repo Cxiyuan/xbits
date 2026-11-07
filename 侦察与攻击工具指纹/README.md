@@ -170,3 +170,11 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_
 最终验证只认 `.github/workflows/suricata-recon-tools.yml` 的 GitHub Actions 结果。
 当前已验证：commit `c6a4411`，run 42375447812，29/29 用例通过：
 <https://github.com/Cxiyuan/ips/actions/runs/42375447812>。
+
+## 7. Zeek 关联分析
+
+- 脚本：`zeek/recon_score.zeek`；
+- 按源统计 HTTP 唯一 URI/404/403 比例，生成扫描会话 notice；
+- 输出 `recon_correlation.log`，含 `community_id` 与 `related_sids`；
+- 与 Suricata EVE 的 `community_id` 关联；
+- CI：recon workflow 内运行 Zeek 9.0.1 + community-id 断言。

@@ -90,3 +90,12 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdo
 5. **信标周期/抖动**：规则内不做跨流聚合，交给 SIEM/NDR；
 6. **SSRF/SSTI/Upload** 不在此场景；
 7. 不承诺生产“零误报”，不虚构检出率/误报率。
+
+## 7. Zeek 关联分析
+
+- 脚本：`zeek/backdoor_c2_score.zeek`；
+- WebShell 命令参数 + 响应确认、重复 C2 HTTP 信标；
+- 输出 `backdoor_correlation.log`，含 `community_id` 与 `related_sids`；
+- 与 Suricata EVE 的 `community_id` 关联；
+- CI：backdoor workflow 内运行 Zeek 9.0.1 + community-id 断言，
+  另跑 `c2_periodic.pcap` 验证周期聚合。
