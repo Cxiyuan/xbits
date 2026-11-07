@@ -118,12 +118,12 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work/test/zeek_out/recon \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/test/recon_pcap/recon_curl_rate.pcap /work/侦察与攻击工具指纹/zeek/recon_score.zeek LogAscii::use_json=T
+            zeek -b -Cr /work/test/recon_pcap/recon_404_burst.pcap /work/侦察与攻击工具指纹/zeek/recon_score.zeek LogAscii::use_json=T
           python test/assert_zeek.py \
             --log test/zeek_out/recon/recon_correlation.log \
             --scenario recon \
             --eve-root test/out/suricata \
-            --case recon_curl_rate
+            --case recon_404_burst
 
       - name: Upload Suricata logs
         if: always()
