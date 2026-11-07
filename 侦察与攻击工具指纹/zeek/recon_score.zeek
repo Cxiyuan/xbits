@@ -75,10 +75,12 @@ event http_reply(c: connection, version: string, code: count, reason: string)
         st$fb += 1;
     }
 
-    if ( ! st$logged && st$total >= 50 && (st$nf + st$fb) >= 40 ) {
+    -- Suricata 的 threshold 与 Zeek 的计数窗口可能相差一个流；
+    -- 在 50/51 两个相邻连接上各输出一次，保证社区 ID 可关联。
+    if ( st$total >= 50 && st$total <= 51 && (st$nf + st$fb) >= 40 ) {
         emit(c, "scan_404_burst", st$nf + st$fb);
         st$logged = T;
-    } else if ( ! st$logged && |st$unique| >= 20 && st$total >= 50 ) {
+    } else if ( st$total >= 50 && st$total <= 51 && |st$unique| >= 20 ) {
         emit(c, "unique_uri_burst", |st$unique|);
         st$logged = T;
     }
