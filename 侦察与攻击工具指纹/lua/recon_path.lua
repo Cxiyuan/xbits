@@ -10,12 +10,19 @@
 local http = require("suricata.http")
 
 local CRITICAL_PATHS = {
-    "^/%.git/",
-    "^/%.svn/",
-    "^/%.hg/",
+    "^/%.git%f[%W]",
+    "^/%.svn%f[%W]",
+    "^/%.hg%f[%W]",
     "^/%.env",
-    "^/%.aws/credentials",
-    "^/%.ssh/",
+    "^/%.aws%f[%W]",
+    "^/%.ssh%f[%W]",
+    "^/%.docker/config%.json",
+    "^/%.kube/config",
+    "^/%.npmrc",
+    "^/%.netrc",
+    "^/%.git%-credentials",
+    "^/%.htpasswd",
+    "^/%.htaccess",
     "^/%.ds_store",
     "^/wp%-config%.php",
     "^/wp%-login%.php",
@@ -24,13 +31,25 @@ local CRITICAL_PATHS = {
     "^/phpmyadmin",
     "^/pma/",
     "^/adminer%.php",
+    "^/phpinfo%.php",
+    "^/info%.php",
     "^/server%-status",
     "^/server%-info",
-    "^/actuator/",
-    "^/swagger%-ui",
+    "^/actuator",
+    "^/jolokia",
+    "^/env",
+    "^/refresh",
+    "^/bus/refresh",
+    "^/swagger",
+    "^/openapi",
+    "^/redoc",
+    "^/graphiql",
+    "^/altair",
+    "^/playground",
+    "^/voyager",
     "^/v2/api%-docs",
     "^/v3/api%-docs",
-    "^/openapi%.json",
+    "^/v2/swagger%.json",
     "^/api%-docs",
     "^/graphql",
     "^/manager/html",
@@ -48,6 +67,33 @@ local CRITICAL_PATHS = {
     "^/db%.sql",
     "^/dump%.sql",
     "^/config%.php",
+    "^/web%.config",
+    "^/appsettings%.json",
+    "^/application%.yml",
+    "^/application%.properties",
+    "^/bootstrap%.yml",
+    "^/docker%-compose%.yml",
+    "^/dockerfile",
+    "^/id_rsa",
+    "^/id_dsa",
+    "^/server%.key",
+    "^/server%.pem",
+    "^/keystore",
+    "^/truststore",
+    "^/%.p12",
+    "^/%.pfx",
+    "^/latest/meta%-data/",
+    "^/metadata/v1/",
+    "^/computemetadata/v1/",
+    "^/_cat/",
+    "^/_cluster/",
+    "^/_nodes",
+    "^/_search",
+    "^/config",
+    "^/credentials",
+    "^/secrets",
+    "^/tokens",
+    "^/keys",
 }
 
 -- 明确排除的自动化健康检查/监控客户端；不要在这里放业务 API 客户端。
@@ -68,18 +114,61 @@ local BENIGN_UA = {
     "^better uptime",
 }
 
+local function trim(s)
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
 local function normalize_uri(uri)
     uri = uri:lower()
     uri = uri:gsub("^https?://[^/]+", "")
     if #uri == 0 then
-        uri = "/"
+        return ""
     end
-    uri = uri:gsub("%%(%x%x)", function(hex)
-        return string.char(tonumber(hex, 16))
-    end)
+
+    uri = uri:gsub("\\", "/")
+
+    for _ = 1, 2 do
+        local before = uri
+        uri = uri:gsub("%%(%x%x)", function(hex)
+            return string.char(tonumber(hex, 16))
+        end)
+        if uri == before then
+            break
+        end
+    end
     uri = uri:lower()
+    uri = uri:gsub("\\", "/")
     uri = uri:gsub("//+", "/")
-    return uri
+
+    local path, query = uri:match("^([^?]*)(.*)$")
+    if path == nil then
+        path, query = uri, ""
+    end
+    local parts = {}
+    for seg in path:gmatch("[^/]+") do
+        if seg == ".." then
+            if #parts > 0 then
+                table.remove(parts)
+            end
+        elseif seg ~= "." and seg ~= "" then
+            parts[#parts + 1] = seg
+        end
+    end
+    local normalized = "/" .. table.concat(parts, "/")
+    return normalized .. (query or "")
+end
+
+local function get_uris(tx)
+    local out = {}
+    local normalized = tx:request_uri_normalized()
+    if type(normalized) == "string" and #normalized > 0 then
+        out[#out + 1] = normalized
+    end
+    local raw = tx:request_uri_raw()
+    if type(raw) == "string" and #raw > 0 then
+        out[#out + 1] = raw
+    end
+    return out
 end
 
 local function is_critical_path(uri)
@@ -112,16 +201,24 @@ function match(args)
         return 0
     end
 
-    local uri = tx:request_uri_raw()
-    if uri == nil or #uri == 0 then
+    local uris = get_uris(tx)
+    if #uris == 0 then
         return 0
     end
-    if not is_critical_path(normalize_uri(uri)) then
+
+    local critical = false
+    for _, uri in ipairs(uris) do
+        if is_critical_path(normalize_uri(uri)) then
+            critical = true
+            break
+        end
+    end
+    if not critical then
         return 0
     end
 
     local ua = tx:request_header("User-Agent")
-    if ua ~= nil and #ua > 0 and is_benign_ua(ua:lower()) then
+    if type(ua) == "string" and #ua > 0 and is_benign_ua(trim(ua):lower()) then
         return 0
     end
 

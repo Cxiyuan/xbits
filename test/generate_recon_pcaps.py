@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from scapy.all import Ether, IP, Raw, TCP, wrpcap
 
@@ -32,6 +32,7 @@ def http_request(
     user_agent: Optional[str],
     host: str = "app.example.test",
     method: str = "GET",
+    extra_headers: Optional[Dict[str, str]] = None,
 ) -> bytes:
     lines = [
         "%s %s HTTP/1.1" % (method, path),
@@ -40,20 +41,36 @@ def http_request(
     ]
     if user_agent is not None:
         lines.append("User-Agent: %s" % user_agent)
+    for name, value in (extra_headers or {}).items():
+        lines.append("%s: %s" % (name, value))
     lines.append("Connection: close")
     return ("\r\n".join(lines) + "\r\n\r\n").encode("ascii")
 
 
-def http_response(status: int = 404) -> bytes:
-    reasons = {200: "OK", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found"}
+def http_response(
+    status: int = 404,
+    body: bytes = b"",
+    content_type: str = "text/plain",
+) -> bytes:
+    reasons = {
+        200: "OK",
+        201: "Created",
+        204: "No Content",
+        301: "Moved Permanently",
+        302: "Found",
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not Found",
+        500: "Internal Server Error",
+    }
     reason = reasons.get(status, "Response")
     return (
         "HTTP/1.1 %d %s\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 0\r\n"
+        "Content-Type: %s\r\n"
+        "Content-Length: %d\r\n"
         "Connection: close\r\n"
-        "\r\n" % (status, reason)
-    ).encode("ascii")
+        "\r\n" % (status, reason, content_type, len(body))
+    ).encode("ascii") + body
 
 
 def http_exchange(
@@ -140,6 +157,11 @@ def add_external_case(
     user_agent: Optional[str],
     status: int = 404,
     offset: float = 0.0,
+    body: bytes = b"",
+    content_type: str = "text/plain",
+    extra_headers: Optional[Dict[str, str]] = None,
+    method: str = "GET",
+    host: str = "app.example.test",
 ) -> None:
     http_exchange(
         packets,
@@ -148,8 +170,8 @@ def add_external_case(
         INTERNAL_SERVER_IP,
         INTERNAL_SERVER_MAC,
         sport,
-        http_request(path, user_agent),
-        http_response(status),
+        http_request(path, user_agent, host, method, extra_headers),
+        http_response(status, body, content_type),
         offset,
     )
 
@@ -161,6 +183,11 @@ def add_internal_to_external_case(
     user_agent: Optional[str],
     status: int = 404,
     offset: float = 0.0,
+    body: bytes = b"",
+    content_type: str = "text/plain",
+    extra_headers: Optional[Dict[str, str]] = None,
+    method: str = "GET",
+    host: str = "app.example.test",
 ) -> None:
     http_exchange(
         packets,
@@ -169,8 +196,8 @@ def add_internal_to_external_case(
         EXTERNAL_SERVER_IP,
         EXTERNAL_SERVER_MAC,
         sport,
-        http_request(path, user_agent),
-        http_response(status),
+        http_request(path, user_agent, host, method, extra_headers),
+        http_response(status, body, content_type),
         offset,
     )
 
@@ -182,6 +209,11 @@ def add_internal_to_internal_case(
     user_agent: Optional[str],
     status: int = 404,
     offset: float = 0.0,
+    body: bytes = b"",
+    content_type: str = "text/plain",
+    extra_headers: Optional[Dict[str, str]] = None,
+    method: str = "GET",
+    host: str = "app.example.test",
 ) -> None:
     http_exchange(
         packets,
@@ -190,8 +222,8 @@ def add_internal_to_internal_case(
         INTERNAL_SERVER_IP,
         INTERNAL_SERVER_MAC,
         sport,
-        http_request(path, user_agent),
-        http_response(status),
+        http_request(path, user_agent, host, method, extra_headers),
+        http_response(status, body, content_type),
         offset,
     )
 
@@ -381,6 +413,155 @@ def main() -> int:
     p = []
     add_internal_to_internal_case(p, 46004, "/healthz", "kube-probe/1.29", 200)
     write("recon_healthcheck_negative", p, args.out)
+
+    # 14. Body-confirmed exposure: real .git/config content.
+    p = []
+    add_external_case(
+        p,
+        47000,
+        "/.git/config",
+        "sqlmap/1.8.8#stable (https://sqlmap.org)",
+        200,
+        body=b"[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n",
+        content_type="text/plain",
+    )
+    write("recon_body_confirmed", p, args.out)
+
+    # 15. Negative: SPA soft-404 with HTTP 200 must not be "success".
+    p = []
+    add_external_case(
+        p,
+        47001,
+        "/.git/config",
+        "sqlmap/1.8.8#stable (https://sqlmap.org)",
+        200,
+        body=b"<!doctype html><html><body>Page not found</body></html>",
+        content_type="text/html",
+    )
+    write("recon_soft404_negative", p, args.out)
+
+    # 16. Random-UA wordlist scanning: 60 non-sensitive paths -> 403/404 burst.
+    p = []
+    for i in range(60):
+        add_external_case(
+            p,
+            47100 + i,
+            "/wordlist-%03d" % i,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            status=404,
+            offset=i * 0.1,
+        )
+    write("recon_404_burst", p, args.out)
+
+    # 17. Negative: static asset 404s must not count as wordlist scanning.
+    p = []
+    for i in range(60):
+        add_external_case(
+            p,
+            47200 + i,
+            "/assets/img-%03d.png" % i,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            status=404,
+            offset=i * 0.1,
+        )
+    write("recon_404_static_negative", p, args.out)
+
+    # 18. Acunetix-specific header with a browser-like UA.
+    p = []
+    add_external_case(
+        p,
+        47300,
+        "/",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        200,
+        extra_headers={"Acunetix-Aspect": "1"},
+    )
+    write("recon_acunetix_header", p, args.out)
+
+    # 19. Double percent-encoded sensitive path, no UA.
+    p = []
+    for i in range(25):
+        add_external_case(
+            p,
+            47400 + i,
+            "/%252e%2567%2569%2574/config",
+            None,
+            status=404,
+            offset=i * 0.1,
+        )
+    write("recon_path_double_encoded", p, args.out)
+
+    # 20. Dot-segment sensitive path, no UA.
+    p = []
+    for i in range(25):
+        add_external_case(
+            p,
+            47500 + i,
+            "/foo/%2e%2e/.git/config",
+            None,
+            status=404,
+            offset=i * 0.1,
+        )
+    write("recon_path_dot_segment", p, args.out)
+
+    # 21. Backslash-encoded sensitive path, no UA.
+    p = []
+    for i in range(25):
+        add_external_case(
+            p,
+            47600 + i,
+            "/.git%5cconfig",
+            None,
+            status=404,
+            offset=i * 0.1,
+        )
+    write("recon_path_backslash", p, args.out)
+
+    # 22. Wrapped tool UA: triage fallback, not the strict-start tool SID.
+    p = []
+    add_external_case(
+        p,
+        47700,
+        "/",
+        "Mozilla/5.0 (compatible; sqlmap/1.8.8)",
+        404,
+    )
+    write("recon_wrapped_ua", p, args.out)
+
+    # 23. Outbound internet-scanner UA: telemetry, not High attack tool.
+    p = []
+    add_internal_to_external_case(
+        p,
+        47701,
+        "/",
+        "Shodan/1.0",
+        404,
+    )
+    write("recon_outbound_scanner_ua", p, args.out)
+
+    # 24. Anomalous method: external TRACE.
+    p = []
+    add_external_case(
+        p,
+        47702,
+        "/.git/config",
+        None,
+        status=404,
+        method="TRACE",
+    )
+    write("recon_method_trace", p, args.out)
+
+    # 25. Negative: normal external PUT to a non-sensitive API path.
+    p = []
+    add_external_case(
+        p,
+        47703,
+        "/api",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        status=404,
+        method="PUT",
+    )
+    write("recon_method_put_benign_negative", p, args.out)
 
     print("wrote recon PCAPs to", args.out)
     return 0
