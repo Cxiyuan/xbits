@@ -276,6 +276,11 @@ def main() -> int:
     dns_transaction(p, "abc123.oast.pro", "MX", None)
     write("oob_negative", p, args.out)
 
+    p = []
+    q = "abc123.interact.sh"
+    dns_transaction(p, q, "A", dns_answer(q, "A", "10.0.0.1", 60))
+    write("oob_other_positive", p, args.out)
+
     # TXT burst: positive (subdomain) vs negative (mail authentication).
     p = []
     for i in range(50):

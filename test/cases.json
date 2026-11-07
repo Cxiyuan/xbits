@@ -59,6 +59,10 @@
     "require": [],
     "forbid": [9109004]
   },
+  "oob_other_positive": {
+    "require": [9109005],
+    "forbid": []
+  },
   "txt_burst_positive": {
     "require": [9109103],
     "forbid": []
