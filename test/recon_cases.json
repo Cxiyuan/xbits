@@ -29,6 +29,18 @@
       9101110
     ]
   },
+  "recon_body_201": {
+    "forbid": [
+      9101107,
+      9101109
+    ],
+    "require": [
+      9101004,
+      9101101,
+      9101102,
+      9101108
+    ]
+  },
   "recon_body_confirmed": {
     "forbid": [
       9101107,
@@ -81,6 +93,17 @@
       9101107
     ],
     "require": []
+  },
+  "recon_context_double_encoded": {
+    "forbid": [
+      9101102,
+      9101108,
+      9101109
+    ],
+    "require": [
+      9101004,
+      9101101
+    ]
   },
   "recon_curl_rate": {
     "forbid": [
@@ -168,6 +191,18 @@
       9101103
     ],
     "require": []
+  },
+  "recon_nuclei_403_html": {
+    "forbid": [
+      9101102,
+      9101108,
+      9101109
+    ],
+    "require": [
+      9101005,
+      9101101,
+      9101107
+    ]
   },
   "recon_nuclei_sensitive_403": {
     "forbid": [

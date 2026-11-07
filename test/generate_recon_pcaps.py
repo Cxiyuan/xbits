@@ -563,6 +563,43 @@ def main() -> int:
     )
     write("recon_method_put_benign_negative", p, args.out)
 
+    # 26. Context-side double-encoded sensitive path with a tool UA.
+    p = []
+    add_external_case(
+        p,
+        47800,
+        "/%252e%2567%2569%2574/config",
+        "sqlmap/1.8.8#stable (https://sqlmap.org)",
+        404,
+    )
+    write("recon_context_double_encoded", p, args.out)
+
+    # 27. 401/403 protected path with an HTML login page must still alert.
+    p = []
+    add_external_case(
+        p,
+        47801,
+        "/.env",
+        "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)",
+        403,
+        body=b"<!doctype html><html><body>Sign in</body></html>",
+        content_type="text/html",
+    )
+    write("recon_nuclei_403_html", p, args.out)
+
+    # 28. 201 Created with a real .git/config body: 2xx, not just 200.
+    p = []
+    add_external_case(
+        p,
+        47802,
+        "/.git/config",
+        "sqlmap/1.8.8#stable (https://sqlmap.org)",
+        201,
+        body=b"[core]\n\trepositoryformatversion = 0\n",
+        content_type="text/plain",
+    )
+    write("recon_body_201", p, args.out)
+
     print("wrote recon PCAPs to", args.out)
     return 0
 

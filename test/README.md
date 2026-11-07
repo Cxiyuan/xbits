@@ -88,8 +88,11 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 | `recon_outbound_scanner_ua.pcap` | 内网 → 外部，Shodan UA | 9101111；不命中 9101105 |
 | `recon_method_trace.pcap` | 外部 TRACE + 敏感路径 | 9101113 |
 | `recon_method_put_benign_negative.pcap` | 外部 PUT `/api` + 正常 Host | 不命中 9101113 |
+| `recon_context_double_encoded.pcap` | sqlmap + 双重编码 `/.git/config` | 9101004/9101101 |
+| `recon_nuclei_403_html.pcap` | Nuclei + `/.env` + HTML 403 登录页 | 9101005/9101101/9101107 |
+| `recon_body_201.pcap` | sqlmap + `/.git/config` + 201 + `[core]` | 9101004/9101101/9101102/9101108 |
 
-断言文件为 `recon_cases.json`，当前共 26 个 PCAP；检测规则/Lua 在 `侦察与攻击工具指纹/`。
+断言文件为 `recon_cases.json`，当前共 29 个 PCAP；检测规则/Lua 在 `侦察与攻击工具指纹/`。
 
 ## 4. CI 断言
 
