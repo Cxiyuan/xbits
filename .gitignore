@@ -9,6 +9,7 @@ test/web_pcap/*.pcap
 test/backdoor_pcap/*.pcap
 test/out/
 test/stage/
+test/zeek_out/
 test/suricata-ci.yaml
 test/suricata-recon-ci.yaml
 test/suricata-web-ci.yaml

@@ -1,0 +1,37 @@
+[
+  {
+    "case": "dns_txt_burst",
+    "scenario": "dns-tunnel",
+    "pcap": "test/pcap/txt_burst_positive.pcap",
+    "script": "DNS隧道与带外检测/zeek/dns_tunnel_score.zeek",
+    "log": "dns_correlation.log"
+  },
+  {
+    "case": "recon_404_burst",
+    "scenario": "recon",
+    "pcap": "test/recon_pcap/recon_curl_rate.pcap",
+    "script": "侦察与攻击工具指纹/zeek/recon_score.zeek",
+    "log": "recon_correlation.log"
+  },
+  {
+    "case": "web_sqli",
+    "scenario": "web-exploit",
+    "pcap": "test/web_pcap/web_sqli_uri_union.pcap",
+    "script": "Web漏洞利用/zeek/web_exploit_chain.zeek",
+    "log": "web_correlation.log"
+  },
+  {
+    "case": "backdoor_webshell",
+    "scenario": "backdoor-c2",
+    "pcap": "test/backdoor_pcap/ws_cmd_query.pcap",
+    "script": "后门通信/zeek/backdoor_c2_score.zeek",
+    "log": "backdoor_correlation.log"
+  },
+  {
+    "case": "backdoor_c2_periodic",
+    "scenario": "backdoor-c2",
+    "pcap": "test/backdoor_pcap/c2_periodic.pcap",
+    "script": "后门通信/zeek/backdoor_c2_score.zeek",
+    "log": "backdoor_correlation.log"
+  }
+]

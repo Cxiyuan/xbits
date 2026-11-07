@@ -222,6 +222,11 @@ def main() -> int:
     write("c2_response", p, args.out)
 
     p = []
+    for i in range(10):
+        add_c2(p, 41010 + i, "/api/beacon", headers=BROWSER_HEADERS, offset=i * 5.0)
+    write("c2_periodic", p, args.out)
+
+    p = []
     add_c2(p, 41007, "/", headers={**BROWSER_HEADERS, "User-Agent": c2_ua})
     write("c2_old_ua", p, args.out)
 

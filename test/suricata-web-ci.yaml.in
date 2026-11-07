@@ -23,6 +23,8 @@ security:
 outputs:
   - eve-log:
       enabled: yes
+      community-id: true
+      community-id-seed: 0
       filetype: file
       filename: eve.json
       types:
