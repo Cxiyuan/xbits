@@ -116,6 +116,18 @@ def tcp_session(
     data.time = BASE_TIME + offset + 0.03
     packets.extend([syn, synack, ack, data])
 
+    # Pure ACK from the server before any server data. Some protocol
+    # parsers only advance the stream once the client data is acknowledged.
+    sack = server_base / TCP(
+        sport=dst_port,
+        dport=sport,
+        flags="A",
+        seq=sseq + 1,
+        ack=cseq + 1 + len(payload),
+    )
+    sack.time = BASE_TIME + offset + 0.04
+    packets.append(sack)
+
     if server_payload:
         sdata = server_base / TCP(
             sport=dst_port,
@@ -124,18 +136,8 @@ def tcp_session(
             seq=sseq + 1,
             ack=cseq + 1 + len(payload),
         ) / Raw(load=server_payload)
-        sdata.time = BASE_TIME + offset + 0.04
+        sdata.time = BASE_TIME + offset + 0.05
         packets.append(sdata)
-    else:
-        sack = server_base / TCP(
-            sport=dst_port,
-            dport=sport,
-            flags="A",
-            seq=sseq + 1,
-            ack=cseq + 1 + len(payload),
-        )
-        sack.time = BASE_TIME + offset + 0.04
-        packets.append(sack)
 
 
 def build_tls_client_hello(sni: str, alpn: Optional[str]) -> bytes:
@@ -146,8 +148,12 @@ def build_tls_client_hello(sni: str, alpn: Optional[str]) -> bytes:
     return bytes(TLS(type=22, version=0x0301, msg=[ch]))
 
 
-def build_tls_server_hello() -> bytes:
-    return bytes(TLS(type=22, version=0x0303, msg=[TLSServerHello()]))
+def build_tls_server_hello(alpn: Optional[str] = None) -> bytes:
+    ext = []
+    if alpn:
+        ext.append(TLS_Ext_ALPN(protocols=[alpn.encode()]))
+    sh = TLSServerHello(ext=ext) if ext else TLSServerHello()
+    return bytes(TLS(type=22, version=0x0303, msg=[sh]))
 
 
 def build_doh_request(path: str) -> bytes:
@@ -291,7 +297,7 @@ def main() -> int:
         DNS_MAC,
         853,
         build_tls_client_hello("dns.google", "dot"),
-        build_tls_server_hello(),
+        build_tls_server_hello("dot"),
     )
     write("dot_positive", p, args.out)
 

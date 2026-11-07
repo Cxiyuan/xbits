@@ -117,6 +117,13 @@ jobs:
           suricata -c test/suricata-ci.yaml -S /tmp/tls443.rules -r /tmp/tls443.pcap -l /tmp/tlsdbg443 -k none || true
           echo "== eve 443"
           cat /tmp/tlsdbg443/eve.json || true
+          echo "== known-good TLS pcap from OISF suricata-verify"
+          curl -fsSL "https://raw.githubusercontent.com/OISF/suricata-verify/master/tests/tls-alpn-log-detect-02/input.pcap" -o /tmp/known-tls.pcap || true
+          printf '%s\n' 'alert tls any any -> any any (msg:"known-tls"; tls.alpn; content:"http/1.1"; sid:9999002; rev:1;)' > /tmp/known-tls.rules
+          rm -rf /tmp/tlsdbgknown; mkdir -p /tmp/tlsdbgknown
+          suricata -c test/suricata-ci.yaml -S /tmp/known-tls.rules -r /tmp/known-tls.pcap -l /tmp/tlsdbgknown -k none || true
+          echo "== eve known"
+          cat /tmp/tlsdbgknown/eve.json || true
 
       - name: Upload Suricata logs
         if: always()
