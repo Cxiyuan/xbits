@@ -285,7 +285,12 @@ function match(args)
         known_path = is_known_path(normalize_path(uri))
     end
 
-    for _, param in ipairs(params(tx)) do
+    local ps = params(tx)
+    print("DBG params=" .. tostring(#ps))
+    for _, p in ipairs(ps) do
+        print("DBG key=[" .. p.key .. "] val=[" .. p.value .. "]")
+    end
+    for _, param in ipairs(ps) do
         if CORE_PARAMS[param.key] and #param.value > 0 then
             if known_path and TOOL_PARAMS[param.key] then
                 return 1
