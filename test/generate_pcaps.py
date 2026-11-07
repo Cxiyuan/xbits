@@ -13,7 +13,7 @@ from typing import Iterable, List, Optional
 
 from scapy.all import DNS, DNSQR, DNSRR, Ether, IP, Raw, TCP, UDP, wrpcap
 from scapy.layers.tls.extensions import ServerName, TLS_Ext_ALPN, TLS_Ext_ServerName
-from scapy.layers.tls.handshake import TLSClientHello
+from scapy.layers.tls.handshake import TLSClientHello, TLSServerHello
 from scapy.layers.tls.record import TLS
 
 CLIENT_IP = "10.0.0.5"
@@ -126,6 +126,16 @@ def tcp_session(
         ) / Raw(load=server_payload)
         sdata.time = BASE_TIME + offset + 0.04
         packets.append(sdata)
+    else:
+        sack = server_base / TCP(
+            sport=dst_port,
+            dport=sport,
+            flags="A",
+            seq=sseq + 1,
+            ack=cseq + 1 + len(payload),
+        )
+        sack.time = BASE_TIME + offset + 0.04
+        packets.append(sack)
 
 
 def build_tls_client_hello(sni: str, alpn: Optional[str]) -> bytes:
@@ -134,6 +144,10 @@ def build_tls_client_hello(sni: str, alpn: Optional[str]) -> bytes:
         ext.append(TLS_Ext_ALPN(protocols=[alpn.encode()]))
     ch = TLSClientHello(ext=ext)
     return bytes(TLS(type=22, version=0x0301, msg=[ch]))
+
+
+def build_tls_server_hello() -> bytes:
+    return bytes(TLS(type=22, version=0x0303, msg=[TLSServerHello()]))
 
 
 def build_doh_request(path: str) -> bytes:
@@ -277,6 +291,7 @@ def main() -> int:
         DNS_MAC,
         853,
         build_tls_client_hello("dns.google", "dot"),
+        build_tls_server_hello(),
     )
     write("dot_positive", p, args.out)
 
@@ -287,6 +302,7 @@ def main() -> int:
         DNS_MAC,
         853,
         build_tls_client_hello("www.example.com", None),
+        build_tls_server_hello(),
     )
     write("dot_negative", p, args.out)
 
