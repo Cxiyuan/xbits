@@ -29,6 +29,10 @@
     "require": [9101028],
     "forbid": [9101029, 9101103]
   },
+  "recon_outbound_curl_rate": {
+    "require": [9101029],
+    "forbid": [9101028, 9101105, 9101106]
+  },
   "recon_outbound_tool": {
     "require": [9101105],
     "forbid": [9101004, 9101106]

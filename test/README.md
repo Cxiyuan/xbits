@@ -68,6 +68,7 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 | `recon_generic_path_rate.pcap` | python-requests 25 次 `/.env` | 9101103/9101104 |
 | `recon_path_no_ua_rate.pcap` | 无 UA、25 次 `/.git/config` | 9101103/9101104 |
 | `recon_curl_rate.pcap` | 外部 curl 60 次 `/api` | 9101028 |
+| `recon_outbound_curl_rate.pcap` | 内网主机外联 curl 60 次 `/api` | 9101029 |
 | `recon_outbound_tool.pcap` | 内网主机 → 外部，sqlmap UA | 9101105；不命中 9101004 |
 | `recon_internal_tool.pcap` | 内网主机 → 内网，gobuster UA | 9101106；不命中 9101002 |
 | `recon_httpx_python_negative.pcap` | `python-httpx/0.27.0` | 不命中 9101019 |

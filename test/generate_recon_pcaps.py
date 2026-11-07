@@ -325,6 +325,19 @@ def main() -> int:
         )
     write("recon_curl_rate", p, args.out)
 
+    # 6b. Internal host -> external server, 60 curl requests: outbound telemetry.
+    p = []
+    for i in range(60):
+        add_internal_to_external_case(
+            p,
+            44500 + i,
+            "/api",
+            "curl/8.5.0",
+            status=404,
+            offset=i * 0.1,
+        )
+    write("recon_outbound_curl_rate", p, args.out)
+
     # 7. Internal host -> external server with a tool UA: outbound rule.
     p = []
     add_internal_to_external_case(
