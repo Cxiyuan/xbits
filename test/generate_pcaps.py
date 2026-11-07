@@ -12,7 +12,12 @@ import os
 from typing import Iterable, List, Optional
 
 from scapy.all import DNS, DNSQR, DNSRR, Ether, IP, Raw, TCP, UDP, wrpcap
-from scapy.layers.tls.extensions import ServerName, TLS_Ext_ALPN, TLS_Ext_ServerName
+from scapy.layers.tls.extensions import (
+    ProtocolName,
+    ServerName,
+    TLS_Ext_ALPN,
+    TLS_Ext_ServerName,
+)
 from scapy.layers.tls.handshake import TLSClientHello, TLSServerHello
 from scapy.layers.tls.record import TLS
 
@@ -143,7 +148,7 @@ def tcp_session(
 def build_tls_client_hello(sni: str, alpn: Optional[str]) -> bytes:
     ext = [TLS_Ext_ServerName(servernames=[ServerName(servername=sni.encode())])]
     if alpn:
-        ext.append(TLS_Ext_ALPN(protocols=[alpn.encode()]))
+        ext.append(TLS_Ext_ALPN(protocols=[ProtocolName(protocol=alpn.encode())]))
     ch = TLSClientHello(ext=ext)
     return bytes(TLS(type=22, version=0x0301, msg=[ch]))
 
@@ -151,7 +156,7 @@ def build_tls_client_hello(sni: str, alpn: Optional[str]) -> bytes:
 def build_tls_server_hello(alpn: Optional[str] = None) -> bytes:
     ext = []
     if alpn:
-        ext.append(TLS_Ext_ALPN(protocols=[alpn.encode()]))
+        ext.append(TLS_Ext_ALPN(protocols=[ProtocolName(protocol=alpn.encode())]))
     sh = TLSServerHello(ext=ext) if ext else TLSServerHello()
     return bytes(TLS(type=22, version=0x0303, msg=[sh]))
 
