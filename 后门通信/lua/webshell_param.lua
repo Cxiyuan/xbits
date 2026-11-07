@@ -286,6 +286,12 @@ function match(args)
     end
 
     for _, param in ipairs(params(tx)) do
+        if param.key == "z0" then
+            warn("DBG z0=[" .. param.value .. "] known=" .. tostring(known_path)
+                .. " valid=" .. tostring(valid_base64(param.value))
+                .. " decoded=[" .. b64decode(param.value) .. "]"
+                .. " cmd=" .. tostring(value_has_command(b64decode(param.value))))
+        end
         if CORE_PARAMS[param.key] and #param.value > 0 then
             if known_path and TOOL_PARAMS[param.key] then
                 return 1
