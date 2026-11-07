@@ -144,10 +144,11 @@ local function valid_base64(value)
         return false
     end
     local body = value:gsub("=+$", "")
-    if #body % 4 == 1 then
+    if #value - #body > 2 or #body % 4 == 1 then
         return false
     end
-    return value:match("^[A-Za-z0-9+/]+={0,2}$") ~= nil
+    -- Lua patterns 不支持 {m,n}；用去掉 padding 的字符串校验字符集。
+    return body:match("^[A-Za-z0-9+/]+$") ~= nil
 end
 
 local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
