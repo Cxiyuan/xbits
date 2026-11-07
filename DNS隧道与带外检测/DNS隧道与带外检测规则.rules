@@ -257,7 +257,6 @@ alert dns:request_complete $CLIENT_NET any -> any 53 ( \
     flow:to_server; \
     dns.query; to_lowercase; dotprefix; \
     dataset:isnotset,dns_tunnel_allow, type string, match subdomain, load dns_tunnel_allow.lst; \
-    dns.rrtype:!12; \
     lua:dns_tunnel_request.lua; \
     flowbits:set,dns_susp; \
     classtype:non-standard-protocol; \
