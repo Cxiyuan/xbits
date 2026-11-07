@@ -1,0 +1,37 @@
+name: tls-debug
+
+# Temporary manual diagnostic workflow. Not part of the product CI.
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check scapy==2.6.1
+      - run: python test/generate_pcaps.py --out test/pcap
+      - name: Inspect TLS parsing with pinned Suricata image
+        run: |
+          set -x
+          docker run --rm --entrypoint /bin/sh \
+            -v "$PWD:/work" -w /work \
+            jasonish/suricata:8.0.8 -c '
+              set -x
+              suricata -V
+              printf "%s\n" "alert tls any any -> any any (msg:\"tlsdebug\"; tls.alpn; content:\"dot\"; sid:9999001; rev:1;)" > /work/test/tls-debug.rules
+              mkdir -p /work/test/out/tlsdebug
+              suricata -c /etc/suricata/suricata.yaml \
+                --set app-layer.protocols.tls.detection-ports.dp=443,853 \
+                -S /work/test/tls-debug.rules \
+                -r /work/test/pcap/dot_positive.pcap \
+                -l /work/test/out/tlsdebug -k none -vvv || true
+              echo "== eve"
+              cat /work/test/out/tlsdebug/eve.json || true
+              echo "== log"
+              tail -100 /work/test/out/tlsdebug/suricata.log || true
+            '
