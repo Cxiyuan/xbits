@@ -86,6 +86,21 @@ jobs:
       - name: Assert Suricata alerts
         run: python test/assert_suricata.py --eve-root test/out/suricata --cases test/cases.json
 
+
+      - name: Debug TLS/DoT parsing
+        if: failure()
+        run: |
+          set +e
+          echo "== dump tls config"
+          suricata --dump-config 2>/dev/null | grep -A10 -i "app-layer.protocols.tls" || true
+          rm -rf /tmp/tlsdbg
+          mkdir -p /tmp/tlsdbg
+          suricata -c test/suricata-ci.yaml -r test/pcap/dot_positive.pcap -l /tmp/tlsdbg -k none -vvv || true
+          echo "== eve"
+          cat /tmp/tlsdbg/eve.json || true
+          echo "== suricata.log (tail)"
+          tail -100 /tmp/tlsdbg/suricata.log 2>/dev/null || true
+
       - name: Upload Suricata logs
         if: always()
         uses: actions/upload-artifact@v4.4.3
