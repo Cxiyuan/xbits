@@ -2,16 +2,18 @@
 
 ## 0. 基线
 
-当前规则（35 条）和 Lua（`recon_ua.lua`、`recon_context.lua`、`recon_path.lua`）
-已通过 GitHub Actions：
+当前规则（41 条）和 Lua（8 个脚本）已通过 GitHub Actions：
 
-- run `42371958233`（commit `7828369`），14/14 PCAP 用例通过；
+- run `42374685682`（commit `288deac`），26/26 PCAP 用例通过；
 - `suricata -T` 加载 Suricata 8.0.8 规则和 Lua 成功；
-- 正例覆盖 26 个工具 UA、敏感路径 + 200/401/403、无 UA 路径高频、内网外联/横向；
-- 反例覆盖 `python-httpx`、浏览器、空 UA、无 UA、健康检查。
+- 正例覆盖 26 个工具 UA、敏感路径 + 2xx/401/403、响应体确认、
+  无 UA 路径高频、403/404 突发、路径编码/点段/反斜杠、包裹 UA、
+  外联测绘 UA、异常方法；
+- 反例覆盖 `python-httpx`、浏览器、空 UA、无 UA、健康检查、
+  SPA 软 404、静态资源 404、正常 PUT。
 
-本文件只讨论**剩余缺陷**和**可以通过规则内 Lua 加强的部分**。未修改规则，
-因此下列建议均为**待实现/待 CI 验证**，不代表已经上线。
+本文件最初用于分析；P0/P1 已按建议顺序落地并通过 CI，P2（请求体 payload、
+JA3/SNI 旁路）仍未实施。
 
 ---
 
@@ -47,7 +49,7 @@ Lua 可加强：
 
 ```text
 flowbits:isset,recon_sensitive_probe
-http.stat_code; content:"200"
+http.stat_code; pcre:"/^2[0-9][0-9]$/"
 lua:recon_context.lua
 ```
 
@@ -179,9 +181,9 @@ Acunetix-Product: ...
 
 当前只处理：
 
-- 9101102：200；
+- 9101102：2xx；
 - 9101107：401/403；
-- 9101104：200/401/403/404。
+- 9101104：2xx/3xx/4xx/5xx。
 
 漏掉：
 
@@ -289,8 +291,9 @@ Lua 可以读取 `request_body()` / URI query 做匹配，但这些属于**Web �
 
 ### 2.1 SPA 软 404（最明确）
 
-见 1.2。当前 9101102 是 `severity Critical`，会把大量 SPA 的 200 HTML
-误判为敏感文件成功读取。
+见 1.2。修复前 9101102 是 `severity Critical`，会把大量 SPA 的 200 HTML
+误判为敏感文件成功读取；现在 9101102 降为 High，只有 9101108 响应体确认
+才升级为 Critical，软 404 会被 9101102 的 SID 分支抑制。
 
 ### 2.2 授权扫描器与健康检查
 
@@ -484,14 +487,16 @@ uri = uri:lower()
 -- 合并斜杠、处理 . / ..
 ```
 
-### 4.6 建议新增 SID（仅提案，尚未实现）
+### 4.6 已落地 SID
 
 | SID | 内容 | tier |
 |---|---|---|
 | 9101108 | 敏感路径响应体确认泄露（`.git/.env/私钥/actuator/备份/云密钥`） | alert |
 | 9101109 | 外部源 403/404 高频突发（目录/路径爆破） | triage |
 | 9101110 | Acunetix Aspect/Product 专用请求头 | alert |
-| 9101111（可选） | 包裹/重复/多值 UA 的已知工具补充规则 | triage |
+| 9101111 | 内网外联使用测绘/资产扫描 UA | telemetry |
+| 9101112 | 包裹/多值 UA 的已知工具补充规则 | triage |
+| 9101113 | 异常 HTTP 方法/Host 组合 | triage |
 
 ---
 
@@ -508,21 +513,26 @@ uri = uri:lower()
 
 ---
 
-## 6. 建议的验证用例（待实现）
+## 6. 已落地的验证用例
 
-如果按 P0 落地，至少新增：
+P0/P1 已按建议顺序实现，新增验证用例均已进入 CI：
 
 | PCAP | 期望 |
 |---|---|
 | `recon_body_confirmed` | sqlmap + `/.git/config` + 200 + `[core]` → 9101004/9101101/9101102/9101108 |
 | `recon_soft404_negative` | sqlmap + `/.git/config` + 200 + HTML “Page not found” → 9101101，**不命中** 9101102/9101108 |
 | `recon_404_burst` | 浏览器 UA + 60 个随机路径 404 → 9101109 |
-| `recon_404_static_negative` | 60 个 `.png/.js` 404 → 不命中 9101109 |
+| `recon_404_static_negative` | 60 个 `.png` 404 → 不命中 9101109 |
 | `recon_acunetix_header` | 浏览器 UA + `Acunetix-Aspect` → 9101110，不命中 9101007 |
 | `recon_path_double_encoded` | 25 次 `/%252e%2567%2569%2574/config` → 9101103/9101104 |
-| `recon_path_dot_segment` | `/foo/../.git/config` 或 `%5c` 变体 → 9101103/9101104 |
+| `recon_path_dot_segment` | `/foo/%2e%2e/.git/config` → 9101103/9101104 |
+| `recon_path_backslash` | `/.git%5cconfig` → 9101103/9101104 |
+| `recon_wrapped_ua` | `Mozilla/5.0 (compatible; sqlmap/1.8.8)` → 9101112 |
+| `recon_outbound_scanner_ua` | 内网 → 外部 Shodan UA → 9101111 |
+| `recon_method_trace` | 外部 TRACE → 9101113 |
+| `recon_method_put_benign_negative` | 正常 PUT `/api` → 不命中 9101113 |
 
-每个用例都要同时有正例和反例；CI 必须精确断言 `signature_id`。
+所有用例均同时有正例/反例；CI 精确断言 `signature_id`。
 
 ---
 

@@ -4,7 +4,9 @@
 以及内网外联/内网横向使用攻击工具的情况。
 
 - 规则：`侦察与攻击工具指纹规则.rules`
-- Lua：`lua/recon_ua.lua`、`lua/recon_context.lua`、`lua/recon_path.lua`
+- Lua：`lua/recon_ua.lua`、`lua/recon_context.lua`、`lua/recon_path.lua`、
+  `lua/recon_body.lua`、`lua/recon_404.lua`、`lua/recon_scanner_ua.lua`、
+  `lua/recon_wrapped_ua.lua`、`lua/recon_method.lua`
 - 缺陷分析：`误报分析与规则缺陷.md`
 - Lua 强化空间：`Lua强化空间分析.md`
 - 测试：`../test/generate_recon_pcaps.py`、`../test/recon_cases.json`
@@ -13,9 +15,9 @@
 
 | tier | 含义 | 典型规则 |
 |---|---|---|
-| `tier alert` | 已知工具精确 UA；工具+敏感路径+响应确认 | 9101001-9101023、9101101/9101102/9101105/9101107 |
-| `tier triage` | 需要资产/授权上下文确认 | 9101103/9101104/9101106 |
-| `tier telemetry` | 互联网测绘、通用脚本客户端、banner 扫描 | 9101011/9101014/9101024-9101029 |
+| `tier alert` | 已知工具精确 UA；工具+敏感路径+响应体确认 | 9101001-9101023、9101101/9101102/9101105/9101107/9101108/9101110 |
+| `tier triage` | 需要资产/授权上下文确认 | 9101103/9101104/9101106/9101109/9101112/9101113 |
+| `tier telemetry` | 互联网测绘、通用脚本客户端、banner 扫描 | 9101011/9101014/9101024-9101029/9101111 |
 
 告警消费建议：
 
@@ -63,11 +65,18 @@ CLIENT_NET: "[10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]"
   `/actuator/`、`/server-status`、`/swagger-ui`、`/manager/html`、
   `/vendor/phpunit`、`/solr/admin`、`/jenkins/script` 等。
 
-响应侧用 `flowbits` 和 `http.stat_code` 确认：
+响应侧用 `flowbits`、`http.stat_code` 和响应体确认：
 
-- 9101102：HTTP 200，`tier alert`；
-- 9101107：HTTP 401/403，`tier alert`；
-- 9101104：外部源敏感路径探测收到 200/401/403/404，且达到 20 次/60 秒，`tier triage`。
+- 9101102：HTTP 2xx；`recon_context.lua` 读取响应体，识别 SPA/登录页/WAF 页
+  造成的软 404 后返回 0，避免把 200 HTML 当成敏感文件读取成功；
+- 9101107：HTTP 401/403，`tier alert`；不做 body 抑制，因为登录页/拒绝页
+  仍然是“被保护但被探测”的有效线索；
+- 9101108：在 `flowbits:isset,recon_sensitive_probe` 且响应体非空时，
+  由 `recon_body.lua` 检查真实泄露标记（`[core]`、`DB_PASSWORD=`、
+  `AKIA`、`BEGIN OPENSSH PRIVATE KEY`、`propertySources` 等），
+  只有真实命中才升级为 Critical；
+- 9101104：外部源敏感路径探测收到 2xx/3xx/4xx/5xx，且达到 20 次/60 秒，
+  `tier triage`。
 
 ### 3.3 不依赖 UA 的路径规则
 
@@ -75,12 +84,43 @@ CLIENT_NET: "[10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]"
 用于捕获随机 UA、缺失 UA 的扫描器；请求与响应两侧都用
 `threshold: type both, count 20, seconds 60` 控制，不做跨包聚合。
 
-### 3.4 限频语义
+9101109 使用 `recon_404.lua`，在响应侧统计 403/404 突发：
+排除根路径、`/.well-known/`、favicon/robots/sitemap 和静态资源扩展名，
+50 次/60 秒触发；用于覆盖随机 UA 对非敏感路径的目录爆破。
+
+### 3.4 路径规范化与工具专用头
+
+`recon_context.lua` 和 `recon_path.lua` 现在会：
+
+- 优先 `request_uri_normalized()`，失败回退 `request_uri_raw()`；
+- 反斜杠转 `/`；
+- 最多解码两次，覆盖 `%252e` 双重编码；
+- 处理 `.`/`..` 点段；
+- 覆盖 `/.git`、`/actuator`、`/openapi.yaml`、`/.docker/config.json`、
+  `/.kube/config`、`/.npmrc`、`/.htpasswd`、`/web.config`、`/application.yml`、
+  `/id_rsa`、`/server.key`、云元数据路径等。
+
+9101110 使用 `http.request_header` 检测 Acunetix 的
+`Acunetix-Aspect`/`Acunetix-Product` 请求头；该缓冲区支持 HTTP/1 和 HTTP/2，
+可覆盖浏览器化 UA 的 Acunetix 扫描。
+
+### 3.5 UA 变体与方向
+
+- `recon_ua.lua` 解析所有 `User-Agent` 头，支持重复头、首尾空白和
+  `Mozilla/5.0 (compatible; ...)` 包裹；`httpx` 仍只允许开头匹配。
+- `recon_scanner_ua.lua` 单独识别 Shodan/Censys/Expanse/masscan/zgrab/l9explore，
+  由 9101111 以 telemetry 处理，避免升级为 High 攻击工具。
+- `recon_wrapped_ua.lua` 只对“工具 token 不在 UA 开头”的包裹变体做 triage，
+  开头匹配仍由对应工具 SID 负责。
+- 9101113 使用 `recon_method.lua` 对 TRACE/TRACK/PROPFIND/MKCOL，
+  以及带 IP/localhost/敏感路径的 PUT/DELETE 做 triage；不单独靠方法告警。
+
+### 3.6 限频语义
 
 - 工具指纹：`threshold: type limit, track by_src, count 1, seconds 60`（每源每工具每分钟一条）；
 - 响应侧确认：`track by_dst`（响应包源是本地服务器，目的才是外部客户端）；
 - 互联网测绘：`type limit, count 1, seconds 300`；
-- 高频脚本客户端/路径探测：`type both, count 50/60 或 20/60`（达到阈值后每周期最多一条）。
+- 高频脚本客户端/路径探测：`type both, count 50/60、20/60 或 60/60`（达到阈值后每周期最多一条）。
 
 不使用 `detection_filter`；Suricata 8.0.8 中 `threshold` 未被弃用。
 
@@ -128,5 +168,5 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_
 ```
 
 最终验证只认 `.github/workflows/suricata-recon-tools.yml` 的 GitHub Actions 结果。
-当前已验证：commit `7828369`，run 42371958233，14/14 用例通过：
-<https://github.com/Cxiyuan/ips/actions/runs/42371958233>。
+当前已验证：commit `288deac`，run 42374685682，26/26 用例通过：
+<https://github.com/Cxiyuan/ips/actions/runs/42374685682>。

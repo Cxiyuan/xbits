@@ -67,7 +67,7 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 | `recon_nuclei_sensitive_403.pcap` | Nuclei + `/.env` + HTTP 403 | 9101005/9101101/9101107 |
 | `recon_generic_path_rate.pcap` | python-requests 25 次 `/.env` | 9101103/9101104 |
 | `recon_path_no_ua_rate.pcap` | 无 UA、25 次 `/.git/config` | 9101103/9101104 |
-| `recon_curl_rate.pcap` | 外部 curl 60 次 `/api` | 9101028 |
+| `recon_curl_rate.pcap` | 外部 curl 60 次 `/api` | 9101028/9101109 |
 | `recon_outbound_curl_rate.pcap` | 内网主机外联 curl 60 次 `/api` | 9101029 |
 | `recon_outbound_tool.pcap` | 内网主机 → 外部，sqlmap UA | 9101105；不命中 9101004 |
 | `recon_internal_tool.pcap` | 内网主机 → 内网，gobuster UA | 9101106；不命中 9101002 |
@@ -76,8 +76,20 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 | `recon_empty_ua_negative.pcap` | 空 User-Agent | 不命中 9101028/9101101/9101103 |
 | `recon_no_ua_negative.pcap` | 无 User-Agent | 不命中 9101028/9101101/9101103 |
 | `recon_healthcheck_negative.pcap` | `kube-probe` + `/healthz` | 不命中 9101106/9101103 |
+| `recon_body_confirmed.pcap` | sqlmap + `/.git/config` + 200 + `[core]` | 9101004/9101101/9101102/9101108 |
+| `recon_soft404_negative.pcap` | sqlmap + `/.git/config` + 200 + HTML 软 404 | 9101004/9101101；不命中 9101102/9101108 |
+| `recon_404_burst.pcap` | 浏览器 UA + 60 个非敏感路径 404 | 9101109 |
+| `recon_404_static_negative.pcap` | 60 个 `.png` 404 | 不命中 9101109 |
+| `recon_acunetix_header.pcap` | 浏览器 UA + `Acunetix-Aspect` | 9101110；不命中 9101007 |
+| `recon_path_double_encoded.pcap` | 25 次 `/%252e%2567%2569%2574/config` | 9101103/9101104 |
+| `recon_path_dot_segment.pcap` | 25 次 `/foo/%2e%2e/.git/config` | 9101103/9101104 |
+| `recon_path_backslash.pcap` | 25 次 `/.git%5cconfig` | 9101103/9101104 |
+| `recon_wrapped_ua.pcap` | `Mozilla/5.0 (compatible; sqlmap/1.8.8)` | 9101112；不命中 9101004 |
+| `recon_outbound_scanner_ua.pcap` | 内网 → 外部，Shodan UA | 9101111；不命中 9101105 |
+| `recon_method_trace.pcap` | 外部 TRACE + 敏感路径 | 9101113 |
+| `recon_method_put_benign_negative.pcap` | 外部 PUT `/api` + 正常 Host | 不命中 9101113 |
 
-断言文件为 `recon_cases.json`；检测规则/Lua 在 `侦察与攻击工具指纹/`。
+断言文件为 `recon_cases.json`，当前共 26 个 PCAP；检测规则/Lua 在 `侦察与攻击工具指纹/`。
 
 ## 4. CI 断言
 
