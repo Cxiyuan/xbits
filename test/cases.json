@@ -43,6 +43,10 @@
     "require": [9109006, 9109201],
     "forbid": []
   },
+  "long_multilevel": {
+    "require": [9109006, 9109201],
+    "forbid": []
+  },
   "long_negative": {
     "require": [],
     "forbid": [9109006, 9109201]

@@ -255,6 +255,11 @@ def main() -> int:
     write("long_positive", p, args.out)
 
     p = []
+    q = deterministic_token(61, ALNUM) + ".abc.def.co.uk"
+    dns_transaction(p, q, "A", dns_answer(q, "A", "10.0.0.1", 300))
+    write("long_multilevel", p, args.out)
+
+    p = []
     q = "xn--" + ("-" * 30) + ("a" * 27) + ".evil.example"
     dns_transaction(p, q, "A", dns_answer(q, "A", "10.0.0.1", 300))
     write("long_negative", p, args.out)
