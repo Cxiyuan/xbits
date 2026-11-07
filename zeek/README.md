@@ -20,6 +20,8 @@ zeek -b -Cr test/pcap/tunnel_32hex.pcap zeek/dns_tunnel_detect.zeek
 ```
 
 CI 使用精确版本镜像 `zeek/zeek:9.0.1`，见 `.github/workflows/zeek-9.0.1.yml`。
+当前 Zeek 侧尚未形成正式检测内容，该 workflow **默认休眠**：不随普通 push/PR 运行，
+仅在手动触发或 `zeek/**`、Zeek 断言文件变更时运行。
 
 ## 限制
 

@@ -1,8 +1,19 @@
 name: zeek-9.0.1
 
+# Zeek has no production detection content yet. This workflow is dormant:
+# it runs only on explicit dispatch or when zeek/** or its test assertions change.
 on:
+  workflow_dispatch:
   push:
+    paths:
+      - "zeek/**"
+      - "test/zeek_cases.json"
+      - "test/assert_zeek.py"
   pull_request:
+    paths:
+      - "zeek/**"
+      - "test/zeek_cases.json"
+      - "test/assert_zeek.py"
 
 jobs:
   test:

@@ -35,13 +35,18 @@
 - 覆盖请求侧、响应侧、OOB、TXT 突发、DoT/DoH、Lua 二次过滤与 `flowbits` 联合确认路径。
 - 上传 `eve.json`、`fast.log`、`stats.log`、测试报告作为 Actions artifacts。
 
-### 3.2 CI 必须覆盖的 Zeek 9.0.1 检查
+### 3.2 CI 必须覆盖的 Zeek 9.0.1 检查（有 Zeek 检测内容时）
+
+> 当前项目只有 Suricata 规则/Lua，Zeek 侧尚无正式检测内容。Zeek workflow 处于休眠状态：
+> 默认不在 push/PR 自动运行，仅手动触发或在 `zeek/**`、Zeek 断言文件变更时运行。
+> 后续补齐 Zeek 规则/脚本后，再启用并纳入必跑检查。
 
 - 安装精确版本 Zeek 9.0.1。
 - 加载 Zeek 脚本（`zeek -b`）无语法/加载错误。
 - 用回归 PCAP 运行 `zeek -b -Cr <pcap> <scripts>`，断言 `dns.log` / `notice.log` / 自定义日志字段。
 - 覆盖 DNS 查询/响应、qtype、rcode、answers、TXT/NULL 负载、OOB 域名等路径。
 - 上传 Zeek 日志与测试报告作为 Actions artifacts。
+- Zeek CI 未启用期间，不得用“Zeek 已验证”作为结论。
 
 ### 3.3 CI 工程要求
 
