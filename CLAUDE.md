@@ -29,7 +29,7 @@
 - 安装/构建精确版本 Suricata 8.0.8。
 - `suricata -T` 加载完整规则、dataset、Lua 脚本；加载失败即失败。
 - 检查规则结构：SID 唯一、必填关键字、括号/引号平衡、`pcre` 分隔符、`dns.rrtype` 取值。
-- 检查 dataset：条目带前导点、小写、无注释/逗号、无重复。
+- 检查 dataset：Suricata 8 的 string dataset 每行为 base64 编码，解码后为小写、带前导点的域名后缀；无注释/逗号、无重复。
 - 检查每个 `lua:` 引用：文件存在、含 `init`/`match`。
 - PCAP 回归：正例必须命中、反例必须不命中；断言 `eve.json` 中的 `alert.signature_id`。
 - 覆盖请求侧、响应侧、OOB、TXT 突发、DoT/DoH、Lua 二次过滤与 `flowbits` 联合确认路径。
@@ -71,12 +71,12 @@ ips/
 │   ├── 能力边界与外挂扩展方案.md
 │   └── Lua强化检测场景.md
 ├── zeek/                            # Zeek 9.0.1 脚本（如新增）
-├── tests/                           # PCAP、EVE/Zeek 断言、测试脚本
+├── test/                            # PCAP、EVE/Zeek 断言、测试脚本
 └── .github/workflows/               # CI
 ```
 
 - 规则与文档文件**不使用数字前缀编号**（不要 `01-`、`03-` 这类命名）。
-- 新增 Zeek 检测放在 `zeek/`；新增测试放在 `tests/`；不要在检测目录里混入规则外分析脚本。
+- 新增 Zeek 检测放在 `zeek/`；新增测试放在 `test/`；不要在检测目录里混入规则外分析脚本。
 
 ## 5. 规则与脚本规范
 
@@ -113,7 +113,7 @@ ips/
 - 每个新增/修改的规则或 Lua/Zeek 路径，必须有**正例**与**反例**：
   - 正例：预期命中对应 SID / Zeek notice。
   - 反例：预期不命中（合法 SaaS、SPF/DKIM、CDN、内网命名、授权扫描器等）。
-- PCAP 或合成流量要可重复生成，放入 `tests/`；测试数据不得包含真实敏感数据。
+- PCAP 或合成流量要可重复生成，放入 `test/`；测试数据不得包含真实敏感数据。
 - CI 断言尽量精确到 `signature_id` / Zeek 日志字段，而不是只看“有告警”。
 - 修改阈值时，同时更新对应测试期望与文档。
 - 回归集必须覆盖：
@@ -128,7 +128,7 @@ ips/
 ## 7. 变更流程（Definition of Done）
 
 1. 修改规则/Lua/Zeek/文档。
-2. 更新或新增 `tests/` 用例。
+2. 更新或新增 `test/` 用例。
 3. 更新相关文档（README、验证清单、能力边界等）。
 4. 提交 PR，等待 GitHub Actions 全绿。
 5. CI 绿之前，不得声称完成或已验证。
