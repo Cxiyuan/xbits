@@ -222,7 +222,7 @@ local function params(tx)
     local out = {}
     local uri = tx:request_uri_raw()
     if type(uri) == "string" and #uri > 0 then
-        local normalized = decode(uri, 2):lower()
+        local normalized = decode(uri, 2)
         local query = normalized:match("%?(.*)$")
         if query ~= nil then
             add_params(out, query, "&", nil)
@@ -231,7 +231,7 @@ local function params(tx)
 
     local body = read_body(tx)
     if type(body) == "string" and #body > 0 then
-        local normalized = decode(body, 2):lower()
+        local normalized = decode(body, 2)
         add_params(out, normalized, "&", nil)
         for _, key in ipairs({
             "cmd", "exec", "command", "execute", "pass", "password",
@@ -247,18 +247,18 @@ local function params(tx)
 
     local cookie = tx:request_header("Cookie")
     if type(cookie) == "string" and #cookie > 0 then
-        local normalized = decode(cookie, 2):lower()
+        local normalized = decode(cookie, 2)
         add_params(out, normalized, ";", nil)
         add_params(out, normalized, "&", nil)
     end
 
     local headers = tx:request_headers_raw()
     if type(headers) == "string" and #headers > 0 then
-        local normalized = decode(headers, 2):lower()
+        local normalized = decode(headers, 2)
         for line in normalized:gmatch("[^\r\n]+") do
             local name, value = line:match("^([%w%-_]+):%s*(.*)$")
             if name ~= nil and #value > 0 then
-                local key = name:gsub("^x%-", "")
+                local key = name:lower():gsub("^x%-", "")
                 if CORE_PARAMS[key] then
                     out[#out + 1] = { key = key, value = value }
                 end
@@ -285,12 +285,7 @@ function match(args)
         known_path = is_known_path(normalize_path(uri))
     end
 
-    local ps = params(tx)
-    print("DBG params=" .. tostring(#ps))
-    for _, p in ipairs(ps) do
-        print("DBG key=[" .. p.key .. "] val=[" .. p.value .. "]")
-    end
-    for _, param in ipairs(ps) do
+    for _, param in ipairs(params(tx)) do
         if CORE_PARAMS[param.key] and #param.value > 0 then
             if known_path and TOOL_PARAMS[param.key] then
                 return 1
