@@ -1,0 +1,246 @@
+name: xbits-cross-engine-8.0.8-9.0.1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "xbits/**"
+      - "test/generate_web_pcaps.py"
+      - ".github/workflows/xbits-ci.yml"
+  pull_request:
+    paths:
+      - "xbits/**"
+      - "test/generate_web_pcaps.py"
+      - ".github/workflows/xbits-ci.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+  ZEEK_IMAGE: zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0
+
+jobs:
+  rust:
+    name: Rust bridge tests and release build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Install pinned Rust 1.85.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain 1.85.0
+          . "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path xbits/Cargo.toml --all -- --check
+
+      - name: Unit and socket tests
+        run: cargo test --manifest-path xbits/Cargo.toml --locked
+
+      - name: Build release binary
+        run: cargo build --manifest-path xbits/Cargo.toml --release --locked
+
+      - name: Upload xbits binary
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: xbits-binary
+          path: xbits/target/release/xbits
+          if-no-files-found: error
+
+  zeek-stdin:
+    name: Zeek 9.0.1 event bridge (stdin)
+    needs: rust
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Install test PCAP generator dependency
+        run: python -m pip install --disable-pip-version-check scapy==2.6.1
+
+      - name: Generate Web regression PCAP
+        run: python test/generate_web_pcaps.py --out test/web_pcap
+
+      - name: Download xbits binary
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: xbits-binary
+          path: xbits/target/release
+
+      - name: Make xbits executable
+        run: chmod +x xbits/target/release/xbits
+
+      - name: Verify xbits stdin bridge
+        run: |
+          set -euo pipefail
+          xbits/target/release/xbits --stdin < xbits/testdata/alert.jsonl \
+            | grep -q '"signature_id":9103001'
+
+      - name: Run Zeek Input event bridge
+        run: |
+          set -euo pipefail
+          rm -rf test/zeek_out/xbits-stdin
+          mkdir -p test/zeek_out/xbits-stdin
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work/test/zeek_out/xbits-stdin \
+            "$ZEEK_IMAGE" \
+            zeek -b -Cr /work/test/web_pcap/web_sqli_uri_union.pcap \
+              /work/xbits/zeek/xbits_test.zeek LogAscii::use_json=T
+          cat test/zeek_out/xbits-stdin/xbits_correlation.log
+          python xbits/test/assert_xbits.py \
+            --log test/zeek_out/xbits-stdin/xbits_correlation.log \
+            --signature-id 9103001
+
+      - name: Upload Zeek stdin logs
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: xbits-zeek-stdin-logs
+          path: test/zeek_out/xbits-stdin
+          if-no-files-found: ignore
+
+  suricata-live:
+    name: Suricata 8.0.8 -> xbits -> Zeek 9.0.1 live linkage
+    needs: rust
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Install test PCAP generator dependency
+        run: python -m pip install --disable-pip-version-check scapy==2.6.1
+
+      - name: Generate Web regression PCAP
+        run: python test/generate_web_pcaps.py --out test/web_pcap
+
+      - name: Install Suricata build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake build-essential libcap-ng-dev libjansson-dev \
+            libmagic-dev libnet1-dev libpcap-dev libpcre2-dev libtool \
+            libyaml-dev make pkg-config zlib1g-dev curl
+
+      - name: Install pinned Rust and cbindgen
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain 1.85.0
+          . "$HOME/.cargo/env"
+          cargo install cbindgen --version 0.27.0 --locked
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Build Suricata 8.0.8
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://github.com/OISF/suricata/archive/refs/tags/suricata-8.0.8.tar.gz \
+            -o /tmp/suricata-8.0.8.tar.gz
+          mkdir -p /tmp/suricata-8.0.8
+          tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp/suricata-8.0.8 --strip-components=1
+          cd /tmp/suricata-8.0.8
+          ./autogen.sh
+          ./configure --prefix=/usr/local
+          make -j"$(nproc)"
+          sudo make install
+          sudo ldconfig
+          suricata -V
+
+      - name: Download xbits binary
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: xbits-binary
+          path: xbits/target/release
+
+      - name: Stage rules, Lua and Unix stream config
+        run: |
+          set -euo pipefail
+          mkdir -p test/stage test/out/suricata/xbits-live test/xbits_run
+          cp "Web漏洞利用/Web漏洞利用规则.rules" test/stage/
+          cp Web漏洞利用/lua/*.lua test/stage/
+          cp test/classification.config test/reference.config test/stage/
+          chmod +x xbits/target/release/xbits
+          sed \
+            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage|g" \
+            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
+            -e "s|__EVE_SOCKET__|$GITHUB_WORKSPACE/test/xbits_run/eve.sock|g" \
+            xbits/testdata/suricata-unix-stream.yaml.in > test/suricata-xbits-live.yaml
+          cat test/suricata-xbits-live.yaml
+
+      - name: Verify Suricata config
+        run: suricata -T -c test/suricata-xbits-live.yaml -v
+
+      - name: Start Zeek with xbits listener
+        run: |
+          set -euo pipefail
+          rm -f test/xbits_run/eve.sock test/zeek_out/xbits-live/xbits_correlation.log
+          mkdir -p test/zeek_out/xbits-live
+          docker rm -f xbits-zeek >/dev/null 2>&1 || true
+          docker run --name xbits-zeek \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work/test/zeek_out/xbits-live \
+            -d "$ZEEK_IMAGE" \
+            zeek -b -Cr /work/test/web_pcap/web_sqli_uri_union.pcap \
+              /work/xbits/zeek/xbits_live.zeek LogAscii::use_json=T
+          for i in $(seq 1 100); do
+            if [ -S test/xbits_run/eve.sock ]; then
+              echo "xbits listener ready"
+              exit 0
+            fi
+            sleep 0.1
+          done
+          echo "xbits listener did not bind" >&2
+          docker logs xbits-zeek >&2 || true
+          exit 1
+
+      - name: Replay PCAP through Suricata Unix stream
+        run: |
+          set -euo pipefail
+          suricata -c test/suricata-xbits-live.yaml \
+            -r test/web_pcap/web_sqli_uri_union.pcap \
+            -l test/out/suricata/xbits-live -k none
+          for i in $(seq 1 100); do
+            if [ -f test/zeek_out/xbits-live/xbits_correlation.log ] \
+              && grep -q '"signature_id":9103001' \
+                test/zeek_out/xbits-live/xbits_correlation.log; then
+              break
+            fi
+            sleep 0.2
+          done
+          docker stop xbits-zeek >/dev/null 2>&1 || true
+          docker rm -f xbits-zeek >/dev/null 2>&1 || true
+          cat test/out/suricata/xbits-live/eve.json 2>/dev/null || true
+          cat test/zeek_out/xbits-live/xbits_correlation.log 2>/dev/null || true
+          python xbits/test/assert_xbits.py \
+            --log test/zeek_out/xbits-live/xbits_correlation.log \
+            --signature-id 9103001
+
+      - name: Upload live linkage logs
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: xbits-suricata-zeek-live-logs
+          path: |
+            test/out
+            test/zeek_out
+            test/suricata-xbits-live.yaml
+          if-no-files-found: ignore
