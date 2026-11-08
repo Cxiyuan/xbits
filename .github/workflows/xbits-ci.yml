@@ -32,6 +32,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --profile minimal --default-toolchain 1.85.0
           . "$HOME/.cargo/env"
+          rustup default 1.85.0
           rustup component add rustfmt --toolchain 1.85.0
           rustc --version
           cargo --version
@@ -147,6 +148,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --profile minimal --default-toolchain 1.85.0
           . "$HOME/.cargo/env"
+          rustup default 1.85.0
           cargo install cbindgen --version 0.27.0 --locked
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 

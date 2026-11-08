@@ -32,6 +32,10 @@ export {
     ## Raised synchronously from the Input event with a parsed Suricata alert.
     global suricata_alert: event(rec: Alert);
 
+    ## Raw JSONL line event used by the Input framework.
+    global xbits_raw_line: event(description: Input::EventDescription,
+                                  tpe: Input::Event, line: string);
+
     ## Override in site/local policy or in tests.
     global command: string = "xbits --socket /var/run/suricata/eve.sock" &redef;
 }
