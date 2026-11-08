@@ -5,12 +5,18 @@ on:
   push:
     paths:
       - "xbits/**"
+      - "test/generate_pcaps.py"
+      - "test/generate_recon_pcaps.py"
       - "test/generate_web_pcaps.py"
+      - "test/generate_backdoor_pcaps.py"
       - ".github/workflows/xbits-ci.yml"
   pull_request:
     paths:
       - "xbits/**"
+      - "test/generate_pcaps.py"
+      - "test/generate_recon_pcaps.py"
       - "test/generate_web_pcaps.py"
+      - "test/generate_backdoor_pcaps.py"
       - ".github/workflows/xbits-ci.yml"
 
 env:
@@ -132,8 +138,12 @@ jobs:
       - name: Install test PCAP generator dependency
         run: python -m pip install --disable-pip-version-check scapy==2.6.1
 
-      - name: Generate Web regression PCAP
-        run: python test/generate_web_pcaps.py --out test/web_pcap
+      - name: Generate scenario regression PCAPs
+        run: |
+          python test/generate_pcaps.py --out test/pcap
+          python test/generate_recon_pcaps.py --out test/recon_pcap
+          python test/generate_web_pcaps.py --out test/web_pcap
+          python test/generate_backdoor_pcaps.py --out test/backdoor_pcap
 
       - name: Install Suricata build dependencies
         run: |
@@ -174,23 +184,61 @@ jobs:
           name: xbits-binary
           path: xbits/target/release
 
-      - name: Stage rules, Lua and Unix stream config
+      - name: Stage rules, Lua and Unix stream configs
         run: |
           set -euo pipefail
-          mkdir -p test/stage test/out/suricata/xbits-live test/xbits_run
-          cp "Web漏洞利用/Web漏洞利用规则.rules" test/stage/
-          cp Web漏洞利用/lua/*.lua test/stage/
-          cp test/classification.config test/reference.config test/stage/
+          mkdir -p test/stage/dns test/stage/recon test/stage/web test/stage/backdoor
+          mkdir -p test/out/suricata/xbits-web test/out/suricata/xbits-dns \
+            test/out/suricata/xbits-recon test/out/suricata/xbits-backdoor test/xbits_run
+
+          cp "DNS隧道与带外检测/DNS隧道与带外检测规则.rules" test/stage/dns/
+          cp "DNS隧道与带外检测/dns_tunnel_allow.lst" test/stage/dns/
+          cp DNS隧道与带外检测/lua/*.lua test/stage/dns/
+
+          cp "侦察与攻击工具指纹/侦察与攻击工具指纹规则.rules" test/stage/recon/
+          cp 侦察与攻击工具指纹/lua/*.lua test/stage/recon/
+
+          cp "Web漏洞利用/Web漏洞利用规则.rules" test/stage/web/
+          cp Web漏洞利用/lua/*.lua test/stage/web/
+
+          cp "后门通信/WebShell后门通信规则.rules" test/stage/backdoor/
+          cp "后门通信/命令与控制信标规则.rules" test/stage/backdoor/
+          cp 后门通信/lua/*.lua test/stage/backdoor/
+
+          for scenario in dns recon web backdoor; do
+            cp test/classification.config test/reference.config "test/stage/$scenario/"
+          done
+
           chmod +x xbits/target/release/xbits
           sed \
-            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage|g" \
+            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage/web|g" \
             -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
             -e "s|__EVE_SOCKET__|$GITHUB_WORKSPACE/test/xbits_run/eve.sock|g" \
-            xbits/testdata/suricata-unix-stream.yaml.in > test/suricata-xbits-live.yaml
-          cat test/suricata-xbits-live.yaml
+            xbits/testdata/suricata-unix-stream.yaml.in > test/suricata-web-xbits.yaml
 
-      - name: Verify Suricata config
-        run: suricata -T -c test/suricata-xbits-live.yaml -v
+          for scenario in dns recon backdoor; do
+            case "$scenario" in
+              dns) template=test/suricata-ci.yaml.in ;;
+              recon) template=test/suricata-recon-ci.yaml.in ;;
+              backdoor) template=test/suricata-backdoor-ci.yaml.in ;;
+            esac
+            sed \
+              -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage/$scenario|g" \
+              -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
+              -e "s|filetype: file|filetype: unix_stream|g" \
+              -e "s|filename: eve.json|filename: $GITHUB_WORKSPACE/test/xbits_run/eve.sock|g" \
+              "$template" > "test/suricata-$scenario-xbits.yaml"
+            cat "test/suricata-$scenario-xbits.yaml"
+          done
+          cat test/suricata-web-xbits.yaml
+
+      - name: Verify Suricata configs
+        run: |
+          for config in test/suricata-dns-xbits.yaml test/suricata-recon-xbits.yaml \
+            test/suricata-web-xbits.yaml test/suricata-backdoor-xbits.yaml; do
+            echo "== $config"
+            suricata -T -c "$config" -v
+          done
 
       - name: Start Zeek with xbits listener
         run: |
@@ -218,10 +266,10 @@ jobs:
       - name: Replay PCAP through Suricata Unix stream
         run: |
           set -euo pipefail
-          if ! suricata -c test/suricata-xbits-live.yaml \
+          if ! suricata -c test/suricata-web-xbits.yaml \
             -r test/web_pcap/web_sqli_uri_union.pcap \
-            -l test/out/suricata/xbits-live -k none; then
-            cat test/out/suricata/xbits-live/suricata.log 2>/dev/null || true
+            -l test/out/suricata/xbits-web -k none; then
+            cat test/out/suricata/xbits-web/suricata.log 2>/dev/null || true
             docker logs xbits-zeek 2>&1 || true
             exit 1
           fi
@@ -236,13 +284,76 @@ jobs:
           docker logs xbits-zeek > test/zeek_out/xbits-live/docker.log 2>&1 || true
           docker stop xbits-zeek >/dev/null 2>&1 || true
           docker rm -f xbits-zeek >/dev/null 2>&1 || true
-          cat test/out/suricata/xbits-live/suricata.log 2>/dev/null || true
+          cat test/out/suricata/xbits-web/suricata.log 2>/dev/null || true
           cat test/zeek_out/xbits-live/docker.log 2>/dev/null || true
-          cat test/out/suricata/xbits-live/eve.json 2>/dev/null || true
+          cat test/out/suricata/xbits-web/eve.json 2>/dev/null || true
           cat test/zeek_out/xbits-live/xbits_correlation.log 2>/dev/null || true
           python xbits/test/assert_xbits.py \
             --log test/zeek_out/xbits-live/xbits_correlation.log \
             --signature-id 9103001
+
+      - name: Run DNS, recon and backdoor scenarios through xbits
+        run: |
+          set -euo pipefail
+
+          run_case() {
+            local scenario="$1"
+            local config="$2"
+            local pcap="$3"
+            local sid="$4"
+            local container="xbits-zeek-$scenario"
+            local out="test/zeek_out/xbits-live"
+            local suri_out="test/out/suricata/xbits-$scenario"
+
+            echo "== $scenario"
+            mkdir -p "$out" "$suri_out"
+            rm -f test/xbits_run/eve.sock "$out/xbits_correlation.log"
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            docker run --name "$container" \
+              -v "$GITHUB_WORKSPACE:/work" \
+              -w "/work/$out" \
+              -d "$ZEEK_IMAGE" \
+              zeek -b -Cr "/work/$pcap" \
+                /work/xbits/zeek/xbits_live.zeek LogAscii::use_json=T
+
+            for i in $(seq 1 100); do
+              [ -S test/xbits_run/eve.sock ] && break
+              sleep 0.1
+            done
+            if [ ! -S test/xbits_run/eve.sock ]; then
+              docker logs "$container" >&2 || true
+              return 1
+            fi
+
+            if ! suricata -c "$config" -r "$pcap" -l "$suri_out" -k none; then
+              cat "$suri_out/suricata.log" 2>/dev/null || true
+              docker logs "$container" 2>&1 || true
+              return 1
+            fi
+            for i in $(seq 1 100); do
+              if [ -f "$out/xbits_correlation.log" ] \
+                && grep -q "\"signature_id\":$sid" "$out/xbits_correlation.log"; then
+                break
+              fi
+              sleep 0.2
+            done
+
+            docker logs "$container" > "$out/docker-$scenario.log" 2>&1 || true
+            docker stop "$container" >/dev/null 2>&1 || true
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            cp "$out/xbits_correlation.log" "$out/${scenario}_correlation.log"
+            cat "$out/${scenario}_correlation.log"
+            python xbits/test/assert_xbits.py \
+              --log "$out/${scenario}_correlation.log" \
+              --signature-id "$sid"
+          }
+
+          run_case dns test/suricata-dns-xbits.yaml \
+            test/pcap/txt_burst_positive.pcap 9109103
+          run_case recon test/suricata-recon-xbits.yaml \
+            test/recon_pcap/recon_404_burst.pcap 9101109
+          run_case backdoor test/suricata-backdoor-xbits.yaml \
+            test/backdoor_pcap/ws_cmd_query.pcap 9104002
 
       - name: Upload live linkage logs
         if: always()
@@ -252,5 +363,5 @@ jobs:
           path: |
             test/out
             test/zeek_out
-            test/suricata-xbits-live.yaml
+            test/suricata-*-xbits.yaml
           if-no-files-found: ignore
