@@ -56,7 +56,7 @@ event xbits_raw_line(description: Input::EventDescription, tpe: Input::Event,
 
 event zeek_init() &priority=10
 {
-    Input::add_event([
+    local ok = Input::add_event([
         $source=fmt("%s |", Xbits::command),
         $name="xbits-suricata",
         $reader=Input::READER_RAW,
@@ -65,4 +65,6 @@ event zeek_init() &priority=10
         $ev=Xbits::xbits_raw_line,
         $want_record=F
     ]);
+    if ( ! ok )
+        print "xbits: Input::add_event failed";
 }

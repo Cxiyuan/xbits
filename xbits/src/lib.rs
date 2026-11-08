@@ -6,7 +6,7 @@
 //! raw Input reader in execute/stream mode.
 
 use std::io::{self, BufRead, Write};
-use std::os::unix::fs::FileTypeExt;
+use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 
@@ -152,6 +152,9 @@ pub fn run_listener(socket_path: &str, writer: &mut impl Write, once: bool) -> i
     }
 
     let listener = UnixListener::bind(path)?;
+    // Suricata normally runs as a different user than xbits. The socket is
+    // local-only; deployment should still protect its parent directory.
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o666))?;
     let _guard = SocketFile {
         path: path.to_path_buf(),
     };
