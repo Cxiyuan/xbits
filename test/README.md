@@ -269,7 +269,8 @@ join。测试入口：
   - Rust：`cargo fmt --check`、`cargo test --locked`、release build；
   - Zeek stdin：`xbits --stdin` + `xbits_test.zeek`；
   - 真实链路：Suricata 8.0.8 `filetype: unix_stream` + `xbits_live.zeek`
-    + `web_sqli_uri_union.pcap`。
+    分别回放 DNS `txt_burst_positive`、侦察 `recon_404_burst`、
+    Web `web_sqli_uri_union`、后门 `ws_cmd_query` 四个场景 PCAP。
 - 断言：`xbits/test/assert_xbits.py` 检查 `xbits_correlation.log` 的
   `signature_id`、`community_id`、`reason`、`scenario`、`related_sids`。
 - Suricata 是 Unix socket 的 `connect()` 客户端；xbits 是 `UnixListener`

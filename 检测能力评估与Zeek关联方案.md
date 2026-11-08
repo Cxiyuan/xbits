@@ -384,12 +384,14 @@ Xbits::suricata_alert(rec) → 场景 Zeek 状态机
 
 1. Rust 单元测试 + mock UnixListener；
 2. Zeek 9.0.1 容器 + `xbits --stdin` 验证 Input/from_json/自定义日志；
-3. 编译 Suricata 8.0.8，以 `unix_stream` 回放 SQLi PCAP，Zeek 容器内
-   `xbits_live.zeek` 接收真实 Suricata 告警并断言 `xbits_correlation.log`。
+3. 编译 Suricata 8.0.8，以 `unix_stream` 分别回放 DNS、侦察、Web、后门
+   四个场景 PCAP，Zeek 容器内 `xbits_live.zeek` 接收真实 Suricata 告警，
+   分别断言 `xbits_correlation.log` 中的 `9109103`、`9101109`、`9103001`、
+   `9104002`。
 
-状态：**已验证（GitHub Actions run `42454399302`，commit `b4057f6`）**。
-Rust 构建/测试、Zeek stdin 事件链、Suricata 8.0.8 `unix_stream` 真实回放
-三项均通过；真实 Zeek 日志中的 `signature_id=9103001`、`community_id`、
-`related_sids` 已断言通过。该组件不改变前述“未达到极致”的判断：它补的是
-跨引擎事件联动，不解密 HTTPS、不提供资产上下文、不替代标注语料和 shadow
-误报率。
+状态：**已验证（GitHub Actions run `42455328044`，commit `c4f81d5`）**。
+Rust 构建/测试、Zeek stdin 事件链、Suricata 8.0.8 `unix_stream` 四个场景
+真实回放（DNS `9109103`、侦察 `9101109`、Web `9103001`、后门 `9104002`）
+均通过；真实 Zeek 日志中的 `community_id`、`signature_id`、`related_sids`
+已断言通过。该组件不改变前述“未达到极致”的判断：它补的是跨引擎事件联动，
+不解密 HTTPS、不提供资产上下文、不替代标注语料和 shadow 误报率。

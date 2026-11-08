@@ -138,25 +138,37 @@ cargo build --release --locked
 2. **Zeek stdin 事件链**：Zeek 9.0.1 容器加载 `xbits_test.zeek`，
    `xbits --stdin` 注入合成 EVE，断言 `xbits_correlation.log` 中出现
    `signature_id=9103001`、`reason=suricata_alert`、`scenario=xbits-cross-engine`。
-3. **真实 Suricata → xbits → Zeek**：
+3. **真实 Suricata → xbits → Zeek（四个场景）**：
    - 编译 Suricata 8.0.8；
-   - Suricata 使用 `unix_stream` 输出并处理 SQLi PCAP；
+   - Suricata 使用 `unix_stream` 输出，分别处理 DNS `txt_burst_positive`、
+     侦察 `recon_404_burst`、Web `web_sqli_uri_union`、
+     后门 `ws_cmd_query` 四个 PCAP；
    - Zeek 容器内运行 `xbits_live.zeek`，由 xbits 监听 socket；
-   - 断言 Zeek `xbits_correlation.log` 的事件来自真实 Suricata 告警。
+   - 分别断言 Zeek `xbits_correlation.log` 中的
+     `9109103` / `9101109` / `9103001` / `9104002`。
 4. 上传 `xbits_correlation.log`、Suricata `eve.json`/日志与测试输出作为
    Actions artifacts。
 
-当前状态：**已验证（GitHub Actions）**。代码提交 `b4057f6` 的
-workflow run `42454399302` 三项 job 全部通过：
+当前状态：**已验证（GitHub Actions）**。代码提交 `c4f81d5` 的
+workflow run `42455328044` 三项 job 全部通过：
 
 - Rust bridge tests and release build：success；
 - Zeek 9.0.1 event bridge (stdin)：success；
 - Suricata 8.0.8 → xbits → Zeek 9.0.1 live linkage：success。
 
-真实链路产物中的 Zeek `xbits_correlation.log` 已包含：
+真实链路四个场景的 `xbits_correlation.log` 断言全部通过：
+
+| 场景 | PCAP | 断言 SID |
+|---|---|---|
+| DNS | `txt_burst_positive.pcap` | 9109103 |
+| 侦察 | `recon_404_burst.pcap` | 9101109 |
+| Web | `web_sqli_uri_union.pcap` | 9103001 |
+| 后门/WebShell | `ws_cmd_query.pcap` | 9104002 |
+
+例如 DNS 场景的 Zeek 日志：
 
 ```json
-{"uid":"CR03pc3OzkjNlluw0e","community_id":"1:sMyPf9wlDO0yC+bZymU8+ZTr9bI=","signature_id":9103001,"reason":"suricata_alert","scenario":"xbits-cross-engine","related_sids":[9103001]}
+{"ts":1700000049.01,"uid":"CBsQ8LiAFiKCOYfx2","community_id":"1:QGQnO1vyClpNi8cBuyLHmbBC6So=","signature_id":9109103,"signature":"[DNS隧道-配套] TXT 查询突发(线索级)","src":"10.0.0.5","dst":"10.0.0.53","score":10,"reason":"suricata_alert","scenario":"xbits-cross-engine","related_sids":[9109103]}
 ```
 
 这证明告警来自 Suricata 8.0.8 的 `unix_stream` 输出，经 xbits 进入 Zeek
