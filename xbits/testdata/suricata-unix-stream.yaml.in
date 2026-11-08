@@ -1,0 +1,33 @@
+%YAML 1.1
+---
+# CI-only configuration: Suricata 8.0.8 writes EVE alerts to the xbits
+# Unix stream listener. xbits must already be bound before Suricata starts.
+default-log-dir: __LOG_DIR__
+
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8]"
+    EXTERNAL_NET: "[203.0.113.0/24]"
+    CLIENT_NET: "[10.0.0.0/8]"
+
+default-rule-path: __RULE_DIR__
+rule-files:
+  - Web漏洞利用规则.rules
+
+classification-file: __RULE_DIR__/classification.config
+reference-config-file: __RULE_DIR__/reference.config
+
+security:
+  lua:
+    allow-rules: yes
+
+outputs:
+  - eve-log:
+      enabled: yes
+      community-id: true
+      community-id-seed: 0
+      filetype: unix_stream
+      filename: __EVE_SOCKET__
+      types:
+        - alert:
+            payload: yes

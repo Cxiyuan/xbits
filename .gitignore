@@ -14,6 +14,13 @@ test/suricata-ci.yaml
 test/suricata-recon-ci.yaml
 test/suricata-web-ci.yaml
 test/suricata-backdoor-ci.yaml
+test/suricata-xbits-live.yaml
+test/xbits_run/
+
+# xbits build/runtime output
+xbits/target/
+xbits/test-out/
+xbits/*.sock
 
 # Editor/OS
 .idea/
