@@ -3,6 +3,19 @@
 
 @load ./xbits_correlate
 
-redef Xbits::command = "/work/xbits/target/release/xbits --socket /work/test/xbits_run/eve.sock";
+redef Xbits::command = "/work/xbits/target/release/xbits --socket /work/test/xbits_run/eve.sock --once";
+redef Xbits::input_mode = Input::MANUAL;
 redef LogAscii::use_json = T;
 redef exit_only_after_terminate = T;
+
+event Input::end_of_data(name: string, source: string)
+{
+    if ( name == "xbits-suricata" )
+        terminate();
+}
+
+event InputRaw::process_finished(name: string, source: string,
+                                 exit_code: count, signal_exit: bool)
+{
+    terminate();
+}
