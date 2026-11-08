@@ -38,6 +38,10 @@ export {
 
     ## Override in site/local policy or in tests.
     global command: string = "xbits --socket /var/run/suricata/eve.sock" &redef;
+    global input_mode: Input::Mode = Input::STREAM &redef;
+
+    ## Set by zeek_init after Input::add_event succeeds.
+    global input_ready: bool = F;
 }
 
 type RawLine: record {
@@ -60,11 +64,12 @@ event zeek_init() &priority=10
         $source=fmt("%s |", Xbits::command),
         $name="xbits-suricata",
         $reader=Input::READER_RAW,
-        $mode=Input::STREAM,
+        $mode=Xbits::input_mode,
         $fields=RawLine,
         $ev=Xbits::xbits_raw_line,
         $want_record=F
     ]);
+    Xbits::input_ready = ok;
     if ( ! ok )
         print "xbits: Input::add_event failed";
 }

@@ -95,7 +95,7 @@ jobs:
           set -euo pipefail
           rm -rf test/zeek_out/xbits-stdin
           mkdir -p test/zeek_out/xbits-stdin
-          docker run --rm \
+          timeout 30s docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work/test/zeek_out/xbits-stdin \
             "$ZEEK_IMAGE" \
@@ -218,9 +218,13 @@ jobs:
       - name: Replay PCAP through Suricata Unix stream
         run: |
           set -euo pipefail
-          suricata -c test/suricata-xbits-live.yaml \
+          if ! suricata -c test/suricata-xbits-live.yaml \
             -r test/web_pcap/web_sqli_uri_union.pcap \
-            -l test/out/suricata/xbits-live -k none
+            -l test/out/suricata/xbits-live -k none; then
+            cat test/out/suricata/xbits-live/suricata.log 2>/dev/null || true
+            docker logs xbits-zeek 2>&1 || true
+            exit 1
+          fi
           for i in $(seq 1 100); do
             if [ -f test/zeek_out/xbits-live/xbits_correlation.log ] \
               && grep -q '"signature_id":9103001' \
@@ -229,8 +233,11 @@ jobs:
             fi
             sleep 0.2
           done
+          docker logs xbits-zeek > test/zeek_out/xbits-live/docker.log 2>&1 || true
           docker stop xbits-zeek >/dev/null 2>&1 || true
           docker rm -f xbits-zeek >/dev/null 2>&1 || true
+          cat test/out/suricata/xbits-live/suricata.log 2>/dev/null || true
+          cat test/zeek_out/xbits-live/docker.log 2>/dev/null || true
           cat test/out/suricata/xbits-live/eve.json 2>/dev/null || true
           cat test/zeek_out/xbits-live/xbits_correlation.log 2>/dev/null || true
           python xbits/test/assert_xbits.py \
