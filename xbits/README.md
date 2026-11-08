@@ -146,8 +146,22 @@ cargo build --release --locked
 4. 上传 `xbits_correlation.log`、Suricata `eve.json`/日志与测试输出作为
    Actions artifacts。
 
-当前状态：**待验证（需 GitHub Actions 运行结果）**。在 CI 绿之前，不得把
-本组件描述为“已验证”或“零误报”。
+当前状态：**已验证（GitHub Actions）**。代码提交 `b4057f6` 的
+workflow run `42454399302` 三项 job 全部通过：
+
+- Rust bridge tests and release build：success；
+- Zeek 9.0.1 event bridge (stdin)：success；
+- Suricata 8.0.8 → xbits → Zeek 9.0.1 live linkage：success。
+
+真实链路产物中的 Zeek `xbits_correlation.log` 已包含：
+
+```json
+{"uid":"CR03pc3OzkjNlluw0e","community_id":"1:sMyPf9wlDO0yC+bZymU8+ZTr9bI=","signature_id":9103001,"reason":"suricata_alert","scenario":"xbits-cross-engine","related_sids":[9103001]}
+```
+
+这证明告警来自 Suricata 8.0.8 的 `unix_stream` 输出，经 xbits 进入 Zeek
+事件循环并落为日志；不是离线日志 join。这里的“已验证”仅指链路运行和
+测试断言，不代表生产“零误报”。
 
 ## 7. 边界与运维
 
@@ -160,4 +174,8 @@ cargo build --release --locked
 - stdout 是背压边界：Zeek 读取慢会阻塞 xbits，进而影响 Suricata socket
   写入；生产需监控 xbits 进程和 Zeek `Input` 队列。
 - Unix socket 只允许本机访问；目录权限应由部署方限制，不能暴露到网络。
+- `xbits` bind 后会把 socket 权限设为 `0666`，以便 Suricata 以不同用户
+  连接；环境必须用父目录权限（如 `0750` 且属主为采集用户组）限制访问。
+- 生产使用 `xbits --socket ...` 长驻监听；`--once` 只用于 CI/单次回放：
+  接受一个 Suricata 连接，读到 EOF 后退出并删除 socket。
 - 本组件不兼容其他 Suricata/Zeek 版本，只针对 8.0.8 / 9.0.1。

@@ -348,3 +348,48 @@ Zeek 9.0.1（场景内脚本）
 - 当前 **四个场景的 Zeek 脚本已开发并接入 Suricata CI**；
 - Zeek 脚本必须放在各场景 `zeek/` 子目录（或新建 `攻击链关联/zeek/`），不得建根级 `zeek/`；
 - 在 Zeek 9.0.1 CI 通过前，不能声称 Zeek 已验证，也不能声称整体“零误报”。
+
+---
+
+## 9. 自研 xbits：事件级跨引擎联动
+
+前述场景 Zeek 脚本通过 `community_id` 与 Suricata EVE 日志做关联，这仍是
+**日志级关联**。为满足“规则引擎自动触发 Zeek 事件”的要求，仓库新增
+`xbits/` 自研组件（Rust）：
+
+```text
+Suricata 8.0.8 eve-log: unix_stream（client）
+        │
+        ▼
+xbits Rust UnixListener（过滤 alert，JSONL 输出）
+        │
+        ▼
+Zeek 9.0.1 Input::READER_RAW
+        │
+        ▼
+Xbits::suricata_alert(rec) → 场景 Zeek 状态机
+```
+
+关键实现约束：
+
+- Suricata 8.0.8 的 `unix_stream` 是 `connect()` 客户端，xbits 必须作为
+  `UnixListener` 监听端；
+- 不读取 `eve.json`、不做 Community ID 日志 join；事件经 stdout 进入
+  Zeek Input 事件循环；
+- 只传 `event_type=alert`，避免重复消费全部 EVE；
+- xbits 只绑定本机 Unix socket；生产需用父目录权限限制访问；
+- 当前验证入口：`.github/workflows/xbits-ci.yml`。
+
+验证分层：
+
+1. Rust 单元测试 + mock UnixListener；
+2. Zeek 9.0.1 容器 + `xbits --stdin` 验证 Input/from_json/自定义日志；
+3. 编译 Suricata 8.0.8，以 `unix_stream` 回放 SQLi PCAP，Zeek 容器内
+   `xbits_live.zeek` 接收真实 Suricata 告警并断言 `xbits_correlation.log`。
+
+状态：**已验证（GitHub Actions run `42454399302`，commit `b4057f6`）**。
+Rust 构建/测试、Zeek stdin 事件链、Suricata 8.0.8 `unix_stream` 真实回放
+三项均通过；真实 Zeek 日志中的 `signature_id=9103001`、`community_id`、
+`related_sids` 已断言通过。该组件不改变前述“未达到极致”的判断：它补的是
+跨引擎事件联动，不解密 HTTPS、不提供资产上下文、不替代标注语料和 shadow
+误报率。

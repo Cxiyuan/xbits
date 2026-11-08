@@ -258,3 +258,19 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdo
 
 - 生成的 PCAP 只包含 RFC 5737/1918 地址与虚构域名，不含真实客户数据。
 - 测试脚本不参与检测；检测逻辑只在规则/Lua（以及场景内 Zeek）中。
+
+## 10. xbits 跨引擎事件联动
+
+`xbits/` 是自研 Rust 组件，用于把 Suricata 8.0.8 的 EVE `unix_stream`
+告警直接推入 Zeek 9.0.1 Input 事件循环，而不是读取 `eve.json` 做日志
+join。测试入口：
+
+- `.github/workflows/xbits-ci.yml`
+  - Rust：`cargo fmt --check`、`cargo test --locked`、release build；
+  - Zeek stdin：`xbits --stdin` + `xbits_test.zeek`；
+  - 真实链路：Suricata 8.0.8 `filetype: unix_stream` + `xbits_live.zeek`
+    + `web_sqli_uri_union.pcap`。
+- 断言：`xbits/test/assert_xbits.py` 检查 `xbits_correlation.log` 的
+  `signature_id`、`community_id`、`reason`、`scenario`、`related_sids`。
+- Suricata 是 Unix socket 的 `connect()` 客户端；xbits 是 `UnixListener`
+  监听端。测试 socket 权限设为 `0666`，生产必须用父目录权限限制访问。
