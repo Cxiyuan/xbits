@@ -107,7 +107,7 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/web_ca
 
 最终验证只认 `.github/workflows/suricata-web-exploit.yml`。
 当前已验证：commit `b933f57`，run `42377078821`，34/34 用例通过：
-<https://github.com/Cxiyuan/ips/actions/runs/42377078821>。
+<https://github.com/Cxiyuan/xbits/actions/runs/42377078821>。
 
 ## 8. Zeek 关联分析
 
