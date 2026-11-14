@@ -169,7 +169,7 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_
 
 最终验证只认 `.github/workflows/suricata-recon-tools.yml` 的 GitHub Actions 结果。
 当前已验证：commit `c6a4411`，run 42375447812，29/29 用例通过：
-<https://github.com/Cxiyuan/ips/actions/runs/42375447812>。
+<https://github.com/Cxiyuan/xbits/actions/runs/42375447812>。
 
 ## 7. Zeek 关联分析
 

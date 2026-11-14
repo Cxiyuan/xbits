@@ -79,7 +79,7 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdo
 
 最终验证只认 `.github/workflows/suricata-backdoor-c2.yml`。
 当前已验证：commit `d621e7f`，run `42384924560`，17/17 用例通过：
-<https://github.com/Cxiyuan/ips/actions/runs/42384924560>。
+<https://github.com/Cxiyuan/xbits/actions/runs/42384924560>。
 
 ## 6. 能力边界
 
