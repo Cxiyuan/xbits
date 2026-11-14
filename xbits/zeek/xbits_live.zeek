@@ -3,7 +3,7 @@
 
 @load ./xbits_correlate
 
-redef Xbits::command = "/work/xbits/target/release/xbits --socket /work/test/xbits_run/eve.sock --once";
+redef Xbits::command = "/work/xbits/target/release/xbits --socket /work/测试用例/xbits_run/eve.sock --once";
 redef Xbits::input_mode = Input::MANUAL;
 redef LogAscii::use_json = T;
 redef exit_only_after_terminate = T;

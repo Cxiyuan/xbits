@@ -17,7 +17,7 @@
 - 规则：`Web漏洞利用规则.rules`
 - Lua：`lua/web_*.lua`
 - 质量分析：`规则质量与误报分析.md`
-- 测试：`../test/generate_web_pcaps.py`、`../test/web_cases.json`
+- 测试：`../../测试用例/generate_web_pcaps.py`、`../../测试用例/web_cases.json`
 
 ## 1. 检测分层
 
@@ -96,13 +96,13 @@ Lua 再读取：
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_web_pcaps.py --out test/web_pcap
-suricata -T -c test/suricata-web-ci.yaml
-for pcap in test/web_pcap/*.pcap; do
+python3 测试用例/generate_web_pcaps.py --out 测试用例/web_pcap
+suricata -T -c 测试用例/suricata-web-ci.yaml
+for pcap in 测试用例/web_pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-web-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-web-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/web_cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/web_cases.json
 ```
 
 最终验证只认 `.github/workflows/suricata-web-exploit.yml`。

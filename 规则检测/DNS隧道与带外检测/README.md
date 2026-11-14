@@ -139,4 +139,4 @@ suricata -T -c /etc/suricata/suricata.yaml \
 - 与 Suricata EVE 的 `community_id` 关联，覆盖 Suricata 单事务无法完成的
   per-client 聚合；
 - CI：DNS workflow 内运行 Zeek 9.0.1（固定 Docker digest），
-  `zeek -b -Cr` + `test/assert_zeek.py` 断言 community-id 交集。
+  `zeek -b -Cr` + `测试用例/assert_zeek.py` 断言 community-id 交集。

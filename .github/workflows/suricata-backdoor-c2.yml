@@ -4,29 +4,29 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "后门通信/*.rules"
-      - "后门通信/lua/**"
-      - "后门通信/zeek/**"
-      - "test/assert_zeek.py"
-      - "test/generate_backdoor_pcaps.py"
-      - "test/backdoor_cases.json"
-      - "test/suricata-backdoor-ci.yaml.in"
-      - "test/assert_suricata.py"
-      - "test/classification.config"
-      - "test/reference.config"
+      - "规则检测/后门通信/*.rules"
+      - "规则检测/后门通信/lua/**"
+      - "规则检测/后门通信/zeek/**"
+      - "测试用例/assert_zeek.py"
+      - "测试用例/generate_backdoor_pcaps.py"
+      - "测试用例/backdoor_cases.json"
+      - "测试用例/suricata-backdoor-ci.yaml.in"
+      - "测试用例/assert_suricata.py"
+      - "测试用例/classification.config"
+      - "测试用例/reference.config"
       - ".github/workflows/suricata-backdoor-c2.yml"
   pull_request:
     paths:
-      - "后门通信/*.rules"
-      - "后门通信/lua/**"
-      - "后门通信/zeek/**"
-      - "test/assert_zeek.py"
-      - "test/generate_backdoor_pcaps.py"
-      - "test/backdoor_cases.json"
-      - "test/suricata-backdoor-ci.yaml.in"
-      - "test/assert_suricata.py"
-      - "test/classification.config"
-      - "test/reference.config"
+      - "规则检测/后门通信/*.rules"
+      - "规则检测/后门通信/lua/**"
+      - "规则检测/后门通信/zeek/**"
+      - "测试用例/assert_zeek.py"
+      - "测试用例/generate_backdoor_pcaps.py"
+      - "测试用例/backdoor_cases.json"
+      - "测试用例/suricata-backdoor-ci.yaml.in"
+      - "测试用例/assert_suricata.py"
+      - "测试用例/classification.config"
+      - "测试用例/reference.config"
       - ".github/workflows/suricata-backdoor-c2.yml"
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check scapy==2.6.1
 
       - name: Generate backdoor/C2 test PCAPs
-        run: python test/generate_backdoor_pcaps.py --out test/backdoor_pcap
+        run: python 测试用例/generate_backdoor_pcaps.py --out 测试用例/backdoor_pcap
 
       - name: Install Suricata build dependencies
         run: |
@@ -84,54 +84,54 @@ jobs:
       - name: Stage rules, Lua and configs
         run: |
           set -euo pipefail
-          mkdir -p test/stage test/out/suricata
-          cp "后门通信/WebShell后门通信规则.rules" test/stage/
-          cp "后门通信/命令与控制信标规则.rules" test/stage/
-          cp 后门通信/lua/*.lua test/stage/
-          cp test/classification.config test/reference.config test/stage/
+          mkdir -p 测试用例/stage 测试用例/out/suricata
+          cp "规则检测/后门通信/WebShell后门通信规则.rules" 测试用例/stage/
+          cp "规则检测/后门通信/命令与控制信标规则.rules" 测试用例/stage/
+          cp 规则检测/后门通信/lua/*.lua 测试用例/stage/
+          cp 测试用例/classification.config 测试用例/reference.config 测试用例/stage/
           sed \
-            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage|g" \
-            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
-            test/suricata-backdoor-ci.yaml.in > test/suricata-backdoor-ci.yaml
+            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/测试用例/stage|g" \
+            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/测试用例/out|g" \
+            测试用例/suricata-backdoor-ci.yaml.in > 测试用例/suricata-backdoor-ci.yaml
 
       - name: Suricata config test
-        run: suricata -T -c test/suricata-backdoor-ci.yaml -v
+        run: suricata -T -c 测试用例/suricata-backdoor-ci.yaml -v
 
       - name: Replay PCAP corpus
         run: |
           set -euo pipefail
-          for pcap in test/backdoor_pcap/*.pcap; do
+          for pcap in 测试用例/backdoor_pcap/*.pcap; do
             name="$(basename "$pcap" .pcap)"
-            out="$GITHUB_WORKSPACE/test/out/suricata/$name"
+            out="$GITHUB_WORKSPACE/测试用例/out/suricata/$name"
             mkdir -p "$out"
             echo "== $name"
-            suricata -c test/suricata-backdoor-ci.yaml -r "$pcap" -l "$out" -k none
+            suricata -c 测试用例/suricata-backdoor-ci.yaml -r "$pcap" -l "$out" -k none
           done
 
       - name: Assert Suricata alerts
-        run: python test/assert_suricata.py --eve-root test/out/suricata --cases test/backdoor_cases.json
+        run: python 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/backdoor_cases.json
 
       - name: Zeek correlation + community-id linkage
         run: |
           set -euo pipefail
-          mkdir -p test/zeek_out/backdoor test/zeek_out/c2
+          mkdir -p 测试用例/zeek_out/backdoor 测试用例/zeek_out/c2
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
-            -w /work/test/zeek_out/backdoor \
+            -w /work/测试用例/zeek_out/backdoor \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/test/backdoor_pcap/ws_cmd_query.pcap /work/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
-          python test/assert_zeek.py \
-            --log test/zeek_out/backdoor/backdoor_correlation.log \
+            zeek -b -Cr /work/测试用例/backdoor_pcap/ws_cmd_query.pcap /work/规则检测/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
+          python 测试用例/assert_zeek.py \
+            --log 测试用例/zeek_out/backdoor/backdoor_correlation.log \
             --scenario backdoor-c2 \
-            --eve-root test/out/suricata \
+            --eve-root 测试用例/out/suricata \
             --case ws_cmd_query
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
-            -w /work/test/zeek_out/c2 \
+            -w /work/测试用例/zeek_out/c2 \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/test/backdoor_pcap/c2_periodic.pcap /work/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
-          python test/assert_zeek.py \
-            --log test/zeek_out/c2/backdoor_correlation.log \
+            zeek -b -Cr /work/测试用例/backdoor_pcap/c2_periodic.pcap /work/规则检测/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
+          python 测试用例/assert_zeek.py \
+            --log 测试用例/zeek_out/c2/backdoor_correlation.log \
             --scenario backdoor-c2
 
       - name: Upload Suricata logs
@@ -140,7 +140,7 @@ jobs:
         with:
           name: suricata-backdoor-c2-8.0.8-logs
           path: |
-            test/out
-            test/zeek_out
-            test/suricata-backdoor-ci.yaml
+            测试用例/out
+            测试用例/zeek_out
+            测试用例/suricata-backdoor-ci.yaml
           if-no-files-found: ignore

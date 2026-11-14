@@ -4,33 +4,33 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "DNS隧道与带外检测/*.rules"
-      - "DNS隧道与带外检测/**/*.rules"
-      - "DNS隧道与带外检测/lua/**"
-      - "DNS隧道与带外检测/dns_tunnel_allow.lst"
-      - "DNS隧道与带外检测/zeek/**"
-      - "test/assert_zeek.py"
-      - "test/generate_pcaps.py"
-      - "test/cases.json"
-      - "test/assert_suricata.py"
-      - "test/suricata-ci.yaml.in"
-      - "test/classification.config"
-      - "test/reference.config"
+      - "规则检测/DNS隧道与带外检测/*.rules"
+      - "规则检测/DNS隧道与带外检测/**/*.rules"
+      - "规则检测/DNS隧道与带外检测/lua/**"
+      - "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst"
+      - "规则检测/DNS隧道与带外检测/zeek/**"
+      - "测试用例/assert_zeek.py"
+      - "测试用例/generate_pcaps.py"
+      - "测试用例/cases.json"
+      - "测试用例/assert_suricata.py"
+      - "测试用例/suricata-ci.yaml.in"
+      - "测试用例/classification.config"
+      - "测试用例/reference.config"
       - ".github/workflows/suricata-dns-tunnel.yml"
   pull_request:
     paths:
-      - "DNS隧道与带外检测/*.rules"
-      - "DNS隧道与带外检测/**/*.rules"
-      - "DNS隧道与带外检测/lua/**"
-      - "DNS隧道与带外检测/dns_tunnel_allow.lst"
-      - "DNS隧道与带外检测/zeek/**"
-      - "test/assert_zeek.py"
-      - "test/generate_pcaps.py"
-      - "test/cases.json"
-      - "test/assert_suricata.py"
-      - "test/suricata-ci.yaml.in"
-      - "test/classification.config"
-      - "test/reference.config"
+      - "规则检测/DNS隧道与带外检测/*.rules"
+      - "规则检测/DNS隧道与带外检测/**/*.rules"
+      - "规则检测/DNS隧道与带外检测/lua/**"
+      - "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst"
+      - "规则检测/DNS隧道与带外检测/zeek/**"
+      - "测试用例/assert_zeek.py"
+      - "测试用例/generate_pcaps.py"
+      - "测试用例/cases.json"
+      - "测试用例/assert_suricata.py"
+      - "测试用例/suricata-ci.yaml.in"
+      - "测试用例/classification.config"
+      - "测试用例/reference.config"
       - ".github/workflows/suricata-dns-tunnel.yml"
 
 jobs:
@@ -51,7 +51,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check scapy==2.6.1
 
       - name: Generate test PCAPs
-        run: python test/generate_pcaps.py --out test/pcap
+        run: python 测试用例/generate_pcaps.py --out 测试用例/pcap
 
       - name: Install Suricata build dependencies
         run: |
@@ -88,47 +88,47 @@ jobs:
       - name: Stage rules, dataset and Lua
         run: |
           set -euo pipefail
-          mkdir -p test/stage test/out/suricata
-          cp "DNS隧道与带外检测/DNS隧道与带外检测规则.rules" test/stage/
-          cp "DNS隧道与带外检测/dns_tunnel_allow.lst" test/stage/
-          cp DNS隧道与带外检测/lua/*.lua test/stage/
-          cp test/classification.config test/reference.config test/stage/
+          mkdir -p 测试用例/stage 测试用例/out/suricata
+          cp "规则检测/DNS隧道与带外检测/DNS隧道与带外检测规则.rules" 测试用例/stage/
+          cp "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst" 测试用例/stage/
+          cp 规则检测/DNS隧道与带外检测/lua/*.lua 测试用例/stage/
+          cp 测试用例/classification.config 测试用例/reference.config 测试用例/stage/
           sed \
-            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/test/stage|g" \
-            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/test/out|g" \
-            test/suricata-ci.yaml.in > test/suricata-ci.yaml
+            -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/测试用例/stage|g" \
+            -e "s|__LOG_DIR__|$GITHUB_WORKSPACE/测试用例/out|g" \
+            测试用例/suricata-ci.yaml.in > 测试用例/suricata-ci.yaml
 
       - name: Suricata config test
-        run: suricata -T -c test/suricata-ci.yaml -v
+        run: suricata -T -c 测试用例/suricata-ci.yaml -v
 
       - name: Replay PCAP corpus
         run: |
           set -euo pipefail
-          for pcap in test/pcap/*.pcap; do
+          for pcap in 测试用例/pcap/*.pcap; do
             name="$(basename "$pcap" .pcap)"
-            out="$GITHUB_WORKSPACE/test/out/suricata/$name"
+            out="$GITHUB_WORKSPACE/测试用例/out/suricata/$name"
             mkdir -p "$out"
             echo "== $name"
-            suricata -c test/suricata-ci.yaml -r "$pcap" -l "$out" -k none
+            suricata -c 测试用例/suricata-ci.yaml -r "$pcap" -l "$out" -k none
           done
 
       - name: Assert Suricata alerts
-        run: python test/assert_suricata.py --eve-root test/out/suricata --cases test/cases.json
+        run: python 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/cases.json
 
 
       - name: Zeek correlation + community-id linkage
         run: |
           set -euo pipefail
-          mkdir -p test/zeek_out/dns
+          mkdir -p 测试用例/zeek_out/dns
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
-            -w /work/test/zeek_out/dns \
+            -w /work/测试用例/zeek_out/dns \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/test/pcap/txt_burst_positive.pcap /work/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek LogAscii::use_json=T
-          python test/assert_zeek.py \
-            --log test/zeek_out/dns/dns_correlation.log \
+            zeek -b -Cr /work/测试用例/pcap/txt_burst_positive.pcap /work/规则检测/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek LogAscii::use_json=T
+          python 测试用例/assert_zeek.py \
+            --log 测试用例/zeek_out/dns/dns_correlation.log \
             --scenario dns-tunnel \
-            --eve-root test/out/suricata \
+            --eve-root 测试用例/out/suricata \
             --case txt_burst_positive
 
       - name: Upload Suricata logs
@@ -137,7 +137,7 @@ jobs:
         with:
           name: suricata-dns-tunnel-8.0.8-logs
           path: |
-            test/out
-            test/zeek_out
-            test/suricata-ci.yaml
+            测试用例/out
+            测试用例/zeek_out
+            测试用例/suricata-ci.yaml
           if-no-files-found: ignore

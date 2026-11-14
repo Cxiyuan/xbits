@@ -9,7 +9,7 @@
   `lua/recon_wrapped_ua.lua`、`lua/recon_method.lua`
 - 缺陷分析：`误报分析与规则缺陷.md`
 - Lua 强化空间：`Lua强化空间分析.md`
-- 测试：`../test/generate_recon_pcaps.py`、`../test/recon_cases.json`
+- 测试：`../../测试用例/generate_recon_pcaps.py`、`../../测试用例/recon_cases.json`
 
 ## 1. 检测分层
 
@@ -158,13 +158,13 @@ Lua 已排除常见健康检查 UA：`kube-probe`、`ELB-HealthChecker`、`Googl
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_recon_pcaps.py --out test/recon_pcap
-suricata -T -c test/suricata-recon-ci.yaml
-for pcap in test/recon_pcap/*.pcap; do
+python3 测试用例/generate_recon_pcaps.py --out 测试用例/recon_pcap
+suricata -T -c 测试用例/suricata-recon-ci.yaml
+for pcap in 测试用例/recon_pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-recon-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-recon-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/recon_cases.json
 ```
 
 最终验证只认 `.github/workflows/suricata-recon-tools.yml` 的 GitHub Actions 结果。

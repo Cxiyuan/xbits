@@ -11,7 +11,7 @@
 - 分析：
   - `规则质量与误报分析.md`
   - `命令与控制信标规则质量与误报分析.md`
-- 测试：`../test/generate_backdoor_pcaps.py`、`../test/backdoor_cases.json`
+- 测试：`../../测试用例/generate_backdoor_pcaps.py`、`../../测试用例/backdoor_cases.json`
 
 ## 1. 规则与分级
 
@@ -68,13 +68,13 @@ C2 响应        : $EXTERNAL_NET -> $HOME_NET
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_backdoor_pcaps.py --out test/backdoor_pcap
-suricata -T -c test/suricata-backdoor-ci.yaml
-for pcap in test/backdoor_pcap/*.pcap; do
+python3 测试用例/generate_backdoor_pcaps.py --out 测试用例/backdoor_pcap
+suricata -T -c 测试用例/suricata-backdoor-ci.yaml
+for pcap in 测试用例/backdoor_pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-backdoor-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-backdoor-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdoor_cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/backdoor_cases.json
 ```
 
 最终验证只认 `.github/workflows/suricata-backdoor-c2.yml`。

@@ -1,11 +1,11 @@
-# test · 测试与流量模拟
+# 测试用例 · 测试与流量模拟
 
 本目录只用于 CI 与本地预检，不属于检测逻辑。当前场景：
 
-- `DNS隧道与带外检测/`（Suricata 8.0.8）
-- `侦察与攻击工具指纹/`（Suricata 8.0.8）
-- `Web漏洞利用/`（Suricata 8.0.8）
-- `后门通信/`（Suricata 8.0.8，WebShell + C2 信标）
+- `规则检测/DNS隧道与带外检测/`（Suricata 8.0.8）
+- `规则检测/侦察与攻击工具指纹/`（Suricata 8.0.8）
+- `规则检测/Web漏洞利用/`（Suricata 8.0.8）
+- `规则检测/后门通信/`（Suricata 8.0.8，WebShell + C2 信标）
 
 若后续某个场景使用 Zeek，`.zeek` 脚本放在该场景目录内（如 `<场景>/zeek/`），
 不创建仓库根级 `zeek/`。
@@ -24,13 +24,13 @@
 
 **结论**：没有一个可直接采用、许可清晰、与本案 SID/Lua 精确对应的公开测试集。
 因此使用 **Scapy 2.6.1 生成确定性合成 PCAP**，覆盖每条规则/Lua 的正例与反例。
-如果后续需要真实恶意流量，建议单独放在 `test/realworld/` 并明确许可与来源，不进入默认 CI。
+如果后续需要真实恶意流量，建议单独放在 `测试用例/realworld/` 并明确许可与来源，不进入默认 CI。
 
 ## 2. 生成测试流量
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_pcaps.py --out test/pcap
+python3 测试用例/generate_pcaps.py --out 测试用例/pcap
 ```
 
 生成的文件（CI 每次重新生成，不提交到仓库）：
@@ -59,7 +59,7 @@ python3 test/generate_pcaps.py --out test/pcap
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_recon_pcaps.py --out test/recon_pcap
+python3 测试用例/generate_recon_pcaps.py --out 测试用例/recon_pcap
 ```
 
 | PCAP | 场景 | 期望 |
@@ -94,7 +94,7 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 | `recon_nuclei_403_html.pcap` | Nuclei + `/.env` + HTML 403 登录页 | 9101005/9101101/9101107 |
 | `recon_body_201.pcap` | sqlmap + `/.git/config` + 201 + `[core]` | 9101004/9101101/9101102/9101108 |
 
-断言文件为 `recon_cases.json`，当前共 29 个 PCAP；检测规则/Lua 在 `侦察与攻击工具指纹/`。
+断言文件为 `recon_cases.json`，当前共 29 个 PCAP；检测规则/Lua 在 `规则检测/侦察与攻击工具指纹/`。
 
 ## 4. Web 漏洞利用场景
 
@@ -102,7 +102,7 @@ python3 test/generate_recon_pcaps.py --out test/recon_pcap
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_web_pcaps.py --out test/web_pcap
+python3 测试用例/generate_web_pcaps.py --out 测试用例/web_pcap
 ```
 
 | PCAP 组 | 场景 | 期望 |
@@ -118,7 +118,7 @@ python3 test/generate_web_pcaps.py --out test/web_pcap
 | `web_upload_webshell` | 脚本扩展名 + PHP 代码 | 9103104 |
 | `web_*_negative` | 正常 SQL 元数据词、相对路径、`${env:}`、`&id=2`、安全 `@type`、外链 URL、普通 XML、`{{name}}`、PDF 上传 | 不命中对应规则 |
 
-断言文件为 `web_cases.json`，共 34 个 PCAP；检测规则/Lua 在 `Web漏洞利用/`。
+断言文件为 `web_cases.json`，共 34 个 PCAP；检测规则/Lua 在 `规则检测/Web漏洞利用/`。
 正例同时 forbid 其他类别 SID，避免跨类别误报；反例 forbid 全部 9 个 SID。
 
 ## 5. 后门通信 / C2 信标场景
@@ -127,7 +127,7 @@ python3 test/generate_web_pcaps.py --out test/web_pcap
 
 ```bash
 python3 -m pip install scapy==2.6.1
-python3 test/generate_backdoor_pcaps.py --out test/backdoor_pcap
+python3 测试用例/generate_backdoor_pcaps.py --out 测试用例/backdoor_pcap
 ```
 
 | PCAP 组 | 场景 | 期望 |
@@ -150,7 +150,7 @@ python3 test/generate_backdoor_pcaps.py --out test/backdoor_pcap
 | `c2_negative_analytics` | 正常 `?a=1&b=2&c=3` | 不命中 9110001-7 |
 | `c2_negative_panel` | 正常 `/api/file/upload` | 不命中 9110001-7 |
 
-断言文件为 `backdoor_cases.json`，共 17 个 PCAP；规则/Lua 在 `后门通信/`。
+断言文件为 `backdoor_cases.json`，共 17 个 PCAP；规则/Lua 在 `规则检测/后门通信/`。
 
 ## 6. Zeek 关联分析
 
@@ -158,17 +158,17 @@ python3 test/generate_backdoor_pcaps.py --out test/backdoor_pcap
 
 | 场景 | Zeek 脚本 | 关联日志 |
 |---|---|---|
-| DNS | `DNS隧道与带外检测/zeek/dns_tunnel_score.zeek` | `dns_correlation.log` |
-| 侦察 | `侦察与攻击工具指纹/zeek/recon_score.zeek` | `recon_correlation.log` |
-| Web | `Web漏洞利用/zeek/web_exploit_chain.zeek` | `web_correlation.log` |
-| 后门/C2 | `后门通信/zeek/backdoor_c2_score.zeek` | `backdoor_correlation.log` |
+| DNS | `规则检测/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek` | `dns_correlation.log` |
+| 侦察 | `规则检测/侦察与攻击工具指纹/zeek/recon_score.zeek` | `recon_correlation.log` |
+| Web | `规则检测/Web漏洞利用/zeek/web_exploit_chain.zeek` | `web_correlation.log` |
+| 后门/C2 | `规则检测/后门通信/zeek/backdoor_c2_score.zeek` | `backdoor_correlation.log` |
 
 联动机制：
 
 - Suricata EVE 开启 `community-id: true`；
 - Zeek 日志字段 `community_id` 由 `community_id_v1(c$id)` 生成；
 - Zeek 日志字段 `related_sids` 记录对应场景 Suricata SID；
-- `test/assert_zeek.py` 断言 Zeek 事件，并与同一 PCAP 的 Suricata EVE
+- `测试用例/assert_zeek.py` 断言 Zeek 事件，并与同一 PCAP 的 Suricata EVE
   `community_id` 求交集；交集为空即失败；
 - Zeek 9.0.1 使用固定 Docker digest，
   `zeek -b -Cr <pcap> <script>` 加载运行。
@@ -176,15 +176,15 @@ python3 test/generate_backdoor_pcaps.py --out test/backdoor_pcap
 本地运行示例：
 
 ```bash
-mkdir -p test/zeek_out/dns
-docker run --rm -v "$PWD:/work" -w /work/test/zeek_out/dns \
+mkdir -p 测试用例/zeek_out/dns
+docker run --rm -v "$PWD:/work" -w /work/测试用例/zeek_out/dns \
   zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-  zeek -b -Cr /work/test/pcap/txt_burst_positive.pcap \
-  /work/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek LogAscii::use_json=T
-python test/assert_zeek.py \
-  --log test/zeek_out/dns/dns_correlation.log \
+  zeek -b -Cr /work/测试用例/pcap/txt_burst_positive.pcap \
+  /work/规则检测/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek LogAscii::use_json=T
+python 测试用例/assert_zeek.py \
+  --log 测试用例/zeek_out/dns/dns_correlation.log \
   --scenario dns-tunnel \
-  --eve-root test/out/suricata --case txt_burst_positive
+  --eve-root 测试用例/out/suricata --case txt_burst_positive
 ```
 
 注意：Zeek `-b` 模式不会自动加载 base 脚本，脚本内已显式
@@ -195,7 +195,7 @@ python test/assert_zeek.py \
 - `cases.json`：DNS 场景每个 PCAP 的 `require` / `forbid` SID。
 - `recon_cases.json`：侦察场景每个 PCAP 的 `require` / `forbid` SID。
 - `web_cases.json`：Web 漏洞利用场景每个 PCAP 的 `require` / `forbid` SID。
-- `backdoor_cases.json`：后门通信/C2 信标场景每个 PCAP 的 `require` / `forbid` SID。
+- `backdoor_cases.json`：规则检测/后门通信/C2 信标场景每个 PCAP 的 `require` / `forbid` SID。
 - `assert_zeek.py`：断言 Zeek `*_correlation.log`，并校验 Suricata EVE `community_id` 交集。
 - `assert_suricata.py`：解析 `eve.json`，断言 `alert.signature_id`。
 
@@ -208,36 +208,36 @@ python test/assert_zeek.py \
 
 ```bash
 # Suricata 8.0.8 + 完整规则/dataset/Lua
-suricata -T -c test/suricata-ci.yaml
-for pcap in test/pcap/*.pcap; do
+suricata -T -c 测试用例/suricata-ci.yaml
+for pcap in 测试用例/pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/cases.json
 
 # 侦察场景
-suricata -T -c test/suricata-recon-ci.yaml
-for pcap in test/recon_pcap/*.pcap; do
+suricata -T -c 测试用例/suricata-recon-ci.yaml
+for pcap in 测试用例/recon_pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-recon-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-recon-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/recon_cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/recon_cases.json
 
 # Web 漏洞利用场景
-suricata -T -c test/suricata-web-ci.yaml
-for pcap in test/web_pcap/*.pcap; do
+suricata -T -c 测试用例/suricata-web-ci.yaml
+for pcap in 测试用例/web_pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-web-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-web-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/web_cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/web_cases.json
 
 # 后门通信 / C2 信标场景
-suricata -T -c test/suricata-backdoor-ci.yaml
-for pcap in test/backdoor_pcap/*.pcap; do
+suricata -T -c 测试用例/suricata-backdoor-ci.yaml
+for pcap in 测试用例/backdoor_pcap/*.pcap; do
   name=$(basename "$pcap" .pcap)
-  suricata -c test/suricata-backdoor-ci.yaml -r "$pcap" -l "test/out/suricata/$name" -k none
+  suricata -c 测试用例/suricata-backdoor-ci.yaml -r "$pcap" -l "测试用例/out/suricata/$name" -k none
 done
-python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdoor_cases.json
+python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --cases 测试用例/backdoor_cases.json
 ```
 
 **最终验证只认 GitHub Actions**：
@@ -245,7 +245,7 @@ python3 test/assert_suricata.py --eve-root test/out/suricata --cases test/backdo
 - `.github/workflows/suricata-dns-tunnel.yml`：DNS 场景规则/Lua/dataset/测试断言变更时运行。
 - `.github/workflows/suricata-recon-tools.yml`：侦察场景规则/Lua/测试断言变更时运行。
 - `.github/workflows/suricata-web-exploit.yml`：Web 漏洞利用场景规则/Lua/测试断言变更时运行。
-- `.github/workflows/suricata-backdoor-c2.yml`：后门通信/C2 信标场景规则/Lua/测试断言变更时运行。
+- `.github/workflows/suricata-backdoor-c2.yml`：规则检测/后门通信/C2 信标场景规则/Lua/测试断言变更时运行。
 - 上述四个 Suricata workflow 内均包含 Zeek 关联与 community-id 断言；
   没有独立根级 Zeek CI。
 - 后续场景若使用 Suricata，新增该场景的 Suricata workflow；若使用 Zeek，
