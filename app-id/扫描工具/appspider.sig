@@ -8,6 +8,6 @@
 signature appspider_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /(.|\r|\n)*User-Agent:.*[^A-Za-z0-9]AppSpider([^A-Za-z0-9]|$)/
+    payload /[\x09\x0a\x0d\x20-\x7e]*User-Agent:.*[^A-Za-z0-9]AppSpider([^A-Za-z0-9]|$)/
     event "scanner_ua_appspider"
 }

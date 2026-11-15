@@ -107,7 +107,7 @@ def main():
     for f in fails:
         print(f)
     ann("notice", "scan-summary", f"DET={det}/{tot} FPR={fp}/{neg} broken={broken}")
-    ann("notice", "sig-hit", f"UA 用例命中 .sig 数（证明签名真正触发）: {sig_hit}/{ua_cases}")
+    ann("notice", "sig-hit", f"UA 用例命中明文 .sig 数（若为0说明行中段签名不触发，UA 以脚本层为准）: {sig_hit}/{ua_cases}")
     ann("notice", "pass-list", "PASS=[" + ", ".join(passed) + "]")
     if missed:
         ann("notice", "miss-list", "MISS=[" + ", ".join(missed) + "]")

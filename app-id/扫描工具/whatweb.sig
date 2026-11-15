@@ -8,6 +8,6 @@
 signature whatweb_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /(.|\r|\n)*User-Agent: WhatWeb\//
+    payload /[\x09\x0a\x0d\x20-\x7e]*User-Agent: WhatWeb\//
     event "scanner_ua_whatweb"
 }

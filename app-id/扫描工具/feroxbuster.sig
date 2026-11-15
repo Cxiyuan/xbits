@@ -8,6 +8,6 @@
 signature feroxbuster_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /(.|\r|\n)*User-Agent: feroxbuster\//
+    payload /[\x09\x0a\x0d\x20-\x7e]*User-Agent: feroxbuster\//
     event "scanner_ua_feroxbuster"
 }

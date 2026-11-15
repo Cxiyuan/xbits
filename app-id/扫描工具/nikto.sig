@@ -8,6 +8,6 @@
 signature nikto_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /(.|\r|\n)*User-Agent:.*Nikto\//
+    payload /[\x09\x0a\x0d\x20-\x7e]*User-Agent:.*Nikto\//
     event "scanner_ua_nikto"
 }
