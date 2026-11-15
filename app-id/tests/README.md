@@ -21,3 +21,8 @@ python3 app-id/tests/run_tests.py
 
 ## CI
 `.github/workflows/app-id-scan.yml`：`zeek/zeek:9.0.1` 容器内装 scapy → 生成 PCAP → 回放断言；用于持续验证识别能力与误报率（目标 FPR≈0）。
+
+## 最近实测结果（CI）
+- 正样本检出率：**47/47 = 100%**
+- 负样本误报率：**0/5 = 0%**
+- 覆盖：44 个 UA 工具单请求 + nmap(NSE UA/FourOhFour/探针序列) + 目录爆破 + 端口扫描；负样本：浏览器/curl/python-requests/健康检查/Go。

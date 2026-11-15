@@ -114,3 +114,15 @@
 - 正样本：各 UA 工具单请求、nmap TierA、nmap 探针序列、目录爆破(多 404 URI)、端口扫描(多 SYN 端口)；
 - 负样本：浏览器、curl、python-requests 正常、健康检查、Go 客户端；
 - 指标：检出率（正样本被判/应判）、误报率（负样本被判）；阈值目标 FPR≈0。
+
+## 7. 实测验证结果（GitHub Actions · Zeek 9.0.1 容器）
+工作流 `.github/workflows/app-id-scan.yml` 已跑通（run #43739282279，**success**）：
+- **检出率 DET = 47/47 = 100%**（44 个 UA 工具单请求 + nmap NSE UA + nmap FourOhFour + nmap 探针序列 + 目录爆破 + 端口扫描）；
+- **误报率 FPR = 0/5 = 0%**（浏览器/curl/python-requests/健康检查/Go 客户端均未误判）。
+
+过程中定位并修复的真实问题（体现 CI 价值）：
+1. **`http_request` 时 `c$http$host`/`user_agent` 尚未填充**（Zeek 在后续 `http_header` 才设置）→ 改用 `event http_header` 取 Host/UA，UA 与目录爆破检测才生效；
+2. **Zeek `.sig` 的 `payload` 正则对“行首锚定/前导字节”敏感**：`User-Agent:` 位于请求头（非 payload 开头）时明文签名不触发 → 现由脚本层 `http_header` 的 `ua_to_tool()` 兜底（HTTP/2 亦覆盖）；
+3. 局部变量 `ln` 与 Zeek 内置 `ln` 冲突、文件 UTF-8 BOM 导致加载失败 → 已修复。
+
+> 结论：**检测能力已在 Zeek 9.0.1 下实测通过**；UA 工具、nmap 探针、目录爆破、端口扫描均命中，负样本零误报。
