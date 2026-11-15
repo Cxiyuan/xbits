@@ -67,6 +67,24 @@
 
 > 结论：**已消除"单一计数阈值即命中"的路径**；行为判定改为"多条件结构性证据"，弱信号只做旁证。
 
+### 2.4 scan.zeek 代码级 QA（与 sig 一起复审）
+对 `app-id/scripts/appid/scan.zeek`（v2）逐段复审，发现并处理如下（高/中/低）：
+
+| 级别 | 位置 | 问题 | 处理 |
+|---|---|---|---|
+| 高 | `http_request`/`judge_host` | host 缺失（`"-"`）时按 `"-"` 聚合，会把"访问不同主机的 HTTP/1.0 请求"合并 → 目录爆破误报 | **已修复**：`host=="-"` 不参与目录爆破聚合与判定 |
+| 高 | `http_request` | 复审中发现编辑可能丢失"每源 requests/UA 处理"块 → 工具识别/计数失效 | **已修复**：恢复 `s$requests`/UA 分类/`ua_to_tool` |
+| 中 | `judge` | 源先被报为 `unknown` 后，无法升级为"具体工具" | **已修复**：`reported_tool` + 允许"出现新具体工具"再报 |
+| 中 | `.sig` 明文匹配 | HTTP/2（HPACK）、TLS 加密、TCP 分片下明文签名失效 → 漏报 | **部分修复**：加脚本层 `ua_to_tool(c$http$user_agent)` 兜底 h2/分片；TLS 仍待 JA3（后续） |
+| 中 | `ua_to_tool`/`.sig` | `nuclei/wpscan/commix/dirbuster/wafw00f` 等子串 token 存在子串误报可能 | 待办：加词边界（如 `(^|[\s(])token(\b|[/ ])`） |
+| 中 | `port_scan` | 仍以 `dports`+无载荷比例（结构性多条件）判定，需基线校准；NAT 出口聚合风险 | 白名单 + 影子模式校准 |
+| 低 | `judge` | evidence 以 `"|"` 开头（美观问题） | 可忽略/后续 trim |
+| 低 | `classify_lib` | `"no-ua"` 分支永不触发（死判断） | 无害 |
+| 低 | 输出字段 | `distinct_uri` 仅在目录爆破时填充；纯端口扫描 verdict 时为 0 | 可接受 |
+| 待验证 | Zeek 9.0.1 | `http_request/http_reply/signature_match` 字段、`http2` 是否触发 http 事件并填充 `c$http$user_agent`、`c$orig$size` 语义 | 需 Zeek 9.0.1 容器编译+回放 |
+
+**静态检查**：花括号 34/34 平衡；可选字段访问仅 `c?$http`、`c$http?$host`、`c$http?$user_agent`；正则 `(\?|$)` 为转义字符类，非三元运算。
+
 ## 3. 剩余误报风险（需用回归收敛）
 - **端口扫描**：大量短 TLS 连接（如压测、健康检查）可能 nodata 比偏高 → 需白名单/基线；
 - **目录爆破**：正常 API 网关/爬虫产生大量 URI 但静态资源低、404 低 → 由 404/403 比 + 唯一比双重约束降低；仍需负样本验证；

@@ -61,6 +61,7 @@ type S: record {
 	lib:        string &default="";
 	nonbrowser: bool   &default=F;
 	reported:   bool   &default=F;
+	reported_tool: string &default="";
 };
 
 # 每(源,host) 目录爆破状态
@@ -146,8 +147,6 @@ function judge(src: addr)
 	if ( src !in st )
 		return;
 	local s = st[src];
-	if ( s$reported )
-		return;
 
 	local evid: string = "";
 	local tool: string = "";
@@ -187,6 +186,10 @@ function judge(src: addr)
 	if ( ! verdict )
 		return;                                  # 只有弱线索 → 不判
 
+	# 去重/可升级：已报过则仅在"出现新的具体工具"时再报（如先 unknown，后识别出 gobuster）
+	if ( s$reported && (tool == "" || tool == s$reported_tool) )
+		return;
+
 	local toolstr = tool;
 	if ( toolstr == "" ) toolstr = "-";
 	local libstr = s$lib;
@@ -200,6 +203,7 @@ function judge(src: addr)
 	Log::write(XbitsScan::LOG, rec);
 
 	s$reported = T;
+	s$reported_tool = tool;
 	st[src] = s;
 	}
 
@@ -207,6 +211,8 @@ function judge(src: addr)
 function judge_host(src: addr, host: string)
 	{
 	if ( src in whitelist )
+		return;
+	if ( host == "-" )          # 无 Host 的 HTTP/1.0 请求无法按目标主机聚合，避免跨主机误判
 		return;
 	if ( [src, host] !in hosts )
 		return;
@@ -267,8 +273,6 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 	if ( c?$http && c$http?$host )
 		host = c$http$host;
 	ensure(src);
-	ensure_host(src, host);
-
 	local s = st[src];
 	s$requests += 1;
 	add s$dports[c$id$resp_p];
@@ -285,12 +289,16 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 		}
 	st[src] = s;
 
-	local h = hosts[src, host];
-	h$requests += 1;
-	add h$uris[original_URI];
-	if ( /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)(\?|$)/ in to_lower(original_URI) )
-		h$static += 1;
-	hosts[src, host] = h;
+	if ( host != "-" )
+		{
+		ensure_host(src, host);
+		local h = hosts[src, host];
+		h$requests += 1;
+		add h$uris[original_URI];
+		if ( /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)(\?|$)/ in to_lower(original_URI) )
+			h$static += 1;
+		hosts[src, host] = h;
+		}
 
 	judge(src);
 	judge_host(src, host);
