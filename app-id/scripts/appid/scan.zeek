@@ -77,7 +77,7 @@ function classify_lib(ua: string): string
 function ensure(src: addr)
 	{
 	if ( src !in st )
-		st[src] = S($first=network_time());
+		st[src] = S($first=network_time(), $uris=set(), $dports=set(), $tools=set());
 	}
 
 function judge(src: addr)
