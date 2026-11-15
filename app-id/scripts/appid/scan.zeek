@@ -476,28 +476,23 @@ event dns_request(c: connection, msg: dns_msg, query: string, qtype: count, qcla
 	local src = c$id$orig_h;
 	if ( src in whitelist )
 		return;
-	if ( query == "version.bind" || query == "hostname.bind" )
+	if ( query == "version.bind" || query == "hostname.bind" || qtype == 12 )
 		{
 		ensure(src);
 		local s = st[src];
-		s$dns_bind = T;
+		if ( query == "version.bind" || query == "hostname.bind" )
+			s$dns_bind = T;
+		if ( qtype == 12 )
+			add s$dns_ptr[query];
 		st[src] = s;
-		judge(src);
-		}
-	# PTR 反查扫描：大量不同 PTR 查询（qtype=12）→ DNS 侦察结构性行为
-	if ( qtype == 12 )
-		{
-		ensure(src);
-		local s = st[src];
-		add s$dns_ptr[query];
-		st[src] = s;
-		if ( |s$dns_ptr| >= dns_ptr_threshold )
+		# PTR 反查扫描：大量不同 PTR 查询（qtype=12）→ DNS 侦察结构性行为
+		if ( qtype == 12 && |s$dns_ptr| >= dns_ptr_threshold )
 			{
 			local s2 = st[src];
 			s2$dns_ptr_recon = T;
 			st[src] = s2;
-			judge(src);
 			}
+		judge(src);
 		}
 	}
 
