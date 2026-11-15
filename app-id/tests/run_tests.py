@@ -48,6 +48,8 @@ def main():
     cases = json.load(open(MANIFEST, encoding="utf-8"))
     det = tot = fp = neg = 0
     fails = []
+    passed = []
+    missed = []
     broken = False
 
     for c in cases:
@@ -63,6 +65,8 @@ def main():
                 broken = True
                 break
             rows = parse_tsv(os.path.join(work, "scan_report.log"))
+            sigrows = parse_tsv(os.path.join(work, "signatures.log"))
+            sig_ids = sorted({x.get("sig_id", "") for x in sigrows if x.get("sig_id")})
             found = [x for x in rows if x.get("src") == c["client"]]
             if c["expect"] == "negative":
                 neg += 1
@@ -80,10 +84,12 @@ def main():
                         ok = any(x.get("tool") == c["tool"] for x in found)
                 if ok:
                     det += 1
+                    passed.append(c["pcap"])
                 else:
-                    fails.append(f"[MISS] {c['pcap']} 期望 {c['expect']}/{c.get('tool')}，实得 {found}")
+                    missed.append(c["pcap"])
+                    fails.append(f"[MISS] {c['pcap']} 期望 {c['expect']}/{c.get('tool')}，实得 {found} sigs={sig_ids}")
                     ann("error", f"MISS {c['pcap']}",
-                        f"期望 {c['expect']}/{c.get('tool')}，实得 {found}")
+                        f"期望 {c['expect']}/{c.get('tool')}，实得 {found} sigs={sig_ids}")
         finally:
             shutil.rmtree(work, ignore_errors=True)
 
@@ -94,6 +100,9 @@ def main():
     for f in fails:
         print(f)
     ann("notice", "scan-summary", f"DET={det}/{tot} FPR={fp}/{neg} broken={broken}")
+    ann("notice", "pass-list", "PASS=[" + ", ".join(passed) + "]")
+    if missed:
+        ann("notice", "miss-list", "MISS=[" + ", ".join(missed) + "]")
 
     if (not broken) and det == tot and fp == 0 and tot > 0:
         print("RESULT: PASS (检出全中，零误报)")
