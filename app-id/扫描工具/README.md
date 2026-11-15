@@ -7,6 +7,8 @@
 - **Tier B（弱线索）**：仅旁证，不单独判定（如 nmap 通用 HTTP/1.0 探针）。
 - 无独特 UA 的工具（masscan/zmap/naabu/rustscan 等）主要靠 `scan.zeek` 的**行为**（端口扫描/目录爆破）识别。
 
+> 重要限制（实测）：Zeek `.sig` 的 `payload` 正则**隐式锚定 payload 首字节**，对位于**请求头中段**的 `User-Agent:` **不触发**（即使加前导字符类）。因此 **UA 工具识别以 `scan.zeek` 的 `http_header`→`ua_to_tool()` 为准**（覆盖 HTTP/1.x/2）；本目录 `.sig` 主要用于**流首探针**（nmap FourOhFour/TierB 等）及其它引擎/场景。
+
 ## 当前覆盖（44 个 .sig）
 - 目录/参数爆破：ffuf、gobuster、feroxbuster、dirbuster、arjun、wfuzz、kiterunner
 - 漏洞/WEB 扫描：sqlmap、nuclei、nikto、wpscan、w3af、wapiti、arachni、skipfish、dalfox、xsstrike、commix、wafw00f
