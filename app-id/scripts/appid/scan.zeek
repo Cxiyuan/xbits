@@ -78,6 +78,14 @@ type HostS: record {
 global st:    table[addr] of S &create_expire=300sec;
 global hosts: table[addr, string] of HostS &create_expire=300sec;
 
+# 每连接暂存（请求行 URI + 已解析 Host），供 http_header 阶段回填（http_request 时 c$http$host/UA 尚未填充）
+type CH: record {
+	src:  addr;
+	uri:  string;
+	host: string &default="-";
+};
+global ch: table[string] of CH &create_expire=300sec;
+
 function classify_lib(ua: string): string
 	{
 	local u = to_lower(ua);
@@ -301,39 +309,54 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 	local src = c$id$orig_h;
 	if ( src in whitelist )
 		return;
-	local host = "-";
-	if ( c?$http && c$http?$host )
-		host = c$http$host;
 	ensure(src);
 	local s = st[src];
 	s$requests += 1;
 	add s$dports[c$id$resp_p];
-	if ( c?$http && c$http?$user_agent )
+	st[src] = s;
+	ch[c$uid] = CH($src=src, $uri=original_URI);
+	judge(src);
+	}
+
+# 请求头阶段：Host/User-Agent 在此才由基础 HTTP 分析器填入（http_request 时尚未填充）
+event http_header(c: connection, is_orig: bool, name: string, value: string)
+	{
+	if ( ! is_orig )
+		return;
+	if ( c$uid !in ch )
+		return;
+	local src = ch[c$uid]$src;
+	if ( src in whitelist )
+		return;
+	local ln = to_lower(name);
+	if ( ln == "host" )
 		{
-		local ua = c$http$user_agent;
-		local lib = classify_lib(ua);
+		local cur = ch[c$uid];
+		cur$host = value;
+		ch[c$uid] = cur;
+		ensure_host(src, value);
+		local h = hosts[src, value];
+		h$requests += 1;
+		add h$uris[ch[c$uid]$uri];
+		if ( /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)(\?|$)/ in to_lower(ch[c$uid]$uri) )
+			h$static += 1;
+		hosts[src, value] = h;
+		judge_host(src, value);
+		}
+	else if ( ln == "user-agent" )
+		{
+		ensure(src);
+		local s = st[src];
+		local lib = classify_lib(value);
 		s$lib = lib;
 		if ( lib != "other" )
 			s$nonbrowser = T;
-		local ut = ua_to_tool(ua);
+		local ut = ua_to_tool(value);
 		if ( ut != "" )
 			add s$tools[ut];
+		st[src] = s;
+		judge(src);
 		}
-	st[src] = s;
-
-	if ( host != "-" )
-		{
-		ensure_host(src, host);
-		local h = hosts[src, host];
-		h$requests += 1;
-		add h$uris[original_URI];
-		if ( /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)(\?|$)/ in to_lower(original_URI) )
-			h$static += 1;
-		hosts[src, host] = h;
-		}
-
-	judge(src);
-	judge_host(src, host);
 	}
 
 event http_reply(c: connection, version: string, code: count, reason: string)
@@ -342,8 +365,8 @@ event http_reply(c: connection, version: string, code: count, reason: string)
 	if ( src in whitelist )
 		return;
 	local host = "-";
-	if ( c?$http && c$http?$host )
-		host = c$http$host;
+	if ( c$uid in ch )
+		host = ch[c$uid]$host;
 	if ( [src, host] in hosts )
 		{
 		local h = hosts[src, host];
@@ -360,6 +383,8 @@ event connection_state_remove(c: connection)
 	local src = c$id$orig_h;
 	if ( src in whitelist )
 		return;
+	if ( c$uid in ch )
+		delete ch[c$uid];
 	ensure(src);
 	local s = st[src];
 	add s$dports[c$id$resp_p];
