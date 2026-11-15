@@ -4,10 +4,10 @@
 ##! 依据：app-id/docs/{nmap-dpi, custom-scanner-library-fingerprints, script-scan-precise-detection, qa-scan-tools}.md
 ##! 状态：**待 Zeek 9.0.1 编译/回放验证**（事件签名/字段按 source/xbits-zeek 9.0.1 源码核对）。
 ##!
-##! 识别层级：
-##!  1) 具体工具：.sig 命中（HTTP/1 明文） + 脚本层 UA 匹配（HTTP/2/分片亦可）→ 直判具体工具
-##!  2) 行为：目录爆破/端口扫描必须是"多条件结构性证据"，不再单靠一个计数阈值
-##!  3) 弱线索（脚本库/version.bind/nmap TierB）：只作佐证，绝不单独判定
+##! 识别层级（模型 B：sig/UA 仅候选，行为确认）：
+##!  1) 具体工具：.sig 命中 / 脚本层 UA 匹配 → 只作"候选"（不单独判定）
+##!  2) 确认：必须是"结构性行为"（目录爆破/端口扫描的多条件），或"候选 + ≥2 独立弱旁证"
+##!  3) 弱线索（脚本库/version.bind/nmap TierB）：仅作旁证/多信号，不单独判定
 
 module XbitsScan;
 
@@ -151,40 +151,48 @@ function judge(src: addr)
 	local evid: string = "";
 	local tool: string = "";
 
-	# 具体工具：签名（.sig）/ 脚本层 UA
+	# ① 具体工具：签名（.sig）/ 脚本层 UA —— 模型B下仅作"候选"，不单独判定
 	if ( |s$tools| > 0 )
 		{
 		for ( t in s$tools ) { if ( tool == "" ) tool = t; }
-		evid = evid + "|tool_ua=" + tool;
+		evid = evid + "|candidate_tool=" + tool;
 		}
 	if ( s$nmap_a )
 		{
 		tool = "nmap";
-		evid = evid + "|nmap_probe(TierA)";
+		evid = evid + "|candidate:nmap_probe(TierA)";
 		}
 
-	# 结构性行为（非纯阈值）：目录爆破 / 端口扫描 已在各自处按多条件置位
+	# ② 结构性行为（B 模型的"确认"条件）：目录爆破 / 端口扫描（多条件）
 	local structural = F;
 	if ( s$dir_brute ) { structural = T; evid = evid + "|dir_brute"; }
 	if ( s$port_scan ) { structural = T; evid = evid + "|port_scan"; }
 
-	# 弱线索（只作佐证，不单独判定）
-	if ( s$nmap_b >= 2 && tool == "" )
-		evid = evid + fmt("|nmap_tierB(x%d)", s$nmap_b);
+	# ③ 弱线索（计数，用于"多信号"替代路径；永不单独判定）
+	local weak = 0;
+	if ( s$nmap_b >= 2 ) { weak += 1; evid = evid + fmt("|nmap_tierB(x%d)", s$nmap_b); }
 	if ( s$lib != "" && s$lib != "other" && s$lib != "no-ua" && s$nonbrowser && s$requests >= script_req_threshold )
-		evid = evid + "|script_lib=" + s$lib;
-	if ( s$dns_bind )
-		evid = evid + "|dns_version_bind";
+		{ weak += 1; evid = evid + "|script_lib=" + s$lib; }
+	if ( s$dns_bind ) { weak += 1; evid = evid + "|dns_version_bind"; }
 
+	# ---- 模型B 判定：sig/UA 仅候选；必须"结构性行为确认"，或"候选 + ≥2 独立弱旁证" ----
 	local verdict = F;
 	local conf: double = 0.0;
-	if ( tool != "" )
-		{ verdict = T; conf = 0.90; }          # 具体工具字面 = 高精确
-	else if ( structural )
-		{ verdict = T; tool = "unknown"; conf = 0.75; }  # 结构性行为（多条件）才判 scanner
+	if ( structural )
+		{
+		verdict = T;
+		if ( tool == "" ) tool = "unknown";
+		if ( tool == "unknown" ) conf = 0.75; else conf = 0.90;
+		evid = evid + "|confirmed_by:structural";
+		}
+	else if ( tool != "" && weak >= 2 )
+		{
+		verdict = T; conf = 0.80;
+		evid = evid + "|confirmed_by:multi_signal";
+		}
 
 	if ( ! verdict )
-		return;                                  # 只有弱线索 → 不判
+		return;                                  # 仅候选（sig/UA）但无行为/多信号确认 → 不判
 
 	# 去重/可升级：已报过则仅在"出现新的具体工具"时再报（如先 unknown，后识别出 gobuster）
 	if ( s$reported && (tool == "" || tool == s$reported_tool) )
