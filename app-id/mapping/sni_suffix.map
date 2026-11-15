@@ -1,0 +1,16 @@
+# SNI / 域名后缀 -> 应用映射（示例数据，格式：后缀<TAB>应用<TAB>类别）
+# 说明：后续可由 Input::add_table 载入，或用 redef 扩充。仅示例，非完整库。
+facebook.com	Facebook	social
+fbcdn.net	Facebook	social
+instagram.com	Instagram	social
+whatsapp.net	WhatsApp	social
+youtube.com	YouTube	media
+googlevideo.com	YouTube	media
+netflix.com	Netflix	media
+dropbox.com	Dropbox	cloud
+box.com	Box	cloud
+github.com	GitHub	dev
+slack.com	Slack	collaboration
+zoom.us	Zoom	conferencing
+teamviewer.com	TeamViewer	remote
+anydesk.com	AnyDesk	remote

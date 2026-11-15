@@ -1,0 +1,8 @@
+[package]
+name = xbits-app-id
+version = 0.1.0
+summary = Zeek-based application identification engine library (xbits)
+maintainer = Cxiyuan
+license = BSD-3-Clause
+depends = zeek >= 9.0.0
+script_dir = scripts

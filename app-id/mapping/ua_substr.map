@@ -1,0 +1,11 @@
+# User-Agent 子串 -> 客户端应用映射（示例数据，格式：子串<TAB>应用<TAB>类别）
+# 说明：小写匹配；仅示例。
+dropbox	Dropbox	cloud
+onedrive	OneDrive	cloud
+python-requests	python-requests	script
+curl	curl	script
+wget	Wget	script
+go-http-client	go-http-client	script
+okhttp	OkHttp	library
+teamviewer	TeamViewer	remote
+anydesk	AnyDesk	remote
