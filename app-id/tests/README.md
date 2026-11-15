@@ -1,17 +1,23 @@
-# app-id 测试与回归（规划）
+# 扫描工具识别 · 测试与回归
 
-目标：用 Zeek 9.0.1 回放 PCAP，断言 `app_identity.log` 的应用/类别/置信度。
+在 **Zeek 9.0.1** 下回放自造 PCAP，验证 `app-id/扫描工具/*.sig` + `scan.zeek` 的**检出率 / 误报率**。
 
-## 计划
-- `tests/btest.cfg`：配置 btest 以 Zeek 9.0.1 运行本包脚本。
-- 每个应用识别路径至少一组**正例/反例** PCAP：
-  - TLS SNI（如 facebook.com）→ 应用 Facebook
-  - HTTP Host/UA（如 Dropbox UA）→ 应用 Dropbox
-  - DNS 后缀 → 应用/类别
-  - 反例：CDN/多租户域名不应误判
-- 断言方式：解析 `app_identity.log` 的 `app/category` 字段。
+## 组成
+- `gen_pcaps.py`：用 scapy 生成正/负样本 PCAP 到 `pcaps/`，并写 `manifest.json`（每条用例的期望 verdict/tool）。
+- `run_tests.py`：逐条 PCAP 用 `zeek -C -r <pcap> app-id/scripts/__load__.zeek` 回放，解析 `scan_report.log`，统计检出率/FPR；有漏报或误报则退出码 1。
+- `pcaps/`、`manifest.json`：生成产物（不入库时可在 CI 现生成）。
 
-## 说明
-- PCAP 复用仓库 `测试用例/` 既有语料，或新增到本目录 `tests/pcap/`。
-- Zeek 版本固定 9.0.1（与仓库一致），CI 用固定镜像。
-- 脚本字段名/事件签名以 Zeek 9.0.1 核验后再定稿。
+## 本地/容器运行
+```bash
+pip install scapy
+python3 app-id/tests/gen_pcaps.py
+python3 app-id/tests/run_tests.py
+# => 正样本检出率 x/x；负样本误报率 y/y；全部通过则 PASS
+```
+
+## 用例设计
+- **正样本**：各品牌 UA 工具单请求（B+ 字面自证）、nmap NSE UA、nmap FourOhFour 探针、nmap 探针序列(≥2 TierB)、目录爆破(25 个 404 URI)、端口扫描(SYN 12 端口)。
+- **负样本**：浏览器多 URI、curl、python-requests 正常、健康检查(无 UA)、Go 客户端。
+
+## CI
+`.github/workflows/app-id-scan.yml`：`zeek/zeek:9.0.1` 容器内装 scapy → 生成 PCAP → 回放断言；用于持续验证识别能力与误报率（目标 FPR≈0）。

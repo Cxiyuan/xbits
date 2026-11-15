@@ -126,6 +126,24 @@ function ua_to_tool(ua: string): string
 	if ( /^masscan\// in u ) return "masscan";
 	if ( /(^|[^a-z0-9])zmeu([^a-z0-9]|$)/ in u ) return "zmeu";
 	if ( /(^|[^a-z0-9])morfeus([^a-z0-9]|$)/ in u ) return "morfeus";
+	if ( /(^|[^a-z0-9])w3af([^a-z0-9]|$)/ in u ) return "w3af";
+	if ( /(^|[^a-z0-9])wapiti([^a-z0-9]|$)/ in u ) return "wapiti";
+	if ( /(^|[^a-z0-9])arachni([^a-z0-9]|$)/ in u ) return "arachni";
+	if ( /(^|[^a-z0-9])skipfish([^a-z0-9]|$)/ in u ) return "skipfish";
+	if ( /^wfuzz\// in u ) return "wfuzz";
+	if ( /(^|[^a-z0-9])netsparker([^a-z0-9]|$)/ in u ) return "netsparker";
+	if ( /(^|[^a-z0-9])appscan([^a-z0-9]|$)/ in u ) return "appscan";
+	if ( /(^|[^a-z0-9])webinspect([^a-z0-9]|$)/ in u ) return "webinspect";
+	if ( /(^|[^a-z0-9])qualys([^a-z0-9]|$)/ in u ) return "qualys";
+	if ( /(^|[^a-z0-9])nexpose([^a-z0-9]|$)/ in u ) return "nexpose";
+	if ( /(^|[^a-z0-9])appspider([^a-z0-9]|$)/ in u ) return "appspider";
+	if ( /(^|[^a-z0-9])dalfox([^a-z0-9]|$)/ in u ) return "dalfox";
+	if ( /(^|[^a-z0-9])kiterunner([^a-z0-9]|$)/ in u ) return "kiterunner";
+	if ( /(^|[^a-z0-9])joomscan([^a-z0-9]|$)/ in u ) return "joomscan";
+	if ( /(^|[^a-z0-9])droopescan([^a-z0-9]|$)/ in u ) return "droopescan";
+	if ( /(^|[^a-z0-9])cmseek([^a-z0-9]|$)/ in u ) return "cmseek";
+	if ( /(^|[^a-z0-9])testssl([^a-z0-9]|$)/ in u ) return "testssl";
+	if ( /(^|[^a-z0-9])sslscan([^a-z0-9]|$)/ in u ) return "sslscan";
 	if ( /nmap scripting engine/ in u ) return "nmap";
 	return "";
 	}
