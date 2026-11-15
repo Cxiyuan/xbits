@@ -1,2 +1,27 @@
-# 加载本目录下的 Nmap 签名
+# 加载 扫描工具/ 下全部 Zeek 签名
+@load-sigs ./acunetix.sig
+@load-sigs ./arjun.sig
+@load-sigs ./censys.sig
+@load-sigs ./commix.sig
+@load-sigs ./dirbuster.sig
+@load-sigs ./expanse.sig
+@load-sigs ./feroxbuster.sig
+@load-sigs ./ffuf.sig
+@load-sigs ./gobuster.sig
+@load-sigs ./httpx.sig
+@load-sigs ./l9explore.sig
+@load-sigs ./masscan.sig
+@load-sigs ./morfeus.sig
+@load-sigs ./nessus.sig
+@load-sigs ./nikto.sig
 @load-sigs ./nmap.sig
+@load-sigs ./nuclei.sig
+@load-sigs ./openvas.sig
+@load-sigs ./shodan.sig
+@load-sigs ./sqlmap.sig
+@load-sigs ./wafw00f.sig
+@load-sigs ./whatweb.sig
+@load-sigs ./wpscan.sig
+@load-sigs ./xsstrike.sig
+@load-sigs ./zgrab.sig
+@load-sigs ./zmeu.sig
