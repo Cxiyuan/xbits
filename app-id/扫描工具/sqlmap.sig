@@ -8,6 +8,6 @@
 signature sqlmap_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: sqlmap\//
+    payload /(.|\r|\n)*User-Agent: sqlmap\//
     event "scanner_ua_sqlmap"
 }

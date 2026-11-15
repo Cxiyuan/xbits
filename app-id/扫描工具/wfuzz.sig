@@ -8,6 +8,6 @@
 signature wfuzz_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: Wfuzz\//
+    payload /(.|\r|\n)*User-Agent: Wfuzz\//
     event "scanner_ua_wfuzz"
 }

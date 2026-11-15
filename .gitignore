@@ -31,3 +31,7 @@ xbits/*.sock
 
 # Vendored æºç ï¼ˆSuricata/Zeek æºç ï¼Œæœ¬åœ°å¼€å‘ç”¨ï¼Œä¸å…¥åº“ï¼‰
 source/
+
+# app-id ²âÊÔÉú³ÉÎï
+app-id/tests/pcaps/
+app-id/tests/manifest.json

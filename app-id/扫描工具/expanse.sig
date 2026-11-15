@@ -8,6 +8,6 @@
 signature expanse_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*Expanse\//
+    payload /(.|\r|\n)*User-Agent:.*Expanse\//
     event "scanner_ua_expanse"
 }

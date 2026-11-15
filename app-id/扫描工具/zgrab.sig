@@ -8,6 +8,6 @@
 signature zgrab_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: zgrab\//
+    payload /(.|\r|\n)*User-Agent: zgrab\//
     event "scanner_ua_zgrab"
 }

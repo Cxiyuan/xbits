@@ -8,6 +8,6 @@
 signature wafw00f_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*[^A-Za-z0-9]wafw00f([^A-Za-z0-9]|$)/
+    payload /(.|\r|\n)*User-Agent:.*[^A-Za-z0-9]wafw00f([^A-Za-z0-9]|$)/
     event "scanner_ua_wafw00f"
 }

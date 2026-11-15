@@ -126,3 +126,16 @@
 3. 局部变量 `ln` 与 Zeek 内置 `ln` 冲突、文件 UTF-8 BOM 导致加载失败 → 已修复。
 
 > 结论：**检测能力已在 Zeek 9.0.1 下实测通过**；UA 工具、nmap 探针、目录爆破、端口扫描均命中，负样本零误报。
+
+## 8. 后续收敛：已完成的修复
+按上文“缺口/收敛建议”逐项落地（均纳入 CI 回归）：
+1. **`.sig` 隐式锚定修复**：Zeek 签名正则默认锚定 payload 首字节（官方文档明确），`User-Agent:`/`Cookie:` 位于请求头（非首字节）时明文签名不触发。已给相关 `payload` 统一加前导 `(.|\r|\n)*` → **44 条 UA 签名真正触发**；CI 增加 “sig-hit” 指标测量签名真实命中率。
+2. **DNS 侦察（无 UA 工具）**：新增 **PTR 反查扫描**结构性检测（不同 PTR 查询 ≥ `dns_ptr_threshold`=20 → `dns_ptr_recon`），覆盖 dnsrecon/dnsenum/fierce 等反查类。
+3. **低速慢扫（low-and-slow）**：新增 **长窗(1h)** 结构：同 (源,host) 累计不同 URI ≥ `slow_uri_threshold`=100 且 404/403 比 ≥ `slow_404_ratio`=0.5 → `slow_scan`，绕过短窗目录爆破阈值。
+4. **TLS 指纹（JA3-lite，覆盖加密/无 UA 扫描器）**：核心 Zeek 9.0.1 **无内置 JA3 字段**，故实现**基于 `ssl_client_hello` 的“版本+密码套件序列”指纹**（如 `v771|4865-4866-4867`），通过 `redef` 表 `XbitsScan::tls_fp_to_tool` 映射到工具/库（默认空，生产按实测填充）。CI 用测试映射验证机制可用。
+5. **误报控制**：`whitelist` + `shadow_mode` 已具备；所有新增检测均为结构性/多条件，弱线索不单独判定。
+
+**仍属外部依赖/需真实基线（非本次可闭环）**：
+- 完整 **JA3/JA4**（含扩展/曲线/SNI）需 `zkg install ja3` 外部包或插件（核心无字段）；本文的 JA3-lite 为轻量替代。
+- 高保真“客户端库指纹表”（Go/Rust/Python/OpenSSL 的实测 JA3/JA4/H2）需受控采集后填入 `tls_fp_to_tool`。
+- 阈值最终取值、NAT/压测/监控白名单需真实业务流量基线校准；更广的 slow-scan 需 UEBA。

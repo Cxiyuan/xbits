@@ -8,6 +8,6 @@
 signature censys_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*CensysInspect\//
+    payload /(.|\r|\n)*User-Agent:.*CensysInspect\//
     event "scanner_ua_censys"
 }

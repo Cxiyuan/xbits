@@ -8,6 +8,6 @@
 signature ffuf_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*Fuzz Faster U Fool/
+    payload /(.|\r|\n)*User-Agent:.*Fuzz Faster U Fool/
     event "scanner_ua_ffuf"
 }

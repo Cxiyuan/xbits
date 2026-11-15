@@ -16,8 +16,9 @@ python3 app-id/tests/run_tests.py
 ```
 
 ## 用例设计
-- **正样本**：各品牌 UA 工具单请求（B+ 字面自证）、nmap NSE UA、nmap FourOhFour 探针、nmap 探针序列(≥2 TierB)、目录爆破(25 个 404 URI)、端口扫描(SYN 12 端口)。
+- **正样本**：各品牌 UA 工具单请求（B+ 字面自证）、nmap NSE UA、nmap FourOhFour 探针、nmap 探针序列(≥2 TierB)、目录爆破(25 个 404 URI)、端口扫描(SYN 12 端口)、**DNS PTR 反查(25)**、**低速慢扫(100 URI 跨 50 分钟)**、**TLS ClientHello 指纹(JA3-lite)**。
 - **负样本**：浏览器多 URI、curl、python-requests 正常、健康检查(无 UA)、Go 客户端。
+- 每条 PCAP 会校验 `signatures.log`：统计 UA 用例中 `.sig` **真正触发**的数量（证明签名有效，而非仅靠脚本层）。
 
 ## CI
 `.github/workflows/app-id-scan.yml`：`zeek/zeek:9.0.1` 容器内装 scapy → 生成 PCAP → 回放断言；用于持续验证识别能力与误报率（目标 FPR≈0）。

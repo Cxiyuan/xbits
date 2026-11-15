@@ -50,13 +50,16 @@ def main():
     fails = []
     passed = []
     missed = []
+    sig_hit = 0
+    ua_cases = 0
     broken = False
 
     for c in cases:
         work = tempfile.mkdtemp(prefix="zeek_")
         pcap = os.path.join(PCAPS, c["pcap"])
         try:
-            r = subprocess.run(["zeek", "-C", "-r", pcap, SCRIPTS],
+            r = subprocess.run(["zeek", "-C", "-r", pcap, SCRIPTS] +
+                               [os.path.join(REPO, e) for e in c.get("extra", [])],
                                cwd=work, capture_output=True, text=True)
             if r.returncode != 0:
                 detail = (r.stderr or r.stdout or "").strip()
@@ -67,6 +70,10 @@ def main():
             rows = parse_tsv(os.path.join(work, "scan_report.log"))
             sigrows = parse_tsv(os.path.join(work, "signatures.log"))
             sig_ids = sorted({x.get("sig_id", "") for x in sigrows if x.get("sig_id")})
+            if c["pcap"].startswith("ua_"):
+                ua_cases += 1
+                if any(s.startswith("scanner_ua_") or s.startswith("nmap_tierA_") for s in sig_ids):
+                    sig_hit += 1
             found = [x for x in rows if x.get("src") == c["client"]]
             if c["expect"] == "negative":
                 neg += 1
@@ -100,6 +107,7 @@ def main():
     for f in fails:
         print(f)
     ann("notice", "scan-summary", f"DET={det}/{tot} FPR={fp}/{neg} broken={broken}")
+    ann("notice", "sig-hit", f"UA 用例命中 .sig 数（证明签名真正触发）: {sig_hit}/{ua_cases}")
     ann("notice", "pass-list", "PASS=[" + ", ".join(passed) + "]")
     if missed:
         ann("notice", "miss-list", "MISS=[" + ", ".join(missed) + "]")

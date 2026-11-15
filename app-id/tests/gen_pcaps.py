@@ -5,7 +5,8 @@
 在 Zeek 9.0.1 容器内运行：python3 app-id/tests/gen_pcaps.py
 """
 import os, json
-from scapy.all import Ether, IP, TCP, Raw, wrpcap
+from scapy.all import Ether, IP, TCP, UDP, Raw, wrpcap
+from scapy.layers.dns import DNS, DNSQR
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "pcaps")
@@ -68,10 +69,11 @@ def resp_bytes(code=404):
     }.get(code, b"HTTP/1.1 500 Err\r\nContent-Length: 0\r\n\r\n")
 
 
-def emit(name, pkts, expect, tool=None):
+def emit(name, pkts, expect, tool=None, extra=None):
     wrpcap(os.path.join(OUT, name + ".pcap"), pkts)
     client = pkts[0][IP].src
-    MANIFEST.append({"pcap": name + ".pcap", "client": client, "expect": expect, "tool": tool})
+    MANIFEST.append({"pcap": name + ".pcap", "client": client, "expect": expect,
+                     "tool": tool, "extra": extra or []})
 
 
 # ---- 品牌 UA 工具（单请求，B+ 字面自证）----
@@ -161,6 +163,36 @@ for p in range(20, 32):
     pk.append(pkt)
     sport += 1
 emit("port_scan", pk, "unknown")
+
+# ---- DNS PTR 反查扫描：25 个不同 PTR 查询 ----
+pk = []
+for k in range(25):
+    q = f"{k}.0.0.10.in-addr.arpa"
+    qp = Ether()/IP(src="10.5.0.1", dst="10.5.0.2")/UDP(sport=53000 + k, dport=53)/DNS(rd=1, qd=DNSQR(qname=q, qtype="PTR"))
+    qp.time = 1700000150.0 + k * 0.05
+    pk.append(qp)
+emit("dns_ptr_recon", pk, "unknown")
+
+# ---- 低速慢扫：100 个不同 URI 全 404，间隔 30s 跨 ~50 分钟（避开短窗目录爆破）----
+pk = []
+brute2 = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+for k in range(100):
+    pk += tcp_stream("10.6.0.1", 46000 + k, req_bytes(f"/slow{k}/", brute2), resp_bytes(404),
+                     t0=1700001000.0 + k * 30)
+emit("slow_scan", pk, "unknown")
+
+# ---- TLS ClientHello 指纹（JA3-lite）：版本 0x0303 + ciphers [0x1301,0x1302,0x1303] ----
+def tls_client_hello():
+    version = 0x0303
+    suites = (0x1301, 0x1302, 0x1303)
+    body = version.to_bytes(2, 'big') + b"\x11" * 32 + b"\x00"
+    cs = b"".join(s.to_bytes(2, 'big') for s in suites)
+    body += len(cs).to_bytes(2, 'big') + cs + b"\x01\x00" + b"\x00\x00"
+    hs = b"\x01" + len(body).to_bytes(3, 'big') + body
+    return b"\x16" + b"\x03\x01" + len(hs).to_bytes(2, 'big') + hs
+
+pk = tcp_stream("10.7.0.1", 47001, tls_client_hello(), None)
+emit("tls_clienthello", pk, "tool", "go-tls", extra=["app-id/tests/redefs/tls_test_map.zeek"])
 
 # ---- 负样本 ----
 # 浏览器：30 个不同 URI，均 200，含静态资源

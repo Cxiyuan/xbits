@@ -8,6 +8,6 @@
 signature masscan_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: masscan\//
+    payload /(.|\r|\n)*User-Agent: masscan\//
     event "scanner_ua_masscan"
 }

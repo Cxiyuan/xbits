@@ -9,6 +9,9 @@
 ##!  2) nmap 探针序列（≥2 个 TierB 探针）→ 判 nmap
 ##!  3) 结构性行为（目录爆破/端口扫描的多条件）→ 判 scanner（有候选则标工具）
 ##!  4) 弱线索（通用库 UA / version.bind）→ 仅旁证，绝不单独判定
+##!  5) DNS 侦察：大量不同 PTR 查询 → dns_ptr_recon（结构性）
+##!  6) 低速慢扫：长窗(1h)累计大量不同 URI + 高 404/403 比 → slow_scan（结构性）
+##!  7) TLS 指纹(JA3-lite)：ClientHello 版本+密码套件序列 → tls_fp_to_tool 映射（redef 配置）
 
 module XbitsScan;
 
@@ -43,6 +46,12 @@ export {
 	global script_req_threshold: count = 20  &redef;  # 脚本库弱线索：请求数
 	global whitelist: set[addr] &redef;               # 白名单
 	global shadow_mode: bool = F &redef;              # 影子模式：照常记录，evidence 标 shadow
+
+	# ---- 后续收敛：DNS 侦察 / 低速慢扫 / TLS 指纹（JA3-lite）----
+	global dns_ptr_threshold:  count  = 20   &redef;  # 不同 PTR 查询域名数（反查扫描）
+	global slow_uri_threshold: count  = 100  &redef;  # 低速慢扫：长窗内不同 URI 数
+	global slow_404_ratio:     double = 0.50 &redef;  # 低速慢扫：404+403 占比
+	global tls_fp_to_tool: table[string] of string &default="" &redef;  # TLS ClientHello 指纹(version|ciphers) -> 工具/库
 }
 
 # 每源状态
@@ -56,6 +65,9 @@ type S: record {
 	nmap_a:     bool   &default=F;
 	nmap_b:     count  &default=0;
 	dns_bind:   bool   &default=F;
+	dns_ptr:    set[string];
+	dns_ptr_recon: bool &default=F;
+	slow_scan:  bool   &default=F;
 	dir_brute:  bool   &default=F;
 	dir_uris:   count  &default=0;
 	dir_hits:   count  &default=0;
@@ -85,6 +97,14 @@ type CH: record {
 	host: string &default="-";
 };
 global ch: table[string] of CH &create_expire=300sec;
+
+# 低速慢扫状态（长窗，1 小时）：同 (源,host) 累计不同 URI + 404 比
+type Slow: record {
+	requests: count &default=0;
+	uris:     set[string];
+	n404:     count &default=0;
+};
+global slow: table[addr, string] of Slow &create_expire=3600sec;
 
 function classify_lib(ua: string): string
 	{
@@ -159,7 +179,7 @@ function ua_to_tool(ua: string): string
 function ensure(src: addr)
 	{
 	if ( src !in st )
-		st[src] = S($first=network_time(), $dports=set(), $tools=set());
+		st[src] = S($first=network_time(), $dports=set(), $tools=set(), $dns_ptr=set());
 	}
 
 function ensure_host(src: addr, host: string)
@@ -194,6 +214,8 @@ function judge(src: addr)
 	local structural = F;
 	if ( s$dir_brute ) { structural = T; evid = evid + "|dir_brute"; }
 	if ( s$port_scan ) { structural = T; evid = evid + "|port_scan"; }
+	if ( s$dns_ptr_recon ) { structural = T; evid = evid + "|dns_ptr_recon"; }
+	if ( s$slow_scan ) { structural = T; evid = evid + "|slow_scan"; }
 
 	# ③ 探针序列确认（nmap 版本探测：≥2 个 TierB 探针）
 	local probe_seq = ( s$nmap_b >= 2 );
@@ -276,6 +298,35 @@ function judge_host(src: addr, host: string)
 		}
 	}
 
+# 低速慢扫：长窗(1h)内同 (源,host) 累计大量不同 URI 且 404/403 高 → 慢速枚举
+function ensure_slow(src: addr, host: string)
+	{
+	if ( [src, host] !in slow )
+		slow[src, host] = Slow($uris=set());
+	}
+
+function judge_slow(src: addr, host: string)
+	{
+	if ( src in whitelist )
+		return;
+	if ( host == "-" )
+		return;
+	if ( [src, host] !in slow )
+		return;
+	local sl = slow[src, host];
+	if ( sl$requests == 0 || |sl$uris| < slow_uri_threshold )
+		return;
+	local ratio = sl$n404 * 1.0 / sl$requests;
+	if ( ratio >= slow_404_ratio )
+		{
+		ensure(src);
+		local s = st[src];
+		s$slow_scan = T;
+		st[src] = s;
+		judge(src);
+		}
+	}
+
 event zeek_init()
 	{
 	Log::create_stream(XbitsScan::LOG, [$columns=Info, $path="scan_report"]);
@@ -341,7 +392,13 @@ event http_header(c: connection, is_orig: bool, name: string, value: string)
 		if ( /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)(\?|$)/ in to_lower(ch[c$uid]$uri) )
 			h$static += 1;
 		hosts[src, value] = h;
+		ensure_slow(src, value);
+		local sl = slow[src, value];
+		sl$requests += 1;
+		add sl$uris[ch[c$uid]$uri];
+		slow[src, value] = sl;
 		judge_host(src, value);
+		judge_slow(src, value);
 		}
 	else if ( hname == "user-agent" )
 		{
@@ -374,7 +431,15 @@ event http_reply(c: connection, version: string, code: count, reason: string)
 		if ( code == 404 ) h$n404 += 1;
 		hosts[src, host] = h;
 		}
+	if ( [src, host] in slow )
+		{
+		local sl = slow[src, host];
+		if ( code == 403 || code == 404 )
+			sl$n404 += 1;
+		slow[src, host] = sl;
+		}
 	judge_host(src, host);
+	judge_slow(src, host);
 	}
 
 # 端口扫描：统计所有连接的目的端口 + "无载荷连接"占比（结构性，非单阈值）
@@ -418,5 +483,50 @@ event dns_request(c: connection, msg: dns_msg, query: string, qtype: count, qcla
 		s$dns_bind = T;
 		st[src] = s;
 		judge(src);
+		}
+	# PTR 反查扫描：大量不同 PTR 查询（qtype=12）→ DNS 侦察结构性行为
+	if ( qtype == 12 )
+		{
+		ensure(src);
+		local s = st[src];
+		add s$dns_ptr[query];
+		st[src] = s;
+		if ( |s$dns_ptr| >= dns_ptr_threshold )
+			{
+			local s2 = st[src];
+			s2$dns_ptr_recon = T;
+			st[src] = s2;
+			judge(src);
+			}
+		}
+	}
+
+# TLS 指纹（JA3-lite）：TLS ClientHello 版本+密码套件序列 -> 工具/库（tls_fp_to_tool 可 redef 配置）
+event ssl_client_hello(c: connection, version: count, record_version: count, possible_ts: time,
+                       client_random: string, session_id: string,
+                       ciphers: index_vec, comp_methods: index_vec)
+	{
+	local src = c$id$orig_h;
+	if ( src in whitelist )
+		return;
+	local parts: vector of string = vector();
+	local i = 0;
+	while ( i < |ciphers| )
+		{
+		parts[|parts|] = fmt("%d", ciphers[i]);
+		i += 1;
+		}
+	local fp = fmt("v%d|%s", version, join_string_vec(parts, "-"));
+	if ( fp in tls_fp_to_tool )
+		{
+		local tool = tls_fp_to_tool[fp];
+		if ( tool != "" )
+			{
+			ensure(src);
+			local s = st[src];
+			add s$tools[tool];
+			st[src] = s;
+			judge(src);
+			}
 		}
 	}

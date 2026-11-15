@@ -8,6 +8,6 @@
 signature shodan_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*Shodan\//
+    payload /(.|\r|\n)*User-Agent:.*Shodan\//
     event "scanner_ua_shodan"
 }

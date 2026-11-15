@@ -8,6 +8,6 @@
 signature gobuster_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: gobuster\//
+    payload /(.|\r|\n)*User-Agent: gobuster\//
     event "scanner_ua_gobuster"
 }

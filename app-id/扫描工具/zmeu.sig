@@ -8,6 +8,6 @@
 signature zmeu_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*[^A-Za-z0-9]ZmEu([^A-Za-z0-9]|$)/
+    payload /(.|\r|\n)*User-Agent:.*[^A-Za-z0-9]ZmEu([^A-Za-z0-9]|$)/
     event "scanner_ua_zmeu"
 }

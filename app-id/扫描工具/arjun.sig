@@ -8,6 +8,6 @@
 signature arjun_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: Arjun\//
+    payload /(.|\r|\n)*User-Agent: Arjun\//
     event "scanner_ua_arjun"
 }

@@ -8,7 +8,7 @@
 signature acunetix_ua {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent:.*[^A-Za-z0-9]Acunetix([^A-Za-z0-9]|$)/
+    payload /(.|\r|\n)*User-Agent:.*[^A-Za-z0-9]Acunetix([^A-Za-z0-9]|$)/
     event "scanner_ua_acunetix"
 }
 
@@ -16,6 +16,6 @@ signature acunetix_ua {
 signature acunetix_header {
     ip-proto == tcp
     tcp-state originator
-    payload /Acunetix-(Aspect|Product)/
+    payload /(.|\r|\n)*Acunetix-(Aspect|Product)/
     event "scanner_hdr_acunetix"
 }

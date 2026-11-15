@@ -29,7 +29,7 @@ signature nmap_fourohfour_request {
 signature nmap_terminal_server_cookie {
     ip-proto == tcp
     tcp-state originator
-    payload /Cookie: mstshash=nmap/
+    payload /(.|\r|\n)*Cookie: mstshash=nmap/
     event "nmap_tierA_mstshash"
 }
 
@@ -37,7 +37,7 @@ signature nmap_terminal_server_cookie {
 signature nmap_nse_user_agent {
     ip-proto == tcp
     tcp-state originator
-    payload /User-Agent: Mozilla\/5\.0 \(compatible; Nmap Scripting Engine; https:\/\/nmap\.org\/book\/nse\.html\)/
+    payload /(.|\r|\n)*User-Agent: Mozilla\/5\.0 \(compatible; Nmap Scripting Engine; https:\/\/nmap\.org\/book\/nse\.html\)/
     event "nmap_tierA_nse_ua"
 }
 
