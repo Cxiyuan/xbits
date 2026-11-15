@@ -70,11 +70,11 @@ def main():
             rows = parse_tsv(os.path.join(work, "scan_report.log"))
             sigrows = parse_tsv(os.path.join(work, "signatures.log"))
             sig_ids = sorted({x.get("sig_id", "") for x in sigrows if x.get("sig_id")})
+            found = [x for x in rows if x.get("src") == c["client"]]
             if c["pcap"].startswith("ua_"):
                 ua_cases += 1
-                if any(s.startswith("scanner_ua_") or s.startswith("nmap_tierA_") for s in sig_ids):
+                if any("from_sig" in (x.get("evidence", "") or "") for x in found):
                     sig_hit += 1
-            found = [x for x in rows if x.get("src") == c["client"]]
             if c["expect"] == "negative":
                 neg += 1
                 if found:

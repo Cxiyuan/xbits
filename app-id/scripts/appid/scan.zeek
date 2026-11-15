@@ -76,6 +76,7 @@ type S: record {
 	nonbrowser: bool   &default=F;
 	reported:   bool   &default=F;
 	reported_tool: string &default="";
+	sig_hit:    bool   &default=F;
 };
 
 # 每(源,host) 目录爆破状态
@@ -247,6 +248,8 @@ function judge(src: addr)
 
 	if ( shadow_mode )
 		evid = evid + "|shadow";
+	if ( s$sig_hit )
+		evid = evid + "|from_sig";
 
 	# 去重/可升级：已报过则仅在"出现新的具体工具"时再报（如先 unknown，后识别出 gobuster）
 	if ( s$reported && (tool == "" || tool == s$reported_tool) )
@@ -351,6 +354,8 @@ event signature_match(state: signature_state, msg: string, data: string)
 		{ s$nmap_a = T; }
 	else if ( /^nmap_tierB_/ in msg )
 		{ s$nmap_b += 1; }
+	if ( /^scanner_/ in msg || /^nmap_/ in msg )
+		s$sig_hit = T;
 	st[src] = s;
 	judge(src);
 	}
