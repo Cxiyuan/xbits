@@ -4,6 +4,7 @@
 前置：先运行 gen_pcaps.py 生成 pcaps/manifest.json。
 用法：python3 app-id/tests/run_tests.py
 退出码：全部正样本检出且有 0 负样本误报 => 0；否则 1。
+注：失败信息同时以 GitHub Actions 注解(::error::)输出，便于在 Actions 页面/API 查看。
 """
 import os, sys, json, tempfile, shutil, subprocess
 
@@ -12,6 +13,11 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 SCRIPTS = os.path.join(REPO, "app-id", "scripts", "__load__.zeek")
 PCAPS = os.path.join(HERE, "pcaps")
 MANIFEST = os.path.join(HERE, "manifest.json")
+
+
+def ann(level, title, msg):
+    msg = " ".join(str(msg).split())
+    print(f"::{level} title={title}::{msg}")
 
 
 def parse_tsv(path):
@@ -33,15 +39,16 @@ def parse_tsv(path):
 
 def main():
     if not os.path.exists(MANIFEST):
-        print("manifest.json 不存在，请先运行 gen_pcaps.py", file=sys.stderr)
+        ann("error", "no-manifest", "manifest.json 不存在，请先运行 gen_pcaps.py")
         return 2
     if shutil.which("zeek") is None:
-        print("zeek 不在 PATH", file=sys.stderr)
+        ann("error", "no-zeek", "zeek 不在 PATH")
         return 2
 
     cases = json.load(open(MANIFEST, encoding="utf-8"))
     det = tot = fp = neg = 0
     fails = []
+    broken = False
 
     for c in cases:
         work = tempfile.mkdtemp(prefix="zeek_")
@@ -50,8 +57,11 @@ def main():
             r = subprocess.run(["zeek", "-C", "-r", pcap, SCRIPTS],
                                cwd=work, capture_output=True, text=True)
             if r.returncode != 0:
-                fails.append(f"[ZEEK-ERR] {c['pcap']} rc={r.returncode}\n{r.stderr[-800:]}")
-                continue
+                detail = (r.stderr or r.stdout or "").strip()
+                fails.append(f"[ZEEK-ERR] {c['pcap']} rc={r.returncode}\n{detail[-1600:]}")
+                ann("error", f"ZEEK-ERR {c['pcap']}", detail[-1600:] or "zeek non-zero exit")
+                broken = True
+                break
             rows = parse_tsv(os.path.join(work, "scan_report.log"))
             found = [x for x in rows if x.get("src") == c["client"]]
             if c["expect"] == "negative":
@@ -59,6 +69,7 @@ def main():
                 if found:
                     fp += 1
                     fails.append(f"[FP] {c['pcap']} 被判为 {found}")
+                    ann("error", f"FP {c['pcap']}", f"negative 被判为 {found}")
             else:
                 tot += 1
                 ok = False
@@ -71,6 +82,8 @@ def main():
                     det += 1
                 else:
                     fails.append(f"[MISS] {c['pcap']} 期望 {c['expect']}/{c.get('tool')}，实得 {found}")
+                    ann("error", f"MISS {c['pcap']}",
+                        f"期望 {c['expect']}/{c.get('tool')}，实得 {found}")
         finally:
             shutil.rmtree(work, ignore_errors=True)
 
@@ -80,7 +93,9 @@ def main():
     print("=" * 64)
     for f in fails:
         print(f)
-    if det == tot and fp == 0 and tot > 0:
+    ann("notice", "scan-summary", f"DET={det}/{tot} FPR={fp}/{neg} broken={broken}")
+
+    if (not broken) and det == tot and fp == 0 and tot > 0:
         print("RESULT: PASS (检出全中，零误报)")
         return 0
     print("RESULT: FAIL")
