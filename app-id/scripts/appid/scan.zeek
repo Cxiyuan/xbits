@@ -1,4 +1,4 @@
-##! scan.zeek —— 扫描工具识别（v3：B+ 模型；结构性行为确认 + 阈值下调）
+﻿##! scan.zeek —— 扫描工具识别（v3：B+ 模型；结构性行为确认 + 阈值下调）
 ##!
 ##! 目标：高精度（近零误报）识别扫描器；sig/UA 不再"单凭一次"随意触发，但确定性字面可自证。
 ##! 依据：app-id/docs/{nmap-dpi, custom-scanner-library-fingerprints, script-scan-precise-detection, qa-scan-tools}.md
@@ -328,8 +328,8 @@ event http_header(c: connection, is_orig: bool, name: string, value: string)
 	local src = ch[c$uid]$src;
 	if ( src in whitelist )
 		return;
-	local ln = to_lower(name);
-	if ( ln == "host" )
+	local hname = to_lower(name);
+	if ( hname == "host" )
 		{
 		local cur = ch[c$uid];
 		cur$host = value;
@@ -343,7 +343,7 @@ event http_header(c: connection, is_orig: bool, name: string, value: string)
 		hosts[src, value] = h;
 		judge_host(src, value);
 		}
-	else if ( ln == "user-agent" )
+	else if ( hname == "user-agent" )
 		{
 		ensure(src);
 		local s = st[src];
