@@ -23,10 +23,13 @@ app-id/
 │   ├── __load__.zeek          # 包入口
 │   └── appid/
 │       ├── __load__.zeek
-│       └── main.zeek          # 模块：表/查找/日志/log 流 app_identity
+│       ├── main.zeek          # 模块：表/查找/日志/log 流 app_identity
+│       └── scan.zeek          # 扫描工具识别：消费签名 + 行为聚合，输出 scan_report.log
+├── 扫描工具/                  # 各扫描工具签名 .sig（nmap.sig 等）+ __load__.zeek
 ├── mapping/
 │   ├── sni_suffix.map         # SNI/域名后缀 -> 应用（示例）
 │   └── ua_substr.map          # UA 子串 -> 客户端应用（示例）
+├── docs/                      # 调研/策略（nmap-dpi、库指纹、精准识别方法）
 └── tests/
     └── README.md              # btest/回归用例规划
 ```
