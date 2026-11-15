@@ -1,13 +1,14 @@
-##! scan.zeek —— 扫描工具识别（v2：结构性行为 + 签名，弱化"纯阈值"触发）
+##! scan.zeek —— 扫描工具识别（v3：B+ 模型；结构性行为确认 + 阈值下调）
 ##!
-##! 目标：高精度（近零误报）识别扫描器；**不再有"单一计数阈值即命中"的路径**。
+##! 目标：高精度（近零误报）识别扫描器；sig/UA 不再"单凭一次"随意触发，但确定性字面可自证。
 ##! 依据：app-id/docs/{nmap-dpi, custom-scanner-library-fingerprints, script-scan-precise-detection, qa-scan-tools}.md
 ##! 状态：**待 Zeek 9.0.1 编译/回放验证**（事件签名/字段按 source/xbits-zeek 9.0.1 源码核对）。
 ##!
-##! 识别层级（模型 B：sig/UA 仅候选，行为确认）：
-##!  1) 具体工具：.sig 命中 / 脚本层 UA 匹配 → 只作"候选"（不单独判定）
-##!  2) 确认：必须是"结构性行为"（目录爆破/端口扫描的多条件），或"候选 + ≥2 独立弱旁证"
-##!  3) 弱线索（脚本库/version.bind/nmap TierB）：仅作旁证/多信号，不单独判定
+##! 识别层级（模型 B+）：
+##!  1) 确定性/品牌字面（.sig / ua_to_tool）→ 可"字面自证"（单发也可判）
+##!  2) nmap 探针序列（≥2 个 TierB 探针）→ 判 nmap
+##!  3) 结构性行为（目录爆破/端口扫描的多条件）→ 判 scanner（有候选则标工具）
+##!  4) 弱线索（通用库 UA / version.bind）→ 仅旁证，绝不单独判定
 
 module XbitsScan;
 
@@ -32,15 +33,16 @@ export {
 		evidence:       string &log &default="";
 	};
 
-	# ---- 结构性行为阈值/比例（&redef，需按基线校准）----
-	global dir_uri_threshold:  count  = 50   &redef;  # 单(源,host)不同 URI 数
-	global dir_404_ratio:      double = 0.70 &redef;  # 404+403 / requests
-	global dir_uniq_ratio:     double = 0.80 &redef;  # 不同URI / requests（枚举特征）
-	global dir_static_max:     double = 0.10 &redef;  # 静态资源占比上限
-	global port_threshold:     count  = 20   &redef;  # 不同目的端口数
-	global port_nodata_ratio:  double = 0.70 &redef;  # 无载荷连接占比（SYN/探测特征）
-	global script_req_threshold: count = 50  &redef;  # 脚本库弱线索：请求数
+	# ---- 结构性行为阈值/比例（&redef，已下调以提升召回；靠多条件+白名单控误报）----
+	global dir_uri_threshold:  count  = 20   &redef;  # 单(源,host)不同 URI 数
+	global dir_404_ratio:      double = 0.60 &redef;  # 404+403 / requests
+	global dir_uniq_ratio:     double = 0.70 &redef;  # 不同URI / requests（枚举特征）
+	global dir_static_max:     double = 0.20 &redef;  # 静态资源占比上限
+	global port_threshold:     count  = 10   &redef;  # 不同目的端口数
+	global port_nodata_ratio:  double = 0.60 &redef;  # 无载荷连接占比（SYN/探测特征）
+	global script_req_threshold: count = 20  &redef;  # 脚本库弱线索：请求数
 	global whitelist: set[addr] &redef;               # 白名单
+	global shadow_mode: bool = F &redef;              # 影子模式：照常记录，evidence 标 shadow
 }
 
 # 每源状态
@@ -102,28 +104,28 @@ function ua_to_tool(ua: string): string
 	if ( /fuzz faster u fool/ in u ) return "ffuf";
 	if ( /^gobuster\// in u ) return "gobuster";
 	if ( /^feroxbuster\// in u ) return "feroxbuster";
-	if ( /dirbuster/ in u ) return "dirbuster";
+	if ( /(^|[^a-z0-9])dirbuster([^a-z0-9]|$)/ in u ) return "dirbuster";
 	if ( /^sqlmap\// in u ) return "sqlmap";
-	if ( /nuclei/ in u ) return "nuclei";
+	if ( /(^|[^a-z0-9])nuclei([^a-z0-9]|$)/ in u ) return "nuclei";
 	if ( /nikto\// in u ) return "nikto";
-	if ( /wpscan/ in u ) return "wpscan";
-	if ( /acunetix/ in u ) return "acunetix";
-	if ( /nessus/ in u ) return "nessus";
-	if ( /openvas/ in u ) return "openvas";
+	if ( /(^|[^a-z0-9])wpscan([^a-z0-9]|$)/ in u ) return "wpscan";
+	if ( /(^|[^a-z0-9])acunetix([^a-z0-9]|$)/ in u ) return "acunetix";
+	if ( /(^|[^a-z0-9])nessus([^a-z0-9]|$)/ in u ) return "nessus";
+	if ( /(^|[^a-z0-9])openvas([^a-z0-9]|$)/ in u ) return "openvas";
 	if ( /whatweb\// in u ) return "whatweb";
-	if ( /^httpx\// in u ) return "httpx";
+	if ( /^httpx\/[0-9]/ in u ) return "httpx";
 	if ( /^arjun\// in u ) return "arjun";
-	if ( /wafw00f/ in u ) return "wafw00f";
-	if ( /commix/ in u ) return "commix";
-	if ( /xsstrike/ in u ) return "xsstrike";
+	if ( /(^|[^a-z0-9])wafw00f([^a-z0-9]|$)/ in u ) return "wafw00f";
+	if ( /(^|[^a-z0-9])commix([^a-z0-9]|$)/ in u ) return "commix";
+	if ( /(^|[^a-z0-9])xsstrike([^a-z0-9]|$)/ in u ) return "xsstrike";
 	if ( /shodan\// in u ) return "shodan";
 	if ( /censysinspect\// in u ) return "censys";
 	if ( /expanse\// in u ) return "expanse";
-	if ( /l9explore/ in u ) return "l9explore";
+	if ( /(^|[^a-z0-9])l9explore([^a-z0-9]|$)/ in u ) return "l9explore";
 	if ( /^zgrab\// in u ) return "zgrab";
 	if ( /^masscan\// in u ) return "masscan";
-	if ( /zmeu/ in u ) return "zmeu";
-	if ( /morfeus/ in u ) return "morfeus";
+	if ( /(^|[^a-z0-9])zmeu([^a-z0-9]|$)/ in u ) return "zmeu";
+	if ( /(^|[^a-z0-9])morfeus([^a-z0-9]|$)/ in u ) return "morfeus";
 	if ( /nmap scripting engine/ in u ) return "nmap";
 	return "";
 	}
@@ -150,49 +152,53 @@ function judge(src: addr)
 
 	local evid: string = "";
 	local tool: string = "";
+	local strong = F;
 
-	# ① 具体工具：签名（.sig）/ 脚本层 UA —— 模型B下仅作"候选"，不单独判定
+	# ① 确定性/品牌字面（.sig / ua_to_tool）——B+ 允许"字面自证"
 	if ( |s$tools| > 0 )
 		{
 		for ( t in s$tools ) { if ( tool == "" ) tool = t; }
-		evid = evid + "|candidate_tool=" + tool;
+		strong = T;
+		evid = evid + "|strong_tool=" + tool;
 		}
 	if ( s$nmap_a )
-		{
-		tool = "nmap";
-		evid = evid + "|candidate:nmap_probe(TierA)";
-		}
+		{ tool = "nmap"; strong = T; evid = evid + "|strong:nmap_probe(TierA)"; }
 
-	# ② 结构性行为（B 模型的"确认"条件）：目录爆破 / 端口扫描（多条件）
+	# ② 结构性行为确认：目录爆破 / 端口扫描（多条件）
 	local structural = F;
 	if ( s$dir_brute ) { structural = T; evid = evid + "|dir_brute"; }
 	if ( s$port_scan ) { structural = T; evid = evid + "|port_scan"; }
 
-	# ③ 弱线索（计数，用于"多信号"替代路径；永不单独判定）
+	# ③ 探针序列确认（nmap 版本探测：≥2 个 TierB 探针）
+	local probe_seq = ( s$nmap_b >= 2 );
+
+	# ④ 弱线索（仅旁证）
 	local weak = 0;
-	if ( s$nmap_b >= 2 ) { weak += 1; evid = evid + fmt("|nmap_tierB(x%d)", s$nmap_b); }
+	if ( s$nmap_b >= 1 && ! probe_seq ) { weak += 1; evid = evid + fmt("|nmap_tierB(x%d)", s$nmap_b); }
 	if ( s$lib != "" && s$lib != "other" && s$lib != "no-ua" && s$nonbrowser && s$requests >= script_req_threshold )
 		{ weak += 1; evid = evid + "|script_lib=" + s$lib; }
 	if ( s$dns_bind ) { weak += 1; evid = evid + "|dns_version_bind"; }
 
-	# ---- 模型B 判定：sig/UA 仅候选；必须"结构性行为确认"，或"候选 + ≥2 独立弱旁证" ----
+	# ---- 模型B+ 判定：strong(字面) / 探针序列 / 结构性行为 均可确认；弱线索不单独判 ----
 	local verdict = F;
 	local conf: double = 0.0;
-	if ( structural )
+	if ( strong )
+		{ verdict = T; conf = 0.90; evid = evid + "|confirmed_by:strong_literal"; }
+	else if ( probe_seq )
+		{ verdict = T; tool = "nmap"; conf = 0.80; evid = evid + "|confirmed_by:probe_sequence"; }
+	else if ( structural )
 		{
 		verdict = T;
 		if ( tool == "" ) tool = "unknown";
 		if ( tool == "unknown" ) conf = 0.75; else conf = 0.90;
 		evid = evid + "|confirmed_by:structural";
 		}
-	else if ( tool != "" && weak >= 2 )
-		{
-		verdict = T; conf = 0.80;
-		evid = evid + "|confirmed_by:multi_signal";
-		}
 
 	if ( ! verdict )
-		return;                                  # 仅候选（sig/UA）但无行为/多信号确认 → 不判
+		return;                                  # 无 strong/序列/结构性确认 → 不判（弱线索仅旁证）
+
+	if ( shadow_mode )
+		evid = evid + "|shadow";
 
 	# 去重/可升级：已报过则仅在"出现新的具体工具"时再报（如先 unknown，后识别出 gobuster）
 	if ( s$reported && (tool == "" || tool == s$reported_tool) )

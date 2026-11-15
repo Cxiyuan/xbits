@@ -102,6 +102,32 @@
 
 **影响**：UA 伪造/单请求命中不再直接误报（更贴合"零误报"）；代价是"低慢扫描/单次探测"可能漏报。
 
+### 2.6 升级为 B+ 与阈值下调（本轮）
+**判定改为 B+**（`judge()`）：
+- 可确认的三类：**确定性/品牌字面（strong，自证）**、**nmap 探针序列（≥2 TierB）**、**结构性行为**；
+- 弱线索（通用库 UA、`version.bind`）仅旁证；
+- 单发品牌 UA / nmap TierA 字面重新可判 → 修复"单次探测漏报"，同时通用库 UA 仍不单独判。
+
+**结构性阈值已下调**（提升召回，靠多条件 + 白名单控误报）：
+
+| 参数 | 旧 | 新 |
+|---|---|---|
+| dir_uri_threshold（不同URI） | 50 | **20** |
+| dir_404_ratio | 0.70 | **0.60** |
+| dir_uniq_ratio | 0.80 | **0.70** |
+| dir_static_max | 0.10 | **0.20** |
+| port_threshold（目的端口） | 20 | **10** |
+| port_nodata_ratio | 0.70 | **0.60** |
+| script_req_threshold | 50 | **20** |
+
+**其它收敛**：
+- `.sig` 子串 token 加**词边界**（nuclei/wpscan/commix/acunetix/nessus/openvas/wafw00f/dirbuster/xsstrike/l9explore/zmeu/morfeus）；`ua_to_tool` 同步加边界；`httpx/` 改 `httpx/[0-9]` 版本形态；
+- 新增 `shadow_mode`（影子模式）开关，evidence 标 `shadow`，便于灰度；
+- 仍保留白名单 `whitelist`。
+
+**本轮已缓解的 QA 风险**：子串 token 误报、httpx 形态、h2/分片漏报（ua_to_tool）、单发确定性字面漏报（B+）、"纯单阈值"（结构性多条件+下调）。
+**仍属残余（需 Zeek/JA3/基线）**：TLS 加密流量的 JA3/JA4（需 Zeek ja3 能力核验）、NAT/压测/监控（白名单+影子）、low-and-slow 慢扫（长窗/UEBA）、阈值最终取值需真实基线校准。
+
 ## 3. 剩余误报风险（需用回归收敛）
 - **端口扫描**：大量短 TLS 连接（如压测、健康检查）可能 nodata 比偏高 → 需白名单/基线；
 - **目录爆破**：正常 API 网关/爬虫产生大量 URI 但静态资源低、404 低 → 由 404/403 比 + 唯一比双重约束降低；仍需负样本验证；
