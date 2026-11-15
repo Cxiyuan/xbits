@@ -92,10 +92,64 @@ Nmap 版本探测使用固定 ClientHello（`nmap-service-probes` 中 `SSLSessio
 
 ---
 
-## 7. 误报与对抗
-- **可伪造/可关闭**：UA 可覆盖（`http.useragent`）、探针可改（自定义 `nmap-service-probes`）、可加 `--data-length` 填充、`--decoy` 诱饵、`--spoof-mac`、`-D`。
-- **近似流量**：老式 HTTP/1.0 客户端、健康检查、某些协议探测/资产测绘也会发 `GET / HTTP/1.0`、`OPTIONS`、`\r\n\r\n`。
-- **结论**：单一信号只给低/中置信；应做**多信号打分**（探针命中 + UA + JA3 + 扫描行为）再定 `Nmap`。
+## 7. 误报分析与"精确识别"策略
+
+### 7.1 逐信号误报评估
+| 信号 | Nmap 专属度 | 主要误报来源 | 能否单独判定 Nmap |
+|---|---|---|---|
+| FourOhFourRequest 路径 `/nice%20ports%2C/Tri%6Eity.txt%2ebak` | **极高（近乎专属）** | 几乎无（除非照抄 nmap 探针） | ✅ 可直接判定 |
+| `Cookie: mstshash=nmap` | **极高** | 几乎无（字面含 nmap） | ✅ 可直接判定 |
+| NSE UA `...Nmap Scripting Engine...` | 高 | 有人伪造/自定义 UA；正常软件不会用 | ✅ 可（除非被伪造） |
+| JA3 `ee0799...`（SSLSessionReq） / `16ee84...`（TLSSessionReq） | **极高** | 其它工具复制同一 ClientHello 概率极低 | ✅ 可直接判定 |
+| SIP `OPTIONS sip:nm ... Call-ID: 50000` | 高 | 少数 SIP 扫描器用相似占位串 | ✅ 基本可（建议连同 `sip:nm`+`Call-ID: 50000`） |
+| `GET / HTTP/1.0\r\n\r\n`（无 Host/UA） | 中 | 老式 HTTP/1.0 客户端、嵌入式设备、部分资产测绘/健康检查 | ❌ 单独会误报；需"无 Host 且无 UA"+"扫描/多探针"佐证 |
+| `OPTIONS / HTTP/1.0\r\n\r\n` | 中 | 部分 HTTP 探测工具/老客户端 | ❌ 需佐证 |
+| `OPTIONS / RTSP/1.0\r\n\r\n`（裸 `/`） | 中 | 部分 RTSP 客户端/摄像头扫描 | ❌ 需佐证 + 端口/上下文 |
+| `\r\n\r\n`（GenericLines） | **低** | HTTP keep-alive 探测、健康检查、协议探测、其它扫描器 | ❌ 极易误报，仅作线索 |
+| `HELP\r\n` / `EHLO\r\n` | **低** | SMTP `HELP`/`EHLO` 是合法命令；memcached 等也有 HELP | ❌ 必须限定非对应协议端口/服务，仅作线索 |
+| DNS `version.bind`/`hostname.bind` CH TXT | 低 | `dig`/`nslookup`/资产测绘常用 | ❌ 只能说明"侦察"，非 nmap 专属 |
+| 端口扫描行为/半开/多探针 | 中 | 其它扫描器（masscan/zmap/nikto/nuclei 等）也会扫描 | ❌ 只能判"扫描"，不能判"Nmap" |
+
+> 关键结论：**只有 Tier A（nmap 自有字面/指纹）能"精确识别 Nmap"；其余多为"扫描/侦察"线索，单独用必然误报。**
+
+### 7.2 精确识别判定规则（推荐，硬约束）
+把信号分三层，**只让 Tier A 直接判定，其余必须组合**：
+
+**Tier A（确定性，命中即可判 Nmap）：**
+1. 载荷含 `/nice%20ports%2C/Tri%6Eity.txt%2ebak`
+2. 载荷含 `Cookie: mstshash=nmap`
+3. HTTP UA 精确含 `Nmap Scripting Engine`
+4. TLS JA3 ∈ {`ee0799c323d74129b75b633dcfd41593`, `16ee84a07b55074cb2751329bf1c8811`}
+5. SIP 载荷含 `sip:nm` 且含 `Call-ID: 50000`
+
+**Tier B（强线索，需组合）：**
+- `GET / HTTP/1.0\r\n\r\n` 且 **无 `Host:` 且无 `User-Agent:`**
+- `OPTIONS / HTTP/1.0\r\n\r\n`
+- 裸 `OPTIONS / RTSP/1.0\r\n\r\n`（限制在非标准 RTSP 端口或叠加其它线索）
+- `HELP\r\n` / `EHLO\r\n`（**排除** SMTP/memcached 等对应服务端口与正常协议上下文）
+
+**Tier C（弱线索，不可单独判定）：** 单独 `\r\n\r\n`、`version.bind`、仅有端口扫描行为、TCP 指纹。
+
+**判定式（精确模式）：**
+```
+Nmap 判定 = TierA
+          或 (同一源 IP、时间窗内 ≥2 个不同的 TierB 探针)
+          或 (TierB ≥1 且 该源同时存在端口扫描/短时多端口行为)
+```
+- 绝不"Tier C 单独 → Nmap"。
+- 聚合键用 `orig_h`（不是单连接），窗口建议 60s；命中后冷却去重。
+- 若同时出现正常客户端特征（浏览器/`curl`/`wget`/正常 `Host`+UA），则**抑制** TierB 的 nmap 判定。
+
+### 7.3 其它降低误报的工程手段
+- 匹配**锚定在载荷起始/精确字节**，避免子串误匹配；`\r\n` 用精确 CRLF，不用宽松空格。
+- `HELP/EHLO/OPTIONS RTSP` 等结合**端口/协议上下文**（如 25/110/143 视为 SMTP/POP/IMAP 正常命令，不计入）。
+- 区分"识别 **Nmap**"与"识别 **扫描行为**"两个输出：前者只认 Tier A/组合；后者可另给 `scanner` 类别。
+- 用**负样本集**回归：curl/wget/浏览器/老式 HTTP/1.0 客户端/健康检查/`dig version.bind`/RTSP 客户端/SMTP EHLO/其它扫描器（masscan/zmap/nikto/nuclei）——要求精确模式下 **FPR≈0**。
+
+### 7.4 无法消除的残余误报（须说明）
+- Nmap 支持**自定义探针/UA**、`--data-length` 填充、`--decoy`、加密隧道；此时 DPI 可能漏报。
+- 反向：极端情况下他人可**伪造** Tier A 字面（如故意发 `mstshash=nmap`）造成误报——但正常业务流量不会发生。
+- 结论：**默认配置 + 正常业务流量下，按 §7.2 可做到"精确、近零误报"**；但物理上无法保证 0 误报/0 漏报。
 
 ---
 
