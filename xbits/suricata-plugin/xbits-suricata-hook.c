@@ -118,6 +118,21 @@ static bool XbitsPacketCondition(ThreadVars *tv, void *thread_data, const Packet
     return p != NULL && p->alerts.cnt > 0 && p->alerts.alerts != NULL;
 }
 
+static TmEcode XbitsThreadInit(ThreadVars *tv, const void *initdata, void **data)
+{
+    (void)tv;
+    (void)initdata;
+    *data = NULL;
+    return TM_ECODE_OK;
+}
+
+static TmEcode XbitsThreadDeinit(ThreadVars *tv, void *data)
+{
+    (void)tv;
+    (void)data;
+    return TM_ECODE_OK;
+}
+
 static int XbitsPacketLogger(ThreadVars *tv, void *thread_data, const Packet *p)
 {
     (void)tv;
@@ -163,7 +178,7 @@ static void XbitsOnLoggingReady(void *arg)
 {
     (void)arg;
     SCOutputRegisterPacketLogger(LOGGER_USER, "xbits-suricata-hook", XbitsPacketLogger,
-                                 XbitsPacketCondition, NULL, NULL, NULL);
+                                 XbitsPacketCondition, NULL, XbitsThreadInit, XbitsThreadDeinit);
 }
 
 static void XbitsPluginInit(void)
