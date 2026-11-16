@@ -10,8 +10,16 @@
 #
 CC ?= cc
 CFLAGS ?= -O2 -fPIC -Wall -Wextra
+LDFLAGS ?=
+SURICATA_SRC ?=
+
+ifneq ($(SURICATA_SRC),)
+CFLAGS += -I$(SURICATA_SRC)/src -I$(SURICATA_SRC)/rust -I$(SURICATA_SRC)
+LDFLAGS += -shared
+else
 CFLAGS += $(shell libsuricata-config --cflags 2>/dev/null)
 LDFLAGS += -shared $(shell libsuricata-config --libs 2>/dev/null)
+endif
 
 TARGET := xbits-suricata-hook.so
 SRC := xbits-suricata-hook.c

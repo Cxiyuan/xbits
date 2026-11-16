@@ -1,4 +1,4 @@
-﻿name: xbits-cross-engine-8.0.8-9.0.1
+name: xbits-cross-engine-8.0.8-9.0.1
 
 on:
   workflow_dispatch:
@@ -24,6 +24,24 @@ env:
   ZEEK_IMAGE: zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0
 
 jobs:
+  zeek-plugin-build:
+    name: Zeek 9.0.1 thin hook plugin build
+    runs-on: ubuntu-22.04
+    container:
+      image: zeek/zeek:9.0.1
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      - name: Install compiler
+        run: |
+          apt-get update
+          apt-get install -y g++ make
+      - name: Build Zeek thin hook plugin
+        run: |
+          export PATH=/usr/local/zeek/bin:$PATH
+          make -C xbits/zeek-plugin
+
   rust:
     name: Rust bridge tests and release build
     runs-on: ubuntu-22.04
@@ -194,6 +212,9 @@ jobs:
           sudo make install
           sudo ldconfig
           suricata -V
+
+      - name: Build xbits Suricata thin hook plugin
+        run: make -C xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-8.0.8
 
       - name: Download xbits binary
         uses: actions/download-artifact@v4.3.0
@@ -382,4 +403,5 @@ jobs:
             测试用例/zeek_out
             测试用例/suricata-*-xbits.yaml
           if-no-files-found: ignore
+
 
