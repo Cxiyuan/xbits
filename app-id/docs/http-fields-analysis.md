@@ -124,4 +124,6 @@ Suricata 的 `http.*` 关键字覆盖更广；Zeek `http.log` **缺**以下（�
 
 **验证**：`app-id/tests/run_http_fields.py` 用 `pcaps/http_fields.pcap`（urlencoded/JSON/XML/multipart+Set-Cookie）回放，断言上述字段全部落库；已加入 CI（`.github/workflows/app-id-scan.yml`）。**CI 实测（提交 `06bfd8b`，run 43810668088，success）：14/14 字段检查通过；扫描检测仍 DET=50/50、FPR=0/5。**
 
+**多实体 Body 分层（本版）**：Body 缓冲按实体 `depth` 分层（`xbits_ent[uid,is_orig,depth]`）；multipart 每个 part 独立缓冲并汇总到 `multipart_parts`（name/filename/content_type/headers/body_excerpt/body_len/truncated），再按 `boundary` 重建 multipart 原文写入 `req_body_excerpt`（整体上限 `xbits_max_multipart_bytes`），不再出现“只保留最后一个 part”的覆盖问题。
+
 **仍不支持**：HTTP/2（Zeek 9.0.1 无分析器）、HTTP/3；需外部解析。

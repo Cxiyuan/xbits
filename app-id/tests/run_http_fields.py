@@ -88,6 +88,7 @@ def main():
         m = row_with("/upload")
         checks.append(("multipart form_fields 含 file", m is not None and "file" in (m.get("form_fields", "") or ""), (m or {}).get("form_fields", "")))
         checks.append(("multipart req_body_excerpt 含 HELLO", m is not None and "HELLO" in (m.get("req_body_excerpt", "") or ""), (m or {}).get("req_body_excerpt", "")))
+        checks.append(("multipart_parts 含 file/HELLO", m is not None and "file" in (m.get("multipart_parts", "") or "") and "HELLO" in (m.get("multipart_parts", "") or ""), (m or {}).get("multipart_parts", "")))
 
         okall = True
         for name, ok, val in checks:

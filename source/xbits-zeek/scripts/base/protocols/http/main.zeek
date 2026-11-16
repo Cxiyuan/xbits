@@ -32,6 +32,8 @@ export {
 
 	## xbits: 每方向每实体 Body 片段最大采集字节数（安全相关类型；超出置截断标记）
 	const xbits_max_body_bytes = 4096 &redef;
+	## xbits: 重建 multipart 原报文片段的整体上限
+	const xbits_max_multipart_bytes = 16384 &redef;
 
 	## The record type which contains the fields of the HTTP log.
 	type Info: record {
@@ -122,6 +124,8 @@ export {
 		## JSON/XML 请求正文原文（限长）
 		json_body: string &log &optional;
 		xml_body:  string &log &optional;
+		## multipart 各 part 完整信息（JSON 数组：name/filename/content_type/headers/body_excerpt/body_len/truncated）
+		multipart_parts: string &log &optional;
 	};
 
 	## Structure to maintain state for an HTTP connection with multiple
@@ -433,24 +437,52 @@ hook finalize_http(c: connection)
 	}
 
 # ============================================================================
-# xbits: HTTP 扩展字段采集（完整头/Cookie/认证/Query/表单/JSON/XML/安全 Body 片段）
-# 直接内置于 HTTP 解析脚本；全部字段写 http.log（HTTP::Info），不新建日志/脚本。
+# xbits: HTTP 扩展字段采集（完整头/Cookie/认证/Query/表单/JSON/XML/多实体 Body）
+# 全部字段写入 http.log（HTTP::Info）；Body 按“实体分层(depth)”缓冲，
+# 完整保留 multipart 各 part 的头部与正文，并可重建 multipart 报文片段。
 # ============================================================================
-type XbitsBState: record {
-	method:      string &default="";
-	req_ct:      string &default="";
-	resp_ct:     string &default="";
-	req_len:     count  &default=0;
-	resp_len:    count  &default=0;
-	req_buf:     string &default="";
-	resp_buf:    string &default="";
-	req_trunc:   bool   &default=F;
-	resp_trunc:  bool   &default=F;
+type XbitsEntity: record {
+	ct:          string &default="";   # type/subtype
+	ct_full:     string &default="";   # 完整 Content-Type（含 boundary 等参数）
+	hdrs:        string &default="";   # 该实体头 JSON
+	raw_headers: string &default="";   # 原始头行（Name: value\r\n）用于重建 multipart
+	name:        string &default="";   # Content-Disposition name
+	filename:    string &default="";   # Content-Disposition filename
+	buf:         string &default="";
+	len:         count  &default=0;
+	trunc:       bool   &default=F;
 };
 
-global xbits_bs: table[string] of XbitsBState &create_expire=300sec;
-# multipart 各 part 的字段名（来自 Content-Disposition 头）
-global xbits_form_names: table[string] of set[string] &create_expire=300sec;
+type XbitsPart: record {
+	name:         string &default="";
+	filename:     string &default="";
+	content_type: string &default="";
+	headers:      string &default="";
+	body_excerpt: string &default="";
+	body_len:     count  &default=0;
+	truncated:    bool   &default=F;
+};
+
+global xbits_ent:       table[string, bool, count] of XbitsEntity &create_expire=300sec;
+global xbits_depth:     table[string, bool] of count &create_expire=300sec;
+global xbits_method:    table[string] of string &create_expire=300sec;
+global xbits_parts:     table[string, bool] of vector of string &create_expire=300sec;
+global xbits_parts_raw: table[string, bool] of vector of string &create_expire=300sec;
+global xbits_part_trunc: table[string, bool] of bool &create_expire=300sec;
+
+function xbits_depth_of(uid: string, is_orig: bool): count
+	{
+	if ( [uid, is_orig] !in xbits_depth )
+		xbits_depth[uid, is_orig] = 0;
+	return xbits_depth[uid, is_orig];
+	}
+
+function xbits_get_ent(uid: string, is_orig: bool, d: count): XbitsEntity
+	{
+	if ( [uid, is_orig, d] !in xbits_ent )
+		xbits_ent[uid, is_orig, d] = XbitsEntity();
+	return xbits_ent[uid, is_orig, d];
+	}
 
 function xbits_hdrs_to_json(hlist: mime_header_list): string
 	{
@@ -508,14 +540,29 @@ function xbits_capture_type(ct: string, method: string, is_orig: bool): bool
 	return F;
 	}
 
+function xbits_boundary(ct_full: string): string
+	{
+	local p = split_string1(ct_full, /boundary=/);
+	if ( |p| <= 1 )
+		return "";
+	local rest = split_string1(p[1], /;/);
+	local b = rest[0];
+	local q = split_string(b, /\"/);
+	if ( |q| > 1 )
+		b = q[1];
+	return b;
+	}
+
+function xbits_method_of(uid: string): string
+	{
+	if ( uid in xbits_method )
+		return xbits_method[uid];
+	return "";
+	}
+
 event http_request(c: connection, method: string, original_URI: string, unescaped_URI: string, version: string) &priority=0
 	{
-	if ( c$uid !in xbits_bs )
-		xbits_bs[c$uid] = XbitsBState();
-	local st = xbits_bs[c$uid];
-	st$method = method;
-	xbits_bs[c$uid] = st;
-
+	xbits_method[c$uid] = method;
 	if ( c?$http )
 		{
 		local parts = split_string1(original_URI, /\?/);
@@ -526,86 +573,107 @@ event http_request(c: connection, method: string, original_URI: string, unescape
 		}
 	}
 
-event http_all_headers(c: connection, is_orig: bool, hlist: mime_header_list) &priority=0
+event http_begin_entity(c: connection, is_orig: bool) &priority=0
 	{
-	if ( ! c?$http )
-		return;
-	if ( c$uid !in xbits_bs )
-		xbits_bs[c$uid] = XbitsBState();
-	local st = xbits_bs[c$uid];
-
-	if ( is_orig )
-		c$http$request_headers = xbits_hdrs_to_json(hlist);
-	else
-		c$http$response_headers = xbits_hdrs_to_json(hlist);
-
-	local setc: vector of string = vector();
-	for ( i in hlist )
-		{
-		local nm = hlist[i]$name;
-		local vv = hlist[i]$value;
-		if ( nm == "CONTENT-TYPE" )
-			{
-			if ( is_orig )
-				st$req_ct = to_lower(vv);
-			else
-				st$resp_ct = to_lower(vv);
-			}
-		if ( is_orig && nm == "COOKIE" )
-			c$http$cookie = vv;
-		else if ( is_orig && nm == "AUTHORIZATION" )
-			{
-			c$http$authorization = vv;
-			local sp = split_string_n(vv, /[[:blank:]]+/, F, 2);
-			if ( |sp| > 0 )
-				{
-				c$http$authorization_scheme = to_lower(sp[0]);
-				if ( |sp| > 1 )
-					{
-					local cred = sp[1];
-					if ( to_lower(sp[0]) == "basic" )
-						cred = decode_base64_conn(c$id, cred);
-					c$http$authorization_credentials = cred;
-					}
-				}
-			}
-		else if ( is_orig && nm == "PROXY-AUTHORIZATION" )
-			c$http$proxy_authorization = vv;
-		else if ( ! is_orig && nm == "SET-COOKIE" )
-			setc += vv;
-		}
-	xbits_bs[c$uid] = st;
-	if ( ! is_orig && |setc| > 0 )
-		c$http$set_cookie = setc;
+	local d = xbits_depth_of(c$uid, is_orig) + 1;
+	xbits_depth[c$uid, is_orig] = d;
+	xbits_ent[c$uid, is_orig, d] = XbitsEntity();
 	}
 
 event http_header(c: connection, is_orig: bool, name: string, value: string) &priority=0
 	{
-	if ( is_orig && name == "CONTENT-DISPOSITION" && /[[:blank:]]name=\"/ in value )
+	local d = xbits_depth_of(c$uid, is_orig);
+	if ( d == 0 )
+		d = 1;
+	local e = xbits_get_ent(c$uid, is_orig, d);
+	e$raw_headers = e$raw_headers + name + ": " + value + "\r\n";
+	if ( name == "CONTENT-DISPOSITION" )
 		{
-		local parts = split_string(value, /\"/);
-		if ( |parts| > 1 && parts[1] != "" )
+		local ps = split_string(value, /\"/);
+		local i = 1;
+		while ( i < |ps| )
 			{
-			if ( c$uid !in xbits_form_names )
-				xbits_form_names[c$uid] = set();
-			add xbits_form_names[c$uid][parts[1]];
+			if ( /[[:blank:]]name=$/ in ps[i-1] )
+				e$name = ps[i];
+			else if ( /[[:blank:]]filename=$/ in ps[i-1] )
+				e$filename = ps[i];
+			i += 1;
 			}
+		}
+	xbits_ent[c$uid, is_orig, d] = e;
+	}
+
+event http_all_headers(c: connection, is_orig: bool, hlist: mime_header_list) &priority=0
+	{
+	local d = xbits_depth_of(c$uid, is_orig);
+	if ( d == 0 )
+		d = 1;
+	local e = xbits_get_ent(c$uid, is_orig, d);
+	e$hdrs = xbits_hdrs_to_json(hlist);
+	for ( i in hlist )
+		{
+		if ( hlist[i]$name == "CONTENT-TYPE" )
+			{
+			e$ct_full = to_lower(hlist[i]$value);
+			e$ct = e$ct_full;
+			}
+		}
+	xbits_ent[c$uid, is_orig, d] = e;
+
+	# 仅顶层实体填写 HTTP 记录的头/Cookie/认证
+	if ( d == 1 && c?$http )
+		{
+		if ( is_orig )
+			c$http$request_headers = e$hdrs;
+		else
+			c$http$response_headers = e$hdrs;
+
+		local setc: vector of string = vector();
+		for ( i in hlist )
+			{
+			local nm = hlist[i]$name;
+			local vv = hlist[i]$value;
+			if ( is_orig && nm == "COOKIE" )
+				c$http$cookie = vv;
+			else if ( is_orig && nm == "AUTHORIZATION" )
+				{
+				c$http$authorization = vv;
+				local sp = split_string_n(vv, /[[:blank:]]+/, F, 2);
+				if ( |sp| > 0 )
+					{
+					c$http$authorization_scheme = to_lower(sp[0]);
+					if ( |sp| > 1 )
+						{
+						local cred = sp[1];
+						if ( to_lower(sp[0]) == "basic" )
+							cred = decode_base64_conn(c$id, cred);
+						c$http$authorization_credentials = cred;
+						}
+					}
+				}
+			else if ( is_orig && nm == "PROXY-AUTHORIZATION" )
+				c$http$proxy_authorization = vv;
+			else if ( ! is_orig && nm == "SET-COOKIE" )
+				setc += vv;
+			}
+		if ( ! is_orig && |setc| > 0 )
+			c$http$set_cookie = setc;
 		}
 	}
 
 event http_content_type(c: connection, is_orig: bool, ty: string, subty: string) &priority=0
 	{
-	if ( c$uid !in xbits_bs )
-		xbits_bs[c$uid] = XbitsBState();
-	local st = xbits_bs[c$uid];
+	local d = xbits_depth_of(c$uid, is_orig);
+	if ( d == 0 )
+		d = 1;
+	local e = xbits_get_ent(c$uid, is_orig, d);
 	local ct = to_lower(ty + "/" + subty);
-	if ( is_orig )
-		st$req_ct = ct;
-	else
-		st$resp_ct = ct;
-	xbits_bs[c$uid] = st;
+	e$ct = ct;
+	if ( e$ct_full == "" )
+		e$ct_full = ct;
+	xbits_ent[c$uid, is_orig, d] = e;
 
-	if ( c?$http )
+	if ( d == 1 && c?$http )
 		{
 		if ( is_orig )
 			c$http$req_content_type = ct;
@@ -614,117 +682,144 @@ event http_content_type(c: connection, is_orig: bool, ty: string, subty: string)
 		}
 	}
 
-event http_begin_entity(c: connection, is_orig: bool) &priority=0
-	{
-	if ( c$uid !in xbits_bs )
-		xbits_bs[c$uid] = XbitsBState();
-	local st = xbits_bs[c$uid];
-	if ( is_orig )
-		{
-		st$req_buf = "";
-		st$req_len = 0;
-		st$req_trunc = F;
-		}
-	else
-		{
-		st$resp_buf = "";
-		st$resp_len = 0;
-		st$resp_trunc = F;
-		}
-	xbits_bs[c$uid] = st;
-	}
-
 event http_entity_data(c: connection, is_orig: bool, length: count, data: string) &priority=0
 	{
-	if ( c$uid !in xbits_bs )
-		return;
-	local st = xbits_bs[c$uid];
-	local ct = is_orig ? st$req_ct : st$resp_ct;
-	local do_cap = xbits_capture_type(ct, st$method, is_orig);
+	local d = xbits_depth_of(c$uid, is_orig);
+	if ( d == 0 )
+		d = 1;
+	local e = xbits_get_ent(c$uid, is_orig, d);
+	local ctf = e$ct;
+	if ( e$ct_full != "" )
+		ctf = e$ct_full;
+	local do_cap = xbits_capture_type(ctf, xbits_method_of(c$uid), is_orig);
 
-	if ( is_orig )
+	e$len += length;
+	if ( do_cap && ! e$trunc )
 		{
-		st$req_len += length;
-		if ( do_cap && ! st$req_trunc )
+		local room = xbits_max_body_bytes - |e$buf|;
+		if ( length <= room )
+			e$buf = e$buf + data;
+		else
 			{
-			local room = xbits_max_body_bytes - |st$req_buf|;
-			if ( length <= room )
-				st$req_buf = st$req_buf + data;
-			else
-				{
-				if ( room > 0 )
-					st$req_buf = st$req_buf + sub_bytes(data, 0, room);
-				st$req_trunc = T;
-				}
+			if ( room > 0 )
+				e$buf = e$buf + sub_bytes(data, 0, room);
+			e$trunc = T;
 			}
 		}
-	else
-		{
-		st$resp_len += length;
-		if ( do_cap && ! st$resp_trunc )
-			{
-			local room_r = xbits_max_body_bytes - |st$resp_buf|;
-			if ( length <= room_r )
-				st$resp_buf = st$resp_buf + data;
-			else
-				{
-				if ( room_r > 0 )
-					st$resp_buf = st$resp_buf + sub_bytes(data, 0, room_r);
-				st$resp_trunc = T;
-				}
-			}
-		}
-	xbits_bs[c$uid] = st;
+	xbits_ent[c$uid, is_orig, d] = e;
 	}
 
 event http_end_entity(c: connection, is_orig: bool) &priority=0
 	{
-	if ( ! c?$http || c$uid !in xbits_bs )
+	local d = xbits_depth_of(c$uid, is_orig);
+	if ( d == 0 )
+		d = 1;
+	if ( [c$uid, is_orig, d] !in xbits_ent )
 		return;
-	local st = xbits_bs[c$uid];
-	local ct = to_lower(is_orig ? st$req_ct : st$resp_ct);
+	local e = xbits_ent[c$uid, is_orig, d];
+
+	if ( d > 1 )
+		{
+		# 子实体（multipart 的一个 part）：记录 part 元数据 + 正文片段，并构造原始 part 片段
+		local part = XbitsPart($name=e$name, $filename=e$filename, $content_type=e$ct_full,
+		                        $headers=e$hdrs, $body_excerpt=e$buf, $body_len=e$len,
+		                        $truncated=e$trunc);
+		if ( [c$uid, is_orig] !in xbits_parts )
+			xbits_parts[c$uid, is_orig] = vector();
+		xbits_parts[c$uid, is_orig] += to_json(part);
+
+		local topct = "";
+		if ( [c$uid, is_orig, 1] in xbits_ent )
+			topct = xbits_ent[c$uid, is_orig, 1]$ct_full;
+		local bnd = xbits_boundary(topct);
+		local rawpart = "--" + bnd + "\r\n" + e$raw_headers + "\r\n" + e$buf + "\r\n";
+		if ( [c$uid, is_orig] !in xbits_parts_raw )
+			xbits_parts_raw[c$uid, is_orig] = vector();
+		xbits_parts_raw[c$uid, is_orig] += rawpart;
+		if ( e$trunc )
+			xbits_part_trunc[c$uid, is_orig] = T;
+
+		delete xbits_ent[c$uid, is_orig, d];
+		xbits_depth[c$uid, is_orig] = d - 1;
+		return;
+		}
+
+	# 顶层实体
+	local ctf = e$ct;
+	if ( e$ct_full != "" )
+		ctf = e$ct_full;
+	local ctl = to_lower(ctf);
 
 	if ( is_orig )
 		{
-		c$http$req_content_type = st$req_ct;
-		if ( st$req_len > 0 )
+		if ( c?$http )
+			c$http$req_content_type = ctf;
+		if ( /multipart\/form-data/ in ctl )
 			{
-			c$http$req_body_excerpt = st$req_buf;
-			c$http$req_body_truncated = st$req_trunc;
-			}
-		if ( /application\/x-www-form-urlencoded/ in ct )
-			c$http$form_fields = xbits_kv_to_json(st$req_buf, /&/);
-		else if ( /multipart\/form-data/ in ct || ( c$uid in xbits_form_names && |xbits_form_names[c$uid]| > 0 ) )
-			{
-			local fm: table[string] of string = table();
-			if ( c$uid in xbits_form_names )
+			local arr = "[]";
+			if ( [c$uid, is_orig] in xbits_parts )
+				arr = "[" + join_string_vec(xbits_parts[c$uid, is_orig], ",") + "]";
+			if ( c?$http )
+				c$http$multipart_parts = arr;
+
+			local bnd = xbits_boundary(ctf);
+			local raw = "";
+			if ( [c$uid, is_orig] in xbits_parts_raw )
+				raw = join_string_vec(xbits_parts_raw[c$uid, is_orig], "");
+			raw = raw + "--" + bnd + "--\r\n";
+			if ( c?$http )
 				{
-				for ( nm in xbits_form_names[c$uid] )
-					fm[nm] = "";
-				delete xbits_form_names[c$uid];
+				if ( |raw| <= xbits_max_multipart_bytes )
+					c$http$req_body_excerpt = raw;
+				else
+					{
+					c$http$req_body_excerpt = sub_bytes(raw, 0, xbits_max_multipart_bytes);
+					c$http$req_body_truncated = T;
+					}
+				if ( [c$uid, is_orig] in xbits_part_trunc && xbits_part_trunc[c$uid, is_orig] )
+					c$http$req_body_truncated = T;
 				}
-			c$http$form_fields = to_json(fm);
+			# multipart 字段名 -> 值(体片段) 的 JSON
+			local fm: table[string] of string = table();
+			local names_seen: table[string] of bool = table();
+			# 从 part JSON 无法直接反解，这里退化为字段名清单（来自 Content-Disposition 已在 part 记录 name 中）
+			# 我们直接从 xbits_parts 的 JSON 里保持原始 parts 即可；form_fields 仍由各 part name 汇总：
+			# 简化：不再重复解析，form_fields 使用 multipart_parts。
+			if ( c?$http )
+				c$http$form_fields = arr;
 			}
-		if ( /json/ in ct )
-			c$http$json_body = st$req_buf;
-		if ( /xml/ in ct )
-			c$http$xml_body = st$req_buf;
+		else
+			{
+			if ( e$len > 0 && c?$http )
+				{
+				c$http$req_body_excerpt = e$buf;
+				c$http$req_body_truncated = e$trunc;
+				}
+			if ( /application\/x-www-form-urlencoded/ in ctl && c?$http )
+				c$http$form_fields = xbits_kv_to_json(e$buf, /&/);
+			if ( /json/ in ctl && c?$http )
+				c$http$json_body = e$buf;
+			if ( /xml/ in ctl && c?$http )
+				c$http$xml_body = e$buf;
+			}
 		}
 	else
 		{
-		c$http$resp_content_type = st$resp_ct;
-		if ( st$resp_len > 0 )
+		if ( c?$http )
+			c$http$resp_content_type = ctf;
+		if ( e$len > 0 && c?$http )
 			{
-			c$http$resp_body_excerpt = st$resp_buf;
-			c$http$resp_body_truncated = st$resp_trunc;
+			c$http$resp_body_excerpt = e$buf;
+			c$http$resp_body_truncated = e$trunc;
 			}
 		}
-	}
 
-event connection_state_remove(c: connection)
-	{
-	if ( c$uid in xbits_bs )
-		delete xbits_bs[c$uid];
-	if ( c$uid in xbits_form_names )
-		delete xbits_form_names[c$uid];
+	delete xbits_ent[c$uid, is_orig, d];
+	xbits_depth[c$uid, is_orig] = 0;
+	if ( [c$uid, is_orig] in xbits_parts )
+		delete xbits_parts[c$uid, is_orig];
+	if ( [c$uid, is_orig] in xbits_parts_raw )
+		delete xbits_parts_raw[c$uid, is_orig];
+	if ( [c$uid, is_orig] in xbits_part_trunc )
+		delete xbits_part_trunc[c$uid, is_orig];
 	}
