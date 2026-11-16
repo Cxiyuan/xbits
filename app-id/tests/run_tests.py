@@ -6,17 +6,20 @@
 退出码：全部正样本检出且有 0 负样本误报 => 0；否则 1。
 注：失败信息同时以 GitHub Actions 注解(::error::)输出，便于在 Actions 页面/API 查看。
 """
-import os, sys, json, tempfile, shutil, subprocess
+import os, sys, json, tempfile, shutil, subprocess, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 SCRIPTS = os.path.join(REPO, "app-id", "scripts", "__load__.zeek")
 PCAPS = os.path.join(HERE, "pcaps")
 MANIFEST = os.path.join(HERE, "manifest.json")
-# 所有用例统一注入：注册 scanner 告警类别，使 XbitsAlert 输出 xbits_alert.log
-BASE_EXTRA = [os.path.join(HERE, "redefs", "xbits_alert_reg.zeek")]
-# 必须被禁止的 Zeek 默认告警输出
-FORBIDDEN = ["notice.log", "notice_alarm.log", "signatures.log", "weird.log", "intel.log"]
+# 所有用例统一注入：注册 scanner 告警类别 + Notice 泄漏探针（主动触发 NOTICE 验证默认告警被禁用）
+BASE_EXTRA = [
+    os.path.join(HERE, "redefs", "xbits_alert_reg.zeek"),
+    os.path.join(HERE, "redefs", "notice_leak_probe.zeek"),
+]
+# 必须被禁止的告警输出文件（正则基名）
+FORBIDDEN_RE = re.compile(r"^(notice|signatures?|weird|intel|alarm)", re.I)
 
 
 def ann(level, title, msg):
@@ -76,10 +79,10 @@ def main():
             sigrows = parse_tsv(os.path.join(work, "signatures.log"))
             sig_ids = sorted({x.get("sig_id", "") for x in sigrows if x.get("sig_id")})
             found = [x for x in rows if x.get("src") == c["client"]]
-            # 默认告警输出必须被禁止（notice/signatures/weird/intel）
-            for fn in FORBIDDEN:
+            # 默认告警输出必须被禁止：任何 notice*/signatures*/weird*/intel*/alarm* 非空文件都算泄漏
+            for fn in os.listdir(work):
                 fpath = os.path.join(work, fn)
-                if os.path.exists(fpath) and os.path.getsize(fpath) > 0:
+                if os.path.isfile(fpath) and FORBIDDEN_RE.match(fn) and os.path.getsize(fpath) > 0:
                     fails.append(f"[ALERT-LEAK] {c['pcap']} 默认告警输出未禁止: {fn}")
                     ann("error", f"ALERT-LEAK {c['pcap']}", fn)
             # 告警只能经 XbitsAlert 输出
@@ -114,6 +117,30 @@ def main():
                     fails.append(f"[MISS] {c['pcap']} 期望 {c['expect']}/{c.get('tool')}，实得 {found} sigs={sig_ids}")
                     ann("error", f"MISS {c['pcap']}",
                         f"期望 {c['expect']}/{c.get('tool')}，实得 {found} sigs={sig_ids}")
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+    # —— 注册门控验证：不注册 scanner 时不得输出 xbits_alert；Notice 探针仍须被抑制 ——
+    gc = next((x for x in cases if x["pcap"] == "ua_gobuster.pcap"), None)
+    if gc:
+        work = tempfile.mkdtemp(prefix="zeek_reg_")
+        try:
+            r = subprocess.run(["zeek", "-C", "-r", os.path.join(PCAPS, gc["pcap"]), SCRIPTS,
+                                os.path.join(HERE, "redefs", "notice_leak_probe.zeek")],
+                               cwd=work, capture_output=True, text=True)
+            if r.returncode != 0:
+                fails.append("[REG-GATE] zeek err " + (r.stderr or "")[-300:])
+                ann("error", "REG-GATE", "zeek err")
+            else:
+                xr = parse_tsv(os.path.join(work, "xbits_alert.log"))
+                if any(x.get("src") == gc["client"] for x in xr):
+                    fails.append("[REG-GATE] 未注册 scanner 却产生 xbits_alert")
+                    ann("error", "REG-GATE", "未注册却输出 xbits_alert")
+                for fn in os.listdir(work):
+                    fpath = os.path.join(work, fn)
+                    if os.path.isfile(fpath) and FORBIDDEN_RE.match(fn) and os.path.getsize(fpath) > 0:
+                        fails.append("[REG-GATE] Notice 探针泄漏: " + fn)
+                        ann("error", "REG-GATE", "leak " + fn)
         finally:
             shutil.rmtree(work, ignore_errors=True)
 

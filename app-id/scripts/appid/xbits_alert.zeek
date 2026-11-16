@@ -85,4 +85,8 @@ hook Notice::policy(n: Notice::Info)
 	delete n$actions[Notice::ACTION_LOG];
 	delete n$actions[Notice::ACTION_EMAIL];
 	delete n$actions[Notice::ACTION_ALARM];
+	delete n$actions[Notice::ACTION_DROP];
+@ifdef ( Notice::ACTION_PAGE )
+	delete n$actions[Notice::ACTION_PAGE];
+@endif
 	}
