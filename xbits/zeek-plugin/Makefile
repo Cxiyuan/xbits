@@ -13,8 +13,9 @@
 #
 CXX ?= c++
 CXXFLAGS ?= -O2 -fPIC -std=c++17 -Wall -Wextra
-CXXFLAGS += $(shell zeek-config --include-dir 2>/dev/null)
-LDFLAGS += -shared $(shell zeek-config --libs 2>/dev/null)
+ZEEK_INCLUDE ?= /usr/local/zeek/include
+CXXFLAGS += -I$(ZEEK_INCLUDE)
+LDFLAGS += -shared
 
 ARCH ?= linux-x86_64
 TARGET := lib/xbits_hook.$(ARCH).so

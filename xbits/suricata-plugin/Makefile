@@ -14,7 +14,7 @@ LDFLAGS ?=
 SURICATA_SRC ?=
 
 ifneq ($(SURICATA_SRC),)
-CFLAGS += -I$(SURICATA_SRC)/src -I$(SURICATA_SRC)/rust -I$(SURICATA_SRC)
+CFLAGS += -I$(SURICATA_SRC)/src -I$(SURICATA_SRC)/rust -I$(SURICATA_SRC)/rust/gen -I$(SURICATA_SRC)
 LDFLAGS += -shared
 else
 CFLAGS += $(shell libsuricata-config --cflags 2>/dev/null)
