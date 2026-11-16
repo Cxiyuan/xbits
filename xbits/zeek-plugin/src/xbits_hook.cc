@@ -3,6 +3,7 @@
 // 作用：在 Zeek 进程内通过 HookQueueEvent 拦截选定事件，把事件名 + 连接上下文
 // （uid/五元组/方法/URI/签名）推给 xbits 中央分析引擎。只做转发；规则/状态在 xbits。
 //
+#include "zeek/IPAddr.h"
 #include "zeek/Val.h"
 #include "zeek/Desc.h"
 #include "zeek/Event.h"
