@@ -322,6 +322,7 @@ jobs:
               测试用例/suricata-web-xbits.yaml > 测试用例/suricata-hook-test.yaml
           printf '\nplugins:\n  - %s/xbits/suricata-plugin/xbits-suricata-hook.so\n' "$GITHUB_WORKSPACE" >> 测试用例/suricata-hook-test.yaml
           chmod +x xbits/target/release/xbits
+          mkdir -p /tmp/suricata-hook-out
           rm -f /tmp/xbits-hook.sock /tmp/xbits-hook.out
           xbits/target/release/xbits --hook-socket /tmp/xbits-hook.sock \
             --rules xbits/rules/default.json >/tmp/xbits-hook.out 2>/tmp/xbits-hook.err &
