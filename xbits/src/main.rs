@@ -1,8 +1,29 @@
 use std::env;
+use std::fs;
 use std::io;
+
+use xbits::hook::run_hook_listener;
+use xbits::model::Rule;
+
+fn load_rules(path: Option<String>) -> io::Result<Vec<Rule>> {
+    match path {
+        None => Ok(Vec::new()),
+        Some(path) => {
+            let data = fs::read_to_string(&path)?;
+            serde_json::from_str::<Vec<Rule>>(&data).map_err(|err| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("bad rules file {path}: {err}"),
+                )
+            })
+        }
+    }
+}
 
 fn main() -> io::Result<()> {
     let mut socket = String::from("/var/run/suricata/eve.sock");
+    let mut hook_socket: Option<String> = None;
+    let mut rules_file: Option<String> = None;
     let mut once = false;
     let mut stdin_mode = false;
 
@@ -14,12 +35,25 @@ fn main() -> io::Result<()> {
                     io::Error::new(io::ErrorKind::InvalidInput, "--socket value missing")
                 })?;
             }
+            "--hook-socket" => {
+                hook_socket = Some(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--hook-socket value missing")
+                })?);
+            }
+            "--rules" => {
+                rules_file = Some(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--rules value missing")
+                })?);
+            }
             "--once" => once = true,
             "--stdin" => stdin_mode = true,
             "--help" | "-h" => {
                 println!(
-                    "xbits: Suricata EVE -> normalized Zeek event stream\n\
-                     usage: xbits [--socket PATH] [--once] [--stdin]"
+                    "xbits: Suricata EVE / thin-hook -> Zeek event stream + central engine\n\
+                     usage:\n\
+                       xbits [--socket PATH] [--once]        # Suricata EVE unix_stream bridge\n\
+                       xbits --hook-socket PATH [--rules R]  # Suricata/Zeek thin-hook engine\n\
+                       xbits --stdin                         # offline EVE stdin"
                 );
                 return Ok(());
             }
@@ -32,11 +66,18 @@ fn main() -> io::Result<()> {
         }
     }
 
+    let rules = load_rules(rules_file)?;
     let stdout = io::stdout();
     let mut out = stdout.lock();
+
+    if let Some(path) = hook_socket {
+        return run_hook_listener(&path, rules, &mut out);
+    }
+
     if stdin_mode {
         let stdin = io::stdin();
         return xbits::stream_to_writer(stdin.lock(), &mut out);
     }
+
     xbits::run_listener(&socket, &mut out, once)
 }

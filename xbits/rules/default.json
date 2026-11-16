@@ -1,0 +1,46 @@
+[
+  {
+    "id": "xb-suricata-web-sqli",
+    "name": "Suricata Web SQLi",
+    "source": "suricata",
+    "kind": "alert",
+    "signature_contains": "SQL",
+    "group_by": "community_id",
+    "score": 20,
+    "threshold": 20,
+    "reason": "suricata-web-sqli"
+  },
+  {
+    "id": "xb-suricata-recon",
+    "name": "Suricata Recon",
+    "source": "suricata",
+    "kind": "alert",
+    "signature_contains": "扫描",
+    "group_by": "src",
+    "score": 10,
+    "threshold": 10,
+    "reason": "suricata-recon"
+  },
+  {
+    "id": "xb-zeek-http-request",
+    "name": "Zeek HTTP Request Context",
+    "source": "zeek",
+    "kind": "event",
+    "event": "http_request",
+    "group_by": "uid",
+    "score": 5,
+    "threshold": 5,
+    "reason": "zeek-http-request"
+  },
+  {
+    "id": "xb-zeek-signature",
+    "name": "Zeek Signature Match",
+    "source": "zeek",
+    "kind": "event",
+    "event": "signature_match",
+    "group_by": "uid",
+    "score": 20,
+    "threshold": 20,
+    "reason": "zeek-signature-match"
+  }
+]

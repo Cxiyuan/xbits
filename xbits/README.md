@@ -191,3 +191,31 @@ workflow run `42455328044` 三项 job 全部通过：
 - 生产使用 `xbits --socket ...` 长驻监听；`--once` 只用于 CI/单次回放：
   接受一个 Suricata 连接，读到 EOF 后退出并删除 socket。
 - 本组件不兼容其他 Suricata/Zeek 版本，只针对 8.0.8 / 9.0.1。
+
+## 8. 中央分析引擎（薄 hook 平面）
+
+在原有 EVE 桥之外，`xbits` 新增 `--hook-socket` 模式：接收 **Suricata/Zeek 进程内薄插件**
+推送的 JSONL 事件，在中央引擎做统一上下文/规则/评分，再把命中告警输出为 JSONL
+（继续由 Zeek `Input::READER_RAW` 消费；告警最终仍由 `XbitsAlert` 输出）。
+
+```bash
+# 1) 启动中央引擎（hook 平面）
+xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/default.json
+
+# 2) Suricata 薄插件：plugins: xbits-suricata-hook.so
+#    环境变量 XBITS_HOOK_SOCKET 指向同一 socket
+
+# 3) Zeek 薄插件：
+#    ZEEK_PLUGIN_PATH=$PWD/xbits/zeek-plugin
+#    ZEEK_PLUGIN_ACTIVATE=Xbits::Hook
+```
+
+事件 schema（节选）：
+```json
+{"source":"suricata","kind":"alert","sid":9103001,"signature":"SQL 注入","src":"1.1.1.1","dst":"2.2.2.2","sport":40001,"dport":80,"proto":"TCP"}
+{"source":"zeek","kind":"event","event":"http_request","desc":"..."}
+```
+
+规则文件为 JSON 数组（`xbits/rules/default.json` 示例），支持
+`source/kind/proto/signature_contains/event/desc_contains/method/group_by/score/threshold/reason`。
+

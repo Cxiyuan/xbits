@@ -5,6 +5,10 @@
 //! The output is consumed by `xbits/zeek/xbits_suricata.zeek` through Zeek's
 //! raw Input reader in execute/stream mode.
 
+pub mod engine;
+pub mod hook;
+pub mod model;
+
 use std::io::{self, BufRead, Write};
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::os::unix::net::UnixListener;
