@@ -118,7 +118,6 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::Rule;
 
     fn rule() -> Rule {
         serde_json::from_str::<Rule>(
