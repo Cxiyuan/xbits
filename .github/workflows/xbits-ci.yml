@@ -26,21 +26,51 @@ env:
 jobs:
   zeek-plugin-build:
     name: Zeek 9.0.1 thin hook plugin build
+    needs: rust
     runs-on: ubuntu-22.04
     container:
       image: zeek/zeek:9.0.1
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
       - name: Install compiler
         run: |
           apt-get update
-          apt-get install -y g++ make
+          apt-get install -y g++ make python3 python3-pip
+          python3 -m pip install --break-system-packages --no-cache-dir scapy || python3 -m pip install --no-cache-dir scapy
       - name: Build Zeek thin hook plugin
         run: |
           export PATH=/usr/local/zeek/bin:$PATH
           make -C xbits/zeek-plugin
+      - name: Download xbits binary
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: xbits-binary
+          path: xbits/target/release
+      - name: Generate web PCAP for Zeek hook runtime
+        run: python3 测试用例/generate_web_pcaps.py --out /tmp/web-pcap
+      - name: Runtime test xbits Zeek thin hook
+        run: |
+          set -euo pipefail
+          export PATH=/usr/local/zeek/bin:$PATH
+          chmod +x xbits/target/release/xbits
+          rm -f /tmp/xbits-hook.sock /tmp/xbits-hook.out
+          xbits/target/release/xbits --hook-socket /tmp/xbits-hook.sock \
+            --rules xbits/rules/default.json >/tmp/xbits-hook.out 2>/tmp/xbits-hook.err &
+          echo $! >/tmp/xbits-hook.pid
+          for i in $(seq 1 50); do
+            [ -S /tmp/xbits-hook.sock ] && break
+            sleep 0.1
+          done
+          ZEEK_PLUGIN_PATH="$PWD/xbits/zeek-plugin" \
+          ZEEK_PLUGIN_ACTIVATE="Xbits::Hook" \
+          XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
+            zeek -Cr /tmp/web-pcap/web_sqli_uri_union.pcap
+          sleep 1
+          cat /tmp/xbits-hook.out
+          grep -q 'xb-zeek-http-request' /tmp/xbits-hook.out
+          kill $(cat /tmp/xbits-hook.pid) || true
 
   rust:
     name: Rust bridge tests and release build
@@ -283,6 +313,30 @@ jobs:
             echo "== $config"
             suricata -T -c "$config" -v
           done
+
+      - name: Runtime test xbits Suricata thin hook
+        run: |
+          set -euo pipefail
+          sed -e 's|filetype: unix_stream|filetype: regular|' \
+              -e "s|filename: .*eve.sock|filename: $GITHUB_WORKSPACE/测试用例/out/suricata/xbits-web/hook-eve.json|" \
+              测试用例/suricata-web-xbits.yaml > 测试用例/suricata-hook-test.yaml
+          printf '\nplugins:\n  - %s/xbits/suricata-plugin/xbits-suricata-hook.so\n' "$GITHUB_WORKSPACE" >> 测试用例/suricata-hook-test.yaml
+          chmod +x xbits/target/release/xbits
+          rm -f /tmp/xbits-hook.sock /tmp/xbits-hook.out
+          xbits/target/release/xbits --hook-socket /tmp/xbits-hook.sock \
+            --rules xbits/rules/default.json >/tmp/xbits-hook.out 2>/tmp/xbits-hook.err &
+          echo $! >/tmp/xbits-hook.pid
+          for i in $(seq 1 50); do
+            [ -S /tmp/xbits-hook.sock ] && break
+            sleep 0.1
+          done
+          XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
+            suricata -r 测试用例/web_pcap/web_sqli_uri_union.pcap \
+            -c 测试用例/suricata-hook-test.yaml -l /tmp/suricata-hook-out
+          sleep 1
+          cat /tmp/xbits-hook.out
+          grep -q 'xb-suricata-web-sqli' /tmp/xbits-hook.out
+          kill $(cat /tmp/xbits-hook.pid) || true
 
       - name: Start Zeek with xbits listener
         run: |
