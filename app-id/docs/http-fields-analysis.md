@@ -119,6 +119,6 @@ Suricata 的 `http.*` 关键字覆盖更广；Zeek `http.log` **缺**以下（�
 - 二进制/媒体（图片/音视频/字体/octet-stream/zip/pdf 等）**不采集正文**（仅长度；完整哈希/类型见 `files.log` 经 `resp_fuids` 关联）。
 - 大型/分块正文：通过 `http_entity_data` 累积分片并截断；`http_entity_data_delivery_size` 可再调。
 
-**验证**：`app-id/tests/run_http_fields.py` 用 `pcaps/http_fields.pcap`（urlencoded/JSON/XML/multipart+Set-Cookie）回放，断言上述字段全部落库；已加入 CI（`.github/workflows/app-id-scan.yml`）。
+**验证**：`app-id/tests/run_http_fields.py` 用 `pcaps/http_fields.pcap`（urlencoded/JSON/XML/multipart+Set-Cookie）回放，断言上述字段全部落库；已加入 CI（`.github/workflows/app-id-scan.yml`）。**CI 实测（提交 `06bfd8b`，run 43810668088，success）：14/14 字段检查通过；扫描检测仍 DET=50/50、FPR=0/5。**
 
 **仍不支持**：HTTP/2（Zeek 9.0.1 无分析器）、HTTP/3；需外部解析。
