@@ -62,7 +62,7 @@
    - L1：`http_request` 的 `user_agent`（`http.log`）。
    - L2：签名层对原始请求头做顺序/大小写匹配（`signatures/*.sig`；或脚本读 headers）。
    - L3：`ssl` 的 **JA3/JA3S**（Zeek 有；JA4 是否内置需按 9.0.1 核验）。
-   - L4：HTTP/2 指纹（Zeek `http2` 分析器是否暴露 SETTINGS/伪头顺序需核验；不足则用 Spicy/插件）。
+   - L4：HTTP/2 指纹（**Zeek 9.0.1 无 HTTP/2 分析器**，无法获取 SETTINGS/伪头顺序；需 Suricata/外部插件）。
    - L5：`conn`/`SumStats`（多端口扫描、404/403 突发、URI 广度）。
 3. **判定**：`库指纹(脚本客户端) + 扫描行为` → `app=CustomScanner`/`category=scanner`；再叠加具体工具 UA 才能定到具体工具。
 
@@ -92,5 +92,5 @@
 
 ## 8. 待验证（Zeek 9.0.1）
 - Zeek 9.0.1 的 JA3/JA4 字段可得性（`ssl.log`/脚本字段名）。
-- HTTP/2 SETTINGS/伪头顺序是否可经现有分析器/日志获得（否则需 Spicy/插件）。
+- HTTP/2：Zeek 9.0.1 **无 HTTP/2 分析器**，SETTINGS/伪头顺序不可得（需 Suricata/外部插件）。
 - 各库各版本的 JA3/JA4/H2 具体值（须实测，不做臆测）。

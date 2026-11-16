@@ -122,14 +122,14 @@
 
 过程中定位并修复的真实问题（体现 CI 价值）：
 1. **`http_request` 时 `c$http$host`/`user_agent` 尚未填充**（Zeek 在后续 `http_header` 才设置）→ 改用 `event http_header` 取 Host/UA，UA 与目录爆破检测才生效；
-2. **Zeek `.sig` 的 `payload` 正则对“行首锚定/前导字节”敏感**：`User-Agent:` 位于请求头（非 payload 开头）时明文签名不触发 → 现由脚本层 `http_header` 的 `ua_to_tool()` 兜底（HTTP/2 亦覆盖）；
+2. **Zeek `.sig` 的 `payload` 正则对“行首锚定/前导字节”敏感**：`User-Agent:` 位于请求头（非 payload 开头）时明文签名不触发 → 现由脚本层 `http_header` 的 `ua_to_tool()` 兜底（仅 HTTP/1.x；Zeek 9.0.1 无 HTTP/2 分析器，h2 不可见，见 `http-fields-analysis.md`）；
 3. 局部变量 `ln` 与 Zeek 内置 `ln` 冲突、文件 UTF-8 BOM 导致加载失败 → 已修复。
 
 > 结论：**检测能力已在 Zeek 9.0.1 下实测通过**；UA 工具、nmap 探针、目录爆破、端口扫描均命中，负样本零误报。
 
 ## 8. 后续收敛：已完成的修复
 按上文“缺口/收敛建议”逐项落地（均纳入 CI 回归）：
-1. **`.sig` 行中段匹配（实测受限，已转脚本层）**：Zeek `payload` 正则**隐式锚定 payload 首字节**；实测对位于请求头中段的 `User-Agent:` **即使加前导 `[\x09\x0a\x0d\x20-\x7e]*` 也不触发**（CI `sig-hit = 0/42`）。因此 **UA 识别改由脚本层 `http_header` → `ua_to_tool()` 承担**（HTTP/1.x 与 HTTP/2 均覆盖，检出 100%）；`.sig` 保留用于**流首探针**（nmap FourOhFour/TierB 等）及其它引擎/场景。
+1. **`.sig` 行中段匹配（实测受限，已转脚本层）**：Zeek `payload` 正则**隐式锚定 payload 首字节**；实测对位于请求头中段的 `User-Agent:` **即使加前导 `[\x09\x0a\x0d\x20-\x7e]*` 也不触发**（CI `sig-hit = 0/42`）。因此 **UA 识别改由脚本层 `http_header` → `ua_to_tool()` 承担**（HTTP/1.x 覆盖；**HTTP/2 不解析**，Zeek 9.0.1 无 HTTP/2 分析器，见 `http-fields-analysis.md`）；`.sig` 保留用于**流首探针**（nmap FourOhFour/TierB 等）及其它引擎/场景。
 2. **DNS 侦察（无 UA 工具）**：新增 **PTR 反查扫描**结构性检测（不同 PTR 查询 ≥ `dns_ptr_threshold`=20 → `dns_ptr_recon`），覆盖 dnsrecon/dnsenum/fierce 等反查类。
 3. **低速慢扫（low-and-slow）**：新增 **长窗(1h)** 结构：同 (源,host) 累计不同 URI ≥ `slow_uri_threshold`=100 且 404/403 比 ≥ `slow_404_ratio`=0.5 → `slow_scan`，绕过短窗目录爆破阈值。
 4. **TLS 指纹（JA3-lite，覆盖加密/无 UA 扫描器）**：核心 Zeek 9.0.1 **无内置 JA3 字段**，故实现**基于 `ssl_client_hello` 的“版本+密码套件序列”指纹**（如 `v771|4865-4866-4867`），通过 `redef` 表 `XbitsScan::tls_fp_to_tool` 映射到工具/库（默认空，生产按实测填充）。CI 用测试映射验证机制可用。

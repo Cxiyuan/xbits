@@ -127,7 +127,7 @@ function classify_lib(ua: string): string
 	return "other";
 	}
 
-# 脚本层 UA -> 具体工具（HTTP/2 经 HPACK 解码后 c$http$user_agent 仍可得；补 .sig 在 h2/分片下的漏报）
+# 脚本层 UA -> 具体工具（基于 http_header 的 User-Agent；仅 HTTP/1.x。Zeek 9.0.1 无 HTTP/2 分析器，h2 头/UA 不可见）
 function ua_to_tool(ua: string): string
 	{
 	local u = to_lower(ua);

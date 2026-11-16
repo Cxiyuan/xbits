@@ -26,4 +26,4 @@
 ## 新增签名
 1. 在 `签名` 中用 `payload` 锚定 `User-Agent:` 品牌字面（词边界防子串误报）或探针 payload；
 2. `event "scanner_ua_<tool>"`（UA）或 `nmap_tierA_*` / `nmap_tierB_*`（探针）；
-3. 运行 `__load__.zeek` 自动加载；同步在 `scan.zeek` 的 `ua_to_tool()` 添加同一品牌 token（覆盖 HTTP/2）。
+3. 运行 `__load__.zeek` 自动加载；同步在 `scan.zeek` 的 `ua_to_tool()` 添加同一品牌 token（**仅 HTTP/1.x**；Zeek 9.0.1 无 HTTP/2 分析器）。
