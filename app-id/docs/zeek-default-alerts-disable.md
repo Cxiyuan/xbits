@@ -53,6 +53,8 @@ global alert: event(info: Info);            # 下游可订阅
 3. 负样本不得出现在 `scan_report.log`；
 测试统一注入 `app-id/tests/redefs/xbits_alert_reg.zeek`（注册 `scanner`）。
 
+**CI 实测（提交 `8e7e9fb`，run 43801460476，success）**：`DET=50/50`、`FPR=0/5`；`notice.log/notice_alarm.log/signatures.log/weird.log/intel.log` **均未产生**（默认告警已禁用），正样本告警仅出现在 **`xbits_alert.log`**（注册制接口）。
+
 ## 5. 影响与注意
 - 关闭 notice.log 会**同时静默** `site/local.zeek` 策略脚本（暴力破解、证书错误、SQLi、软件漏洞等）的默认告警。若仍需这些情报，应在 `XbitsAlert` 接口中**重新接线**（例如订阅 `Notice::log_notice`/`Notice::policy` 或各自事件，筛选后调用 `XbitsAlert::emit`）。
 - 未改 vendor 源码，仅用 `Log::disable_stream` + `Notice::policy` hook，升级 Zeek 不受影响。
