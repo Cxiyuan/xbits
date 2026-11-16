@@ -1,17 +1,7 @@
 // xbits Zeek thin hook plugin
 //
-// 作用：在 Zeek 进程内拦截选定事件（signature_match/http_request/...），把事件
-// 描述通过 Unix socket 推给 xbits 中央分析引擎。只做转发；规则/状态在 xbits。
-//
-// 构建（需要 Zeek 9.0.1 的 zeek-config）：
-//   make
-//
-// 目录部署（Zeek 动态插件布局）：
-//   xbits/zeek-plugin/
-//     __zeek_plugin__        # 内容：Xbits::Hook
-//     lib/xbits_hook.linux-x86_64.so
-//   ZEEK_PLUGIN_PATH=/path/to/xbits/zeek-plugin
-//   ZEEK_PLUGIN_ACTIVATE=Xbits::Hook
+// 作用：在 Zeek 进程内通过 HookQueueEvent 拦截选定事件，把事件名 + 连接上下文
+// （uid/五元组/方法/URI/签名）推给 xbits 中央分析引擎。只做转发；规则/状态在 xbits。
 //
 #include "zeek/Val.h"
 #include "zeek/Desc.h"
@@ -93,6 +83,117 @@ static void SendLine(const std::string &line)
     close(fd);
 }
 
+static bool ValStr(const zeek::ValPtr &v, std::string &out)
+{
+    if (!v)
+        return false;
+    if (const auto *s = v->AsStringVal()) {
+        out = s->ToStdString();
+        return true;
+    }
+    return false;
+}
+
+static bool ValAddr(const zeek::ValPtr &v, std::string &out)
+{
+    if (!v)
+        return false;
+    if (const auto *a = v->AsAddrVal()) {
+        out = a->Get().AsString();
+        return true;
+    }
+    return false;
+}
+
+static bool ValPort(const zeek::ValPtr &v, uint64_t &out)
+{
+    if (!v)
+        return false;
+    if (const auto *p = v->AsPortVal()) {
+        out = p->Port();
+        return true;
+    }
+    return false;
+}
+
+static std::string BuildEventJson(zeek::Event *event)
+{
+    std::string name = event->Handler() ? event->Handler()->Name() : "";
+    std::string uid, src, dst, proto, method, uri, sig, sig_msg;
+    uint64_t sport = 0, dport = 0;
+
+    auto fill_conn = [&](const zeek::ValPtr &v) {
+        if (!v)
+            return;
+        const auto *conn = v->AsRecordVal();
+        if (!conn)
+            return;
+        ValStr(conn->GetField("uid"), uid);
+        const auto idv = conn->GetField("id");
+        if (idv) {
+            if (const auto *id = idv->AsRecordVal()) {
+                ValAddr(id->GetField("orig_h"), src);
+                ValAddr(id->GetField("resp_h"), dst);
+                ValPort(id->GetField("orig_p"), sport);
+                ValPort(id->GetField("resp_p"), dport);
+            }
+        }
+    };
+
+    const auto &args = event->Args();
+    if (name == "signature_match" && !args.empty()) {
+        if (const auto *st = args[0]->AsRecordVal()) {
+            ValStr(st->GetField("uid"), uid);
+            ValAddr(st->GetField("src_addr"), src);
+            ValAddr(st->GetField("dst_addr"), dst);
+            ValPort(st->GetField("src_port"), sport);
+            ValPort(st->GetField("dst_port"), dport);
+            ValStr(st->GetField("sig_id"), sig);
+            ValStr(st->GetField("event_msg"), sig_msg);
+        }
+        if (args.size() >= 2)
+            ValStr(args[1], sig_msg);
+    } else if ((name == "http_request" || name == "http_reply" || name == "dns_request" ||
+                name == "dns_query" || name == "notice") &&
+               !args.empty()) {
+        fill_conn(args[0]);
+        if (name == "http_request" && args.size() >= 3) {
+            ValStr(args[1], method);
+            ValStr(args[2], uri);
+        } else if (name == "http_reply" && args.size() >= 4) {
+            ValStr(args[3], sig_msg); // reason phrase as extra context
+        } else if (name == "dns_request" && args.size() >= 3) {
+            ValStr(args[2], uri); // query name
+        }
+    }
+
+    std::string out = "{\"source\":\"zeek\",\"kind\":\"event\",\"event\":\"" + JsonEscape(name) + "\"";
+    if (!uid.empty())
+        out += ",\"uid\":\"" + JsonEscape(uid) + "\"";
+    if (!src.empty())
+        out += ",\"src\":\"" + JsonEscape(src) + "\"";
+    if (!dst.empty())
+        out += ",\"dst\":\"" + JsonEscape(dst) + "\"";
+    if (sport != 0)
+        out += ",\"sport\":" + std::to_string(sport);
+    if (dport != 0)
+        out += ",\"dport\":" + std::to_string(dport);
+    if (!proto.empty())
+        out += ",\"proto\":\"" + JsonEscape(proto) + "\"";
+    if (!method.empty())
+        out += ",\"method\":\"" + JsonEscape(method) + "\"";
+    if (!uri.empty())
+        out += ",\"uri\":\"" + JsonEscape(uri) + "\"";
+    if (!sig.empty())
+        out += ",\"signature\":\"" + JsonEscape(sig) + "\"";
+    if (!sig_msg.empty())
+        out += ",\"desc\":\"" + JsonEscape(sig_msg) + "\"";
+    else
+        out += ",\"desc\":\"" + JsonEscape(zeek::obj_desc(event)) + "\"";
+    out += ",\"ts\":\"" + std::to_string(event->Time()) + "\"}";
+    return out;
+}
+
 class Plugin final : public zeek::plugin::Plugin {
 public:
     zeek::plugin::Configuration Configure() override
@@ -119,10 +220,7 @@ public:
             name != "dns_request" && name != "dns_query" && name != "notice")
             return false;
 
-        std::string desc = zeek::obj_desc(event);
-        std::string line = "{\"source\":\"zeek\",\"kind\":\"event\",\"event\":\"" +
-                           JsonEscape(name) + "\",\"desc\":\"" + JsonEscape(desc) + "\"}\n";
-        SendLine(line);
+        SendLine(BuildEventJson(event));
         return false; // 继续让 Zeek 正常处理事件
     }
 };
