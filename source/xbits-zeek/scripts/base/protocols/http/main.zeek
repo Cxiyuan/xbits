@@ -731,8 +731,8 @@ event http_end_entity(c: connection, is_orig: bool) &priority=0
 		local topct = "";
 		if ( [c$uid, is_orig, 1] in xbits_ent )
 			topct = xbits_ent[c$uid, is_orig, 1]$ct_full;
-		local bnd = xbits_boundary(topct);
-		local rawpart = "--" + bnd + "\r\n" + e$raw_headers + "\r\n" + e$buf + "\r\n";
+		local bnd_part = xbits_boundary(topct);
+		local rawpart = "--" + bnd_part + "\r\n" + e$raw_headers + "\r\n" + e$buf + "\r\n";
 		if ( [c$uid, is_orig] !in xbits_parts_raw )
 			xbits_parts_raw[c$uid, is_orig] = vector();
 		xbits_parts_raw[c$uid, is_orig] += rawpart;
