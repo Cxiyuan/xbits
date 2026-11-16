@@ -131,6 +131,12 @@ jobs:
           xbits/target/release/xbits --stdin < xbits/testdata/alert.jsonl \
             | grep -q '"signature_id":9103001'
 
+      - name: Verify xbits central hook engine
+        run: |
+          python xbits/test/hook_engine_smoke.py \
+            --xbits xbits/target/release/xbits \
+            --rules xbits/rules/default.json
+
       - name: Run Zeek Input event bridge
         run: |
           set -euo pipefail
