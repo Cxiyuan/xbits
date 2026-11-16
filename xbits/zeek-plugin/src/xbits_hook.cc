@@ -13,6 +13,7 @@
 //   ZEEK_PLUGIN_PATH=/path/to/xbits/zeek-plugin
 //   ZEEK_PLUGIN_ACTIVATE=Xbits::Hook
 //
+#include "zeek/Val.h"
 #include "zeek/Desc.h"
 #include "zeek/Event.h"
 #include "zeek/EventHandler.h"
