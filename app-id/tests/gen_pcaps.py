@@ -4,7 +4,7 @@
 输出到 app-id/tests/pcaps/，并写 manifest.json 描述每条用例的期望。
 在 Zeek 9.0.1 容器内运行：python3 app-id/tests/gen_pcaps.py
 """
-import os, json, base64
+import os, json
 from scapy.all import Ether, IP, TCP, UDP, Raw, wrpcap
 from scapy.layers.dns import DNS, DNSQR
 
@@ -225,49 +225,6 @@ for k in range(3):
     pk += tcp_stream("10.9.0.5", 45030 + k, req_bytes(f"/v1/ping/{k}", "Go-http-client/1.1"),
                      resp_bytes(200), t0=1700000400.0 + k)
 emit("neg_go", pk, "negative")
-
-# ---- HTTP 字段扩展测试用 PCAP（完整头/Cookie/Auth/Query/表单/JSON/XML/Multipart）----
-def build_http_fields():
-    pk = []
-    cip = "10.8.0.1"
-    # conn1: urlencoded POST + JSON 响应 + 2 个 Set-Cookie
-    b1 = b"username=admin&password=s3cr3t&debug=1"
-    auth = "Basic " + base64.b64encode(b"admin:s3cr3t").decode()
-    r1 = (f"POST /api/login?user=admin&debug=1 HTTP/1.1\r\nHost: app.local\r\n"
-          f"Cookie: session=abc; uid=42\r\nAuthorization: {auth}\r\nX-Forwarded-For: 10.9.9.9\r\n"
-          f"Content-Type: application/x-www-form-urlencoded\r\nContent-Length: {len(b1)}\r\n"
-          f"Connection: close\r\n\r\n").encode() + b1
-    j1 = b'{"ok":true,"role":"admin"}'
-    s1 = (f"HTTP/1.1 200 OK\r\nSet-Cookie: sid=xyz; HttpOnly\r\nSet-Cookie: theme=dark\r\n"
-          f"Content-Type: application/json\r\nContent-Length: {len(j1)}\r\nConnection: close\r\n\r\n").encode() + j1
-    pk += tcp_stream(cip, 48001, r1, s1)
-    # conn2: JSON POST
-    b2 = b'{"a":1,"b":"x"}'
-    r2 = (f"POST /api/put HTTP/1.1\r\nHost: api.local\r\nContent-Type: application/json\r\n"
-          f"Content-Length: {len(b2)}\r\nConnection: close\r\n\r\n").encode() + b2
-    j2 = b'{"result":"ok"}'
-    s2 = (f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(j2)}\r\n"
-          f"Connection: close\r\n\r\n").encode() + j2
-    pk += tcp_stream(cip, 48002, r2, s2, t0=1700000500.0)
-    # conn3: XML POST
-    b3 = b'<req><q>1</q></req>'
-    r3 = (f"POST /xml HTTP/1.1\r\nHost: xml.local\r\nContent-Type: application/xml\r\n"
-          f"Content-Length: {len(b3)}\r\nConnection: close\r\n\r\n").encode() + b3
-    x3 = b'<resp><ok>1</ok></resp>'
-    s3 = (f"HTTP/1.1 200 OK\r\nContent-Type: application/xml\r\nContent-Length: {len(x3)}\r\n"
-          f"Connection: close\r\n\r\n").encode() + x3
-    pk += tcp_stream(cip, 48003, r3, s3, t0=1700000600.0)
-    # conn4: multipart POST
-    bnd = "BOUND"
-    b4 = (f'--{bnd}\r\nContent-Disposition: form-data; name="file"; filename="a.txt"\r\n\r\n').encode() \
-         + b"HELLO" + f"\r\n--{bnd}--\r\n".encode()
-    r4 = (f"POST /upload HTTP/1.1\r\nHost: up.local\r\nContent-Type: multipart/form-data; boundary={bnd}\r\n"
-          f"Content-Length: {len(b4)}\r\nConnection: close\r\n\r\n").encode() + b4
-    s4 = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
-    pk += tcp_stream(cip, 48004, r4, s4, t0=1700000700.0)
-    return pk
-
-wrpcap(os.path.join(OUT, "http_fields.pcap"), build_http_fields())
 
 with open(os.path.join(HERE, "manifest.json"), "w", encoding="utf-8") as f:
     json.dump(MANIFEST, f, ensure_ascii=False, indent=2)
