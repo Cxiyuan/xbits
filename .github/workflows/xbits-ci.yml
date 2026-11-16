@@ -1,4 +1,4 @@
-﻿name: xbits-cross-engine-8.0.8-9.0.1
+name: xbits-cross-engine-8.0.8-9.0.1
 
 on:
   workflow_dispatch:
@@ -65,6 +65,14 @@ jobs:
           name: xbits-cargo-test-log
           path: /tmp/xbits-cargo.log
           if-no-files-found: ignore
+
+      - name: Upload resolved Cargo.lock
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: xbits-cargo-lock
+          path: xbits/Cargo.lock
+          if-no-files-found: warn
 
       - name: Build release binary
         run: cargo build --manifest-path xbits/Cargo.toml --release
