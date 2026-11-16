@@ -207,7 +207,7 @@ public:
 
     void InitPreScript() override
     {
-        Plugin::InitPreScript();
+        zeek::plugin::Plugin::InitPreScript();
         EnableHook(HOOK_QUEUE_EVENT);
     }
 
