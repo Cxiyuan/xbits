@@ -13,6 +13,10 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 SCRIPTS = os.path.join(REPO, "app-id", "scripts", "__load__.zeek")
 PCAPS = os.path.join(HERE, "pcaps")
 MANIFEST = os.path.join(HERE, "manifest.json")
+# 所有用例统一注入：注册 scanner 告警类别，使 XbitsAlert 输出 xbits_alert.log
+BASE_EXTRA = [os.path.join(HERE, "redefs", "xbits_alert_reg.zeek")]
+# 必须被禁止的 Zeek 默认告警输出
+FORBIDDEN = ["notice.log", "notice_alarm.log", "signatures.log", "weird.log", "intel.log"]
 
 
 def ann(level, title, msg):
@@ -59,6 +63,7 @@ def main():
         pcap = os.path.join(PCAPS, c["pcap"])
         try:
             r = subprocess.run(["zeek", "-C", "-r", pcap, SCRIPTS] +
+                               BASE_EXTRA +
                                [os.path.join(REPO, e) for e in c.get("extra", [])],
                                cwd=work, capture_output=True, text=True)
             if r.returncode != 0:
@@ -71,6 +76,18 @@ def main():
             sigrows = parse_tsv(os.path.join(work, "signatures.log"))
             sig_ids = sorted({x.get("sig_id", "") for x in sigrows if x.get("sig_id")})
             found = [x for x in rows if x.get("src") == c["client"]]
+            # 默认告警输出必须被禁止（notice/signatures/weird/intel）
+            for fn in FORBIDDEN:
+                fpath = os.path.join(work, fn)
+                if os.path.exists(fpath) and os.path.getsize(fpath) > 0:
+                    fails.append(f"[ALERT-LEAK] {c['pcap']} 默认告警输出未禁止: {fn}")
+                    ann("error", f"ALERT-LEAK {c['pcap']}", fn)
+            # 告警只能经 XbitsAlert 输出
+            xrows = parse_tsv(os.path.join(work, "xbits_alert.log"))
+            xhit = [x for x in xrows if x.get("src") == c["client"]]
+            if c["expect"] != "negative" and not xhit:
+                fails.append(f"[NO-ALERT] {c['pcap']} 未通过 XbitsAlert 输出告警")
+                ann("error", f"NO-ALERT {c['pcap']}", "xbits_alert.log 无记录")
             if c["pcap"].startswith("ua_"):
                 ua_cases += 1
                 if any("from_sig" in (x.get("evidence", "") or "") for x in found):

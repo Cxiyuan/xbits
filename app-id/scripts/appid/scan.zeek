@@ -16,6 +16,7 @@
 module XbitsScan;
 
 @load ./main
+@load ./xbits_alert
 @load ../../扫描工具
 
 export {
@@ -266,6 +267,11 @@ function judge(src: addr)
 	                 $hit_404_403=s$dir_hits, $distinct_dport=|s$dports|,
 	                 $lib=libstr, $evidence=evid);
 	Log::write(XbitsScan::LOG, rec);
+	# 统一告警出口：仅当 XbitsAlert::registered 含 "scanner" 时输出（见 xbits_alert.zeek）
+	local sev = "medium";
+	if ( conf >= 0.85 )
+		sev = "high";
+	XbitsAlert::emit("scanner", toolstr, sev, src, evid);
 
 	s$reported = T;
 	s$reported_tool = tool;

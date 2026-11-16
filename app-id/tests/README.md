@@ -23,6 +23,8 @@ python3 app-id/tests/run_tests.py
 ## CI
 `.github/workflows/app-id-scan.yml`：`zeek/zeek:9.0.1` 容器内装 scapy → 生成 PCAP → 回放断言；用于持续验证识别能力与误报率（目标 FPR≈0）。
 
+> 告警通道校验：每次回放断言 **notice/signatures/weird/intel 默认告警日志必须为空**（已被 `xbits_alert.zeek` 禁用），且告警只能出现在 **`xbits_alert.log`**（测试注入 `redefs/xbits_alert_reg.zeek` 注册 `scanner` 类别）。
+
 ## 最近实测结果（CI）
 - 正样本检出率：**47/47 = 100%**
 - 负样本误报率：**0/5 = 0%**
