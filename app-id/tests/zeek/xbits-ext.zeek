@@ -168,6 +168,9 @@ event http_all_headers(c: connection, is_orig: bool, hlist: mime_header_list) &p
 	{
 	if ( ! c?$http )
 		return;
+	if ( c$uid !in bs )
+		bs[c$uid] = BState();
+	local st = bs[c$uid];
 
 	if ( is_orig )
 		c$http$request_headers = hdrs_to_json(hlist);
@@ -179,6 +182,13 @@ event http_all_headers(c: connection, is_orig: bool, hlist: mime_header_list) &p
 		{
 		local nm = hlist[i]$name;
 		local vv = hlist[i]$value;
+		if ( nm == "CONTENT-TYPE" )
+			{
+			if ( is_orig )
+				st$req_ct = to_lower(vv);
+			else
+				st$resp_ct = to_lower(vv);
+			}
 		if ( is_orig && nm == "COOKIE" )
 			c$http$cookie = vv;
 		else if ( is_orig && nm == "AUTHORIZATION" )
@@ -202,6 +212,7 @@ event http_all_headers(c: connection, is_orig: bool, hlist: mime_header_list) &p
 		else if ( ! is_orig && nm == "SET-COOKIE" )
 			setc += vv;
 		}
+	bs[c$uid] = st;
 	if ( ! is_orig && |setc| > 0 )
 		c$http$set_cookie = setc;
 	}
