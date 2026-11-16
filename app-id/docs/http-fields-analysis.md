@@ -101,8 +101,11 @@ Suricata 的 `http.*` 关键字覆盖更广；Zeek `http.log` **缺**以下（�
 - **源码级真欠缺**：**HTTP/2 完全未解析**、HTTP/3 未映射、Header/Body/Cookie/参数值默认不落库、非 Basic 认证不解析、表单/JSON 不解析。
 - 补齐优先级：`http_all_headers`（头值）> `http_entity_data`/files（体/文件）> query/body 解析 > HTTP/2 外部支持。
 
-## 9. 已实现的源码级补齐（`xbits-ext.zeek`）
-已在 `source/xbits-zeek/scripts/base/protocols/http/xbits-ext.zeek` 新增并在该目录 `__load__.zeek` 默认 `@load ./xbits-ext`（同内容测试副本 `app-id/tests/zeek/xbits-ext.zeek`，CI 用 stock Zeek 9.0.1 验证）。
+## 9. 已实现的源码级补齐（直接改 HTTP 解析脚本 `main.zeek`）
+已**直接修改** `source/xbits-zeek/scripts/base/protocols/http/main.zeek`（HTTP 协议基础解析脚本）：
+- 在 `HTTP::Info` 中**新增字段**（全部落 **`http.log`**，不新建任何日志/脚本文件）；
+- 在 `main.zeek` 末尾**内置**采集逻辑（`XbitsBState` 状态 + `http_all_headers/http_header/http_content_type/http_begin_entity/http_entity_data/http_end_entity` 处理器）。
+> 不再使用独立的 `xbits-ext.zeek`（该临时文件已删除）。CI 通过把该 `main.zeek` 覆盖到 stock Zeek 9.0.1 镜像的 `base/protocols/http/main.zeek` 来验证。
 
 新增 `HTTP::Info` 字段：
 - **完整头**：`request_headers`、`response_headers`（JSON 对象，头名[大写]→值；重复头以 `", "` 合并）；

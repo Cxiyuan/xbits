@@ -29,6 +29,15 @@ jobs:
       - name: Zeek version
         run: zeek --version
 
+      - name: Overlay xbits-zeek HTTP parse (main.zeek)
+        run: |
+          TARGET=/usr/local/zeek/share/zeek/base/protocols/http/main.zeek
+          if [ ! -f "$TARGET" ]; then
+            TARGET=$(find / -path '*/share/zeek/base/protocols/http/main.zeek' 2>/dev/null | head -n1)
+          fi
+          echo "overlay -> $TARGET"
+          test -n "$TARGET" && cp source/xbits-zeek/scripts/base/protocols/http/main.zeek "$TARGET"
+
       - name: Generate test PCAPs
         run: python3 app-id/tests/gen_pcaps.py
 

@@ -8,7 +8,6 @@ import os, sys, tempfile, shutil, subprocess
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
-EXT = os.path.join(HERE, "zeek", "xbits-ext.zeek")
 PCAP = os.path.join(HERE, "pcaps", "http_fields.pcap")
 CLIENT = "10.8.0.1"
 
@@ -44,7 +43,7 @@ def main():
 
     work = tempfile.mkdtemp(prefix="zeek_httpf_")
     try:
-        r = subprocess.run(["zeek", "-C", "-r", PCAP, EXT], cwd=work, capture_output=True, text=True)
+        r = subprocess.run(["zeek", "-C", "-r", PCAP], cwd=work, capture_output=True, text=True)
         if r.returncode != 0:
             ann("error", "ZEEK-ERR", (r.stderr or r.stdout or "")[-1500:])
             print("RESULT: FAIL (zeek error)")
