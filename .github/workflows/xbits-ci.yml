@@ -1,4 +1,4 @@
-name: xbits-cross-engine-8.0.8-9.0.1
+﻿name: xbits-cross-engine-8.0.8-9.0.1
 
 on:
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
       - name: Unit and socket tests
         run: |
           set -o pipefail
-          cargo test --manifest-path xbits/Cargo.toml --locked > /tmp/xbits-cargo.log 2>&1
+          cargo test --manifest-path xbits/Cargo.toml > /tmp/xbits-cargo.log 2>&1
           st=$?
           cat /tmp/xbits-cargo.log
           if [ "$st" -ne 0 ]; then
@@ -67,7 +67,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Build release binary
-        run: cargo build --manifest-path xbits/Cargo.toml --release --locked
+        run: cargo build --manifest-path xbits/Cargo.toml --release
 
       - name: Upload xbits binary
         uses: actions/upload-artifact@v4.4.3
