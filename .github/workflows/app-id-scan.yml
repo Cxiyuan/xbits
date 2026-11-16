@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'app-id/**'
+      - 'source/xbits-zeek/scripts/base/protocols/http/**'
       - '.github/workflows/app-id-scan.yml'
   pull_request:
     paths:
       - 'app-id/**'
+      - 'source/xbits-zeek/scripts/base/protocols/http/**'
   workflow_dispatch:
 
 jobs:
