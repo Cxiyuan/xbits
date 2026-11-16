@@ -20,6 +20,10 @@ python3 app-id/tests/run_tests.py
 - **负样本**：浏览器多 URI、curl、python-requests 正常、健康检查(无 UA)、Go 客户端。
 - 每条 PCAP 会校验并输出 `sig-hit`：**UA 用例中由明文 `.sig` 触发的数量**。经实测 Zeek `.sig` 的 `payload` 正则隐式锚定首字节，对请求头中段的 `User-Agent:` **不触发**（sig-hit=0/42，属已知限制）；UA 识别实际由脚本层 `http_header`/`ua_to_tool` 覆盖，sig-hit 仅作持续观测指标。
 
+## 近期新增
+- `run_http_fields.py` + `zeek/xbits-ext.zeek`：验证 HTTP 扩展字段（完整头/Cookie/Auth/Query/表单/JSON/XML/Body 片段）落库。
+- `gen_pcaps.py` 额外生成 `pcaps/http_fields.pcap`（urlencoded/JSON/XML/multipart 请求 + Set-Cookie/JSON/XML 响应）。
+
 ## CI
 `.github/workflows/app-id-scan.yml`：`zeek/zeek:9.0.1` 容器内装 scapy → 生成 PCAP → 回放断言；用于持续验证识别能力与误报率（目标 FPR≈0）。
 

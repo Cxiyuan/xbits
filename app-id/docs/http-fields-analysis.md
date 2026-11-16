@@ -100,3 +100,25 @@ Suricata 的 `http.*` 关键字覆盖更广；Zeek `http.log` **缺**以下（�
 - **事件层可得但未落库**：全部头值、请求/响应体、Content-Type、逐消息统计、升级事件等。
 - **源码级真欠缺**：**HTTP/2 完全未解析**、HTTP/3 未映射、Header/Body/Cookie/参数值默认不落库、非 Basic 认证不解析、表单/JSON 不解析。
 - 补齐优先级：`http_all_headers`（头值）> `http_entity_data`/files（体/文件）> query/body 解析 > HTTP/2 外部支持。
+
+## 9. 已实现的源码级补齐（`xbits-ext.zeek`）
+已在 `source/xbits-zeek/scripts/base/protocols/http/xbits-ext.zeek` 新增并在该目录 `__load__.zeek` 默认 `@load ./xbits-ext`（同内容测试副本 `app-id/tests/zeek/xbits-ext.zeek`，CI 用 stock Zeek 9.0.1 验证）。
+
+新增 `HTTP::Info` 字段：
+- **完整头**：`request_headers`、`response_headers`（JSON 对象，头名[大写]→值；重复头以 `", "` 合并）；
+- **Cookie**：`cookie`（请求原值）；`set_cookie`（响应所有 Set-Cookie 值，vector）；
+- **完整认证**：`authorization`、`authorization_scheme`、`authorization_credentials`（Basic 自动 base64 解码为 `user:pass`）、`proxy_authorization`；
+- **Query/表单**：`query_params`（JSON 名→值，URL 解码）、`form_fields`（urlencoded 全量 / multipart 尽力提取 name，JSON）；
+- **Content-Type**：`req_content_type`、`resp_content_type`；
+- **JSON/XML**：`json_body`、`xml_body`（请求正文原文，限长）；
+- **安全相关 Body 片段**：`req_body_excerpt`、`resp_body_excerpt`（限长）+ `req_body_truncated`、`resp_body_truncated`。
+
+**Body 过大处理（重点）**：
+- 仅采集**安全相关类型**：`application/x-www-form-urlencoded`、`multipart/form-data`、`application/json(+json)`、`application/xml(+xml)/text/xml`、`application/graphql`、`text/plain`，响应侧额外 `text/html`、`javascript`；
+- **每方向每实体最多 `xbits_max_body_bytes = 4096` 字节**（`&redef` 可调），超出置 `*_body_truncated=T`；
+- 二进制/媒体（图片/音视频/字体/octet-stream/zip/pdf 等）**不采集正文**（仅长度；完整哈希/类型见 `files.log` 经 `resp_fuids` 关联）。
+- 大型/分块正文：通过 `http_entity_data` 累积分片并截断；`http_entity_data_delivery_size` 可再调。
+
+**验证**：`app-id/tests/run_http_fields.py` 用 `pcaps/http_fields.pcap`（urlencoded/JSON/XML/multipart+Set-Cookie）回放，断言上述字段全部落库；已加入 CI（`.github/workflows/app-id-scan.yml`）。
+
+**仍不支持**：HTTP/2（Zeek 9.0.1 无分析器）、HTTP/3；需外部解析。

@@ -32,6 +32,9 @@ jobs:
       - name: Generate test PCAPs
         run: python3 app-id/tests/gen_pcaps.py
 
+      - name: HTTP field extraction test (xbits-ext.zeek)
+        run: python3 app-id/tests/run_http_fields.py
+
       - name: Run detection / false-positive tests
         run: python3 app-id/tests/run_tests.py
 
