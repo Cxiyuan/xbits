@@ -46,9 +46,13 @@ event XbitsAlert::alert(info: XbitsAlert::Info) { ... }  # 下游订阅
 - `packet_filter.log`/`netcontrol*.log`/`openflow.log`：动作日志；`ACTION_DROP` 已清除，默认不会产生。
 - `stdout`：仅 supervisor 启动失败等系统级错误（`boot.zeek` 的 `print`），非业务告警。
 
-## 6. 结论
+## 7. CI 实测（提交 `d02bae7`，run 43806240246，success）
+- `DET=50/50`、`FPR=0/5`；
+- **无 `ALERT-LEAK`**：每条 PCAP 都有**主动 Notice 探针**触发 NOTICE，但 `notice*/signatures*/weird*/intel*/alarm*` 文件均未产生；nmap 探针命中签名也未产生 `signatures.log`；
+- **无 `NO-ALERT`**：正样本告警均出现在 `xbits_alert.log`；
+- **`REG-GATE` 通过**：未注册 `scanner` 时不产生 `xbits_alert`，注册后才输出——证明“告警只经 XbitsAlert 注册接口”。
+
+## 8. 结论
 - **告警型输出（notice/notice_alarm/signatures/weird/intel）已全部清除**；
 - **告警唯一出口为 `XbitsAlert`（注册制，写 `xbits_alert.log` 并触发 `XbitsAlert::alert` 事件）**；
 - 动作/诊断/协议日志保留（非告警），符合“告警只经 XbitsAlert”的要求。
-
-> CI 实测结果见提交后的运行（见 run_tests 注解：DET/FPR、无 ALERT-LEAK、无 NO-ALERT、REG-GATE 通过）。
