@@ -88,8 +88,9 @@ function kv_to_json(q: string, sep: pattern): string
 	if ( q == "" )
 		return to_json(m);
 	local pairs = split_string(q, sep);
-	for ( p in pairs )
+	for ( idx in pairs )
 		{
+		local p = pairs[idx];
 		local kv = split_string1(p, /=/);
 		local k = unescape_URI(kv[0]);
 		local v = "";
@@ -108,11 +109,11 @@ function kv_to_json(q: string, sep: pattern): string
 function multipart_names_to_json(body: string): string
 	{
 	local m: table[string] of string = table();
-	local parts = split_string(body, /name="/);
+	local parts = split_string(body, /name=\"/);
 	local i = 1;
 	while ( i < |parts| )
 		{
-		local seg = split_string1(parts[i], /"/);
+		local seg = split_string1(parts[i], /\"/);
 		if ( |seg| > 0 && seg[0] != "" )
 			m[seg[0]] = "";
 		i += 1;
@@ -271,13 +272,13 @@ event http_entity_data(c: connection, is_orig: bool, length: count, data: string
 		st$resp_len += length;
 		if ( do_cap && ! st$resp_trunc )
 			{
-			local room = xbits_max_body_bytes - |st$resp_buf|;
-			if ( length <= room )
+			local room_r = xbits_max_body_bytes - |st$resp_buf|;
+			if ( length <= room_r )
 				st$resp_buf = st$resp_buf + data;
 			else
 				{
-				if ( room > 0 )
-					st$resp_buf = st$resp_buf + sub_bytes(data, 0, room);
+				if ( room_r > 0 )
+					st$resp_buf = st$resp_buf + sub_bytes(data, 0, room_r);
 				st$resp_trunc = T;
 				}
 			}
