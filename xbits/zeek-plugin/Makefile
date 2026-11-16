@@ -12,7 +12,7 @@
 # 环境变量 XBITS_HOOK_SOCKET 可覆盖默认 /var/run/xbits/hook.sock
 #
 CXX ?= c++
-CXXFLAGS ?= -O2 -fPIC -std=c++17 -Wall -Wextra
+CXXFLAGS ?= -O2 -fPIC -std=c++20 -Wall -Wextra
 ZEEK_INCLUDE ?= /usr/local/zeek/include
 CXXFLAGS += -I$(ZEEK_INCLUDE)
 LDFLAGS += -shared
