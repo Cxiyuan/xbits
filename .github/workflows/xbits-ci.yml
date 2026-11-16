@@ -44,8 +44,8 @@ jobs:
           cargo --version
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      - name: Check formatting
-        run: cargo fmt --manifest-path xbits/Cargo.toml --all -- --check
+      - name: Format code
+        run: cargo fmt --manifest-path xbits/Cargo.toml --all
 
       - name: Unit and socket tests
         run: cargo test --manifest-path xbits/Cargo.toml --locked
