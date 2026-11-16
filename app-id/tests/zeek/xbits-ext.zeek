@@ -66,6 +66,8 @@ type BState: record {
 };
 
 global bs: table[string] of BState &create_expire=300sec;
+# multipart 子实体的字段名（来自各 part 的 Content-Disposition 头，key=uid）
+global form_names: table[string] of set[string] &create_expire=300sec;
 
 function hdrs_to_json(hlist: mime_header_list): string
 	{
@@ -217,6 +219,21 @@ event http_all_headers(c: connection, is_orig: bool, hlist: mime_header_list) &p
 		c$http$set_cookie = setc;
 	}
 
+event http_header(c: connection, is_orig: bool, name: string, value: string) &priority=0
+	{
+	# multipart/form-data 各 part 的字段名来自 Content-Disposition
+	if ( is_orig && name == "CONTENT-DISPOSITION" && /[[:blank:]]name=\"/ in value )
+		{
+		local parts = split_string(value, /\"/);
+		if ( |parts| > 1 && parts[1] != "" )
+			{
+			if ( c$uid !in form_names )
+				form_names[c$uid] = set();
+			add form_names[c$uid][parts[1]];
+			}
+		}
+	}
+
 event http_content_type(c: connection, is_orig: bool, ty: string, subty: string) &priority=0
 	{
 	if ( c$uid !in bs )
@@ -318,8 +335,17 @@ event http_end_entity(c: connection, is_orig: bool) &priority=0
 			}
 		if ( /application\/x-www-form-urlencoded/ in ct )
 			c$http$form_fields = kv_to_json(st$req_buf, /&/);
-		else if ( /multipart\/form-data/ in ct )
-			c$http$form_fields = multipart_names_to_json(st$req_buf);
+		else if ( /multipart\/form-data/ in ct || ( c$uid in form_names && |form_names[c$uid]| > 0 ) )
+			{
+			local fm: table[string] of string = table();
+			if ( c$uid in form_names )
+				{
+				for ( nm in form_names[c$uid] )
+					fm[nm] = "";
+				delete form_names[c$uid];
+				}
+			c$http$form_fields = to_json(fm);
+			}
 		if ( /json/ in ct )
 			c$http$json_body = st$req_buf;
 		if ( /xml/ in ct )
@@ -340,4 +366,6 @@ event connection_state_remove(c: connection)
 	{
 	if ( c$uid in bs )
 		delete bs[c$uid];
+	if ( c$uid in form_names )
+		delete form_names[c$uid];
 	}
