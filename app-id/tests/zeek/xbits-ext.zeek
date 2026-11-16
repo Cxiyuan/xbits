@@ -109,13 +109,17 @@ function kv_to_json(q: string, sep: pattern): string
 function multipart_names_to_json(body: string): string
 	{
 	local m: table[string] of string = table();
-	local parts = split_string(body, /name=\"/);
+	# 按双引号切分：形如 ...; name="field" 的前一段以 “ name=” 结尾，下一段即字段名
+	local parts = split_string(body, /\"/);
 	local i = 1;
 	while ( i < |parts| )
 		{
-		local seg = split_string1(parts[i], /\"/);
-		if ( |seg| > 0 && seg[0] != "" )
-			m[seg[0]] = "";
+		if ( /[[:blank:]]name=$/ in parts[i-1] )
+			{
+			local nm = parts[i];
+			if ( nm != "" )
+				m[nm] = "";
+			}
 		i += 1;
 		}
 	return to_json(m);
@@ -207,7 +211,7 @@ event http_content_type(c: connection, is_orig: bool, ty: string, subty: string)
 	if ( c$uid !in bs )
 		bs[c$uid] = BState();
 	local st = bs[c$uid];
-	local ct = ty + "/" + subty;
+	local ct = to_lower(ty + "/" + subty);
 	if ( is_orig )
 		st$req_ct = ct;
 	else
