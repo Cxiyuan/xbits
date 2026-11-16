@@ -53,7 +53,7 @@ jobs:
           cargo test --manifest-path xbits/Cargo.toml --locked 2>&1 | tee /tmp/xbits-cargo.log
           st=${PIPESTATUS[0]}
           if [ "$st" -ne 0 ]; then
-            grep -E 'error(\[|:)|error:' /tmp/xbits-cargo.log | while IFS= read -r line; do echo "::error ::$line"; done
+            grep -E 'error(\[|:)|error:' /tmp/xbits-cargo.log | while IFS= read -r line; do echo "::error::$line"; done
           fi
           exit "$st"
 
