@@ -1,32 +1,23 @@
 # xbits-suricata 镜像
 #
-# 基于官方 Suricata 8.0.8 镜像，额外安装：
+# 基于官方系 Suricata 8.0.8 镜像（jasonish/suricata，OISF 维护者发布），
+# 额外安装：
 #   - xbits Suricata 薄 hook 插件（/opt/xbits/plugins/xbits-suricata-hook.so）
 #   - 规则检测目录（/opt/xbits/rules）
 #   - xbits 测试配置（/opt/xbits/suricata-test.yaml）
 #
-# 构建（在仓库根目录）：
+# 构建前先由 CI/本地用 Suricata 8.0.8 源码头文件编译：
+#   make -C xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-8.0.8
+# 然后：
 #   docker build -t xbits-suricata -f docker/xbits-suricata.Dockerfile .
-
-FROM debian:bookworm-slim AS plugin-builder
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential curl ca-certificates tar \
-    && rm -rf /var/lib/apt/lists/*
-ARG SURICATA_VERSION=8.0.8
-RUN curl -fsSL "https://github.com/OISF/suricata/archive/refs/tags/suricata-${SURICATA_VERSION}.tar.gz" \
-      -o /tmp/suricata.tar.gz \
-    && mkdir -p /tmp/suricata-src \
-    && tar -xzf /tmp/suricata.tar.gz -C /tmp/suricata-src --strip-components=1
-COPY xbits/suricata-plugin /src/xbits/suricata-plugin
-RUN make -C /src/xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-src
 
 FROM jasonish/suricata:8.0.8
 
 USER root
 RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules
 
-# Suricata 薄 hook 插件
-COPY --from=plugin-builder /src/xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
+# 由 CI/本地预先编译好的 Suricata 薄 hook 插件
+COPY xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
 
 # 规则检测与必要配置
 COPY 规则检测/ /opt/xbits/rules/

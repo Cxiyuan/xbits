@@ -53,6 +53,37 @@ jobs:
           . "$HOME/.cargo/env"
           cargo build --manifest-path xbits/Cargo.toml --release --locked
 
+      - name: Install Suricata build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake build-essential libcap-ng-dev libjansson-dev \
+            libmagic-dev libnet1-dev libpcap-dev libpcre2-dev libtool \
+            libyaml-dev make pkg-config zlib1g-dev curl
+
+      - name: Install cbindgen
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install cbindgen --version 0.27.0 --locked
+
+      - name: Build Suricata 8.0.8 source headers for plugin
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://github.com/OISF/suricata/archive/refs/tags/suricata-8.0.8.tar.gz \
+            -o /tmp/suricata-8.0.8.tar.gz
+          mkdir -p /tmp/suricata-8.0.8
+          tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp/suricata-8.0.8 --strip-components=1
+          cd /tmp/suricata-8.0.8
+          ./autogen.sh
+          ./configure --prefix=/usr/local
+          make -j"$(nproc)"
+          sudo make install
+          sudo ldconfig
+
+      - name: Build Suricata thin hook plugin for image
+        run: make -C xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-8.0.8
+
       - name: Generate Web PCAP
         run: python 测试用例/generate_web_pcaps.py --out /tmp/web-pcap
 
