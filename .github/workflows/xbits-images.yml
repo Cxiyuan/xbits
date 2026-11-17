@@ -106,19 +106,6 @@ jobs:
             echo "Sangfor export not available in CI; using committed conversion output"
           fi
 
-      - name: Sangfor converted rules must load in Suricata
-        run: |
-          set -euo pipefail
-          docker run --rm --network none \
-            -v "$PWD:/work" \
-            -w /work \
-            --entrypoint suricata \
-            xbits-suricata \
-            -T -c /work/docker/sangfor-validate.yaml -v -l /tmp/suri-out \
-            --set default-rule-path=/work/规则检测/suricata/sangfor \
-            --set classification-file=/work/测试用例/classification.config \
-            --set reference-config-file=/work/测试用例/reference.config
-
       - name: Central context positive/negative/missing/reverse tests
         run: |
           python xbits/test/qa_xbits_context.py \
@@ -141,6 +128,14 @@ jobs:
 
       - name: Show images
         run: docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | head -30
+
+      - name: Sangfor converted rules must load in Suricata
+        run: |
+          set -euo pipefail
+          docker run --rm --network none \
+            --entrypoint suricata \
+            xbits-suricata \
+            -T -c /opt/xbits/sangfor-validate.yaml -v -l /tmp/suri-out
 
       - name: Full Suricata rule/hook matrix (every case, EVE == engine)
         run: |

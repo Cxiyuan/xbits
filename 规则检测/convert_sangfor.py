@@ -418,16 +418,10 @@ def main() -> int:
         "classification-file: /opt/xbits/rules/classification.config",
         "reference-config-file: /opt/xbits/rules/reference.config",
         "",
+        "# 仅做规则加载验证：不启用插件/事件输出",
         "outputs:",
         "  - eve-log:",
-        "      enabled: yes",
-        "      filetype: xbits-hook",
-        "      filename: xbits-hook",
-        "      types:",
-        "        - alert",
-        "",
-        "plugins:",
-        "  - /opt/xbits/plugins/xbits-suricata-hook.so",
+        "      enabled: no",
         "",
     ]
     docker_dir = ROOT.parent / "docker"
