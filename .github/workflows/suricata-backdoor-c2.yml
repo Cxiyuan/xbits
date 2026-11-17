@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "规则检测/后门通信/*.rules"
-      - "规则检测/后门通信/lua/**"
-      - "规则检测/后门通信/zeek/**"
+      - "规则检测/suricata/后门通信/*.rules"
+      - "规则检测/suricata/后门通信/lua/**"
+      - "规则检测/zeek/后门通信/**"
       - "测试用例/assert_zeek.py"
       - "测试用例/generate_backdoor_pcaps.py"
       - "测试用例/backdoor_cases.json"
@@ -17,9 +17,9 @@ on:
       - ".github/workflows/suricata-backdoor-c2.yml"
   pull_request:
     paths:
-      - "规则检测/后门通信/*.rules"
-      - "规则检测/后门通信/lua/**"
-      - "规则检测/后门通信/zeek/**"
+      - "规则检测/suricata/后门通信/*.rules"
+      - "规则检测/suricata/后门通信/lua/**"
+      - "规则检测/zeek/后门通信/**"
       - "测试用例/assert_zeek.py"
       - "测试用例/generate_backdoor_pcaps.py"
       - "测试用例/backdoor_cases.json"
@@ -85,9 +85,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p 测试用例/stage 测试用例/out/suricata
-          cp "规则检测/后门通信/WebShell后门通信规则.rules" 测试用例/stage/
-          cp "规则检测/后门通信/命令与控制信标规则.rules" 测试用例/stage/
-          cp 规则检测/后门通信/lua/*.lua 测试用例/stage/
+          cp "规则检测/suricata/后门通信/WebShell后门通信规则.rules" 测试用例/stage/
+          cp "规则检测/suricata/后门通信/命令与控制信标规则.rules" 测试用例/stage/
+          cp 规则检测/suricata/后门通信/lua/*.lua 测试用例/stage/
           cp 测试用例/classification.config 测试用例/reference.config 测试用例/stage/
           sed \
             -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/测试用例/stage|g" \
@@ -119,7 +119,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work/测试用例/zeek_out/backdoor \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/测试用例/backdoor_pcap/ws_cmd_query.pcap /work/规则检测/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
+            zeek -b -Cr /work/测试用例/backdoor_pcap/ws_cmd_query.pcap /work/规则检测/zeek/后门通信/backdoor_c2_score.zeek LogAscii::use_json=T
           python 测试用例/assert_zeek.py \
             --log 测试用例/zeek_out/backdoor/backdoor_correlation.log \
             --scenario backdoor-c2 \
@@ -129,7 +129,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work/测试用例/zeek_out/c2 \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/测试用例/backdoor_pcap/c2_periodic.pcap /work/规则检测/后门通信/zeek/backdoor_c2_score.zeek LogAscii::use_json=T
+            zeek -b -Cr /work/测试用例/backdoor_pcap/c2_periodic.pcap /work/规则检测/zeek/后门通信/backdoor_c2_score.zeek LogAscii::use_json=T
           python 测试用例/assert_zeek.py \
             --log 测试用例/zeek_out/c2/backdoor_correlation.log \
             --scenario backdoor-c2

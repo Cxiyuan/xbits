@@ -1,0 +1,81 @@
+%YAML 1.1
+---
+# Sangfor 转换规则的 Suricata 加载验证配置（由 convert_sangfor.py 生成）
+default-log-dir: /tmp/suri-out
+
+vars:
+  address-groups:
+    HOME_NET: "any"
+    EXTERNAL_NET: "any"
+    CLIENT_NET: "any"
+  port-groups:
+    HTTP_PORTS: "[80,8080,8000,443,8443]"
+    MAIL_PORTS: "[25,110,143,587,993,995]"
+
+default-rule-path: /opt/xbits/rules/suricata/sangfor
+rule-files:
+  - sangfor_application.rules
+  - sangfor_backdoor.rules
+  - sangfor_bp_ips.rules
+  - sangfor_brute_force.rules
+  - sangfor_database.rules
+  - sangfor_dns.rules
+  - sangfor_file.rules
+  - sangfor_ftp.rules
+  - sangfor_mail.rules
+  - sangfor_media.rules
+  - sangfor_network_device.rules
+  - sangfor_shellcode.rules
+  - sangfor_spyware.rules
+  - sangfor_system.rules
+  - sangfor_telnet.rules
+  - sangfor_tftp.rules
+  - sangfor_trojan.rules
+  - sangfor_web.rules
+  - sangfor_web_activex.rules
+  - sangfor_web_browse.rules
+  - sangfor_worm.rules
+  - sangfor_directory_tranversal.rules
+  - sangfor_file_include.rules
+  - weak/sangfor_gray_keyword.rules
+  - weak/sangfor_information_disclose.rules
+  - sangfor_oscmd.rules
+  - sangfor_sql.strong.rules
+  - weak/sangfor_sql.weak.rules
+  - weak/sangfor_web_scan.rules
+  - sangfor_webapp.rules
+  - sangfor_webshell.rules
+  - sangfor_xss.rules
+  - sangfor_webshell_detect.request.rules
+  - sangfor_webshell_detect.rules
+  - sangfor_cmd_executed.request.rules
+  - sangfor_cmd_executed.rules
+  - sangfor_cmd.rules
+  - sangfor_config_error.rules
+  - sangfor_directory_traversal.rules
+  - sangfor_file_upload.rules
+  - sangfor_other.rules
+  - sangfor_rfi.rules
+  - sangfor_sql.rules
+  - sangfor_webshell.rules
+  - sangfor_xss.rules
+  - success/sangfor_cmd_executed.rules
+  - success/sangfor_component.rules
+  - weak/sangfor_information_disclose.rules
+  - success/sangfor_login.rules
+  - success/sangfor_upload.rules
+  - weak/sangfor_malice_url_report.rules
+
+classification-file: /opt/xbits/rules/classification.config
+reference-config-file: /opt/xbits/rules/reference.config
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: xbits-hook
+      filename: xbits-hook
+      types:
+        - alert
+
+plugins:
+  - /opt/xbits/plugins/xbits-suricata-hook.so

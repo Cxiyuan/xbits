@@ -265,19 +265,19 @@ jobs:
           mkdir -p 测试用例/out/suricata/xbits-web 测试用例/out/suricata/xbits-dns \
             测试用例/out/suricata/xbits-recon 测试用例/out/suricata/xbits-backdoor 测试用例/xbits_run
 
-          cp "规则检测/DNS隧道与带外检测/DNS隧道与带外检测规则.rules" 测试用例/stage/dns/
-          cp "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst" 测试用例/stage/dns/
-          cp 规则检测/DNS隧道与带外检测/lua/*.lua 测试用例/stage/dns/
+          cp "规则检测/suricata/DNS隧道与带外检测/DNS隧道与带外检测规则.rules" 测试用例/stage/dns/
+          cp "规则检测/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst" 测试用例/stage/dns/
+          cp 规则检测/suricata/DNS隧道与带外检测/lua/*.lua 测试用例/stage/dns/
 
-          cp "规则检测/侦察与攻击工具指纹/侦察与攻击工具指纹规则.rules" 测试用例/stage/recon/
-          cp 规则检测/侦察与攻击工具指纹/lua/*.lua 测试用例/stage/recon/
+          cp "规则检测/suricata/侦察与攻击工具指纹/侦察与攻击工具指纹规则.rules" 测试用例/stage/recon/
+          cp 规则检测/suricata/侦察与攻击工具指纹/lua/*.lua 测试用例/stage/recon/
 
-          cp "规则检测/Web漏洞利用/Web漏洞利用规则.rules" 测试用例/stage/web/
-          cp 规则检测/Web漏洞利用/lua/*.lua 测试用例/stage/web/
+          cp "规则检测/suricata/Web漏洞利用/Web漏洞利用规则.rules" 测试用例/stage/web/
+          cp 规则检测/suricata/Web漏洞利用/lua/*.lua 测试用例/stage/web/
 
-          cp "规则检测/后门通信/WebShell后门通信规则.rules" 测试用例/stage/backdoor/
-          cp "规则检测/后门通信/命令与控制信标规则.rules" 测试用例/stage/backdoor/
-          cp 规则检测/后门通信/lua/*.lua 测试用例/stage/backdoor/
+          cp "规则检测/suricata/后门通信/WebShell后门通信规则.rules" 测试用例/stage/backdoor/
+          cp "规则检测/suricata/后门通信/命令与控制信标规则.rules" 测试用例/stage/backdoor/
+          cp 规则检测/suricata/后门通信/lua/*.lua 测试用例/stage/backdoor/
 
           for scenario in dns recon web backdoor; do
             cp 测试用例/classification.config 测试用例/reference.config "测试用例/stage/$scenario/"

@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "规则检测/DNS隧道与带外检测/*.rules"
-      - "规则检测/DNS隧道与带外检测/**/*.rules"
-      - "规则检测/DNS隧道与带外检测/lua/**"
-      - "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst"
-      - "规则检测/DNS隧道与带外检测/zeek/**"
+      - "规则检测/suricata/DNS隧道与带外检测/*.rules"
+      - "规则检测/suricata/DNS隧道与带外检测/**/*.rules"
+      - "规则检测/suricata/DNS隧道与带外检测/lua/**"
+      - "规则检测/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst"
+      - "规则检测/zeek/DNS隧道与带外检测/**"
       - "测试用例/assert_zeek.py"
       - "测试用例/generate_pcaps.py"
       - "测试用例/cases.json"
@@ -19,11 +19,11 @@ on:
       - ".github/workflows/suricata-dns-tunnel.yml"
   pull_request:
     paths:
-      - "规则检测/DNS隧道与带外检测/*.rules"
-      - "规则检测/DNS隧道与带外检测/**/*.rules"
-      - "规则检测/DNS隧道与带外检测/lua/**"
-      - "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst"
-      - "规则检测/DNS隧道与带外检测/zeek/**"
+      - "规则检测/suricata/DNS隧道与带外检测/*.rules"
+      - "规则检测/suricata/DNS隧道与带外检测/**/*.rules"
+      - "规则检测/suricata/DNS隧道与带外检测/lua/**"
+      - "规则检测/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst"
+      - "规则检测/zeek/DNS隧道与带外检测/**"
       - "测试用例/assert_zeek.py"
       - "测试用例/generate_pcaps.py"
       - "测试用例/cases.json"
@@ -89,9 +89,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p 测试用例/stage 测试用例/out/suricata
-          cp "规则检测/DNS隧道与带外检测/DNS隧道与带外检测规则.rules" 测试用例/stage/
-          cp "规则检测/DNS隧道与带外检测/dns_tunnel_allow.lst" 测试用例/stage/
-          cp 规则检测/DNS隧道与带外检测/lua/*.lua 测试用例/stage/
+          cp "规则检测/suricata/DNS隧道与带外检测/DNS隧道与带外检测规则.rules" 测试用例/stage/
+          cp "规则检测/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst" 测试用例/stage/
+          cp 规则检测/suricata/DNS隧道与带外检测/lua/*.lua 测试用例/stage/
           cp 测试用例/classification.config 测试用例/reference.config 测试用例/stage/
           sed \
             -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/测试用例/stage|g" \
@@ -124,7 +124,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work/测试用例/zeek_out/dns \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/测试用例/pcap/txt_burst_positive.pcap /work/规则检测/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek LogAscii::use_json=T
+            zeek -b -Cr /work/测试用例/pcap/txt_burst_positive.pcap /work/规则检测/zeek/DNS隧道与带外检测/dns_tunnel_score.zeek LogAscii::use_json=T
           python 测试用例/assert_zeek.py \
             --log 测试用例/zeek_out/dns/dns_correlation.log \
             --scenario dns-tunnel \

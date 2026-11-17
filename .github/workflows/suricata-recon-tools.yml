@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "规则检测/侦察与攻击工具指纹/*.rules"
-      - "规则检测/侦察与攻击工具指纹/lua/**"
-      - "规则检测/侦察与攻击工具指纹/zeek/**"
+      - "规则检测/suricata/侦察与攻击工具指纹/*.rules"
+      - "规则检测/suricata/侦察与攻击工具指纹/lua/**"
+      - "规则检测/zeek/侦察与攻击工具指纹/**"
       - "测试用例/assert_zeek.py"
       - "测试用例/generate_recon_pcaps.py"
       - "测试用例/recon_cases.json"
@@ -17,9 +17,9 @@ on:
       - ".github/workflows/suricata-recon-tools.yml"
   pull_request:
     paths:
-      - "规则检测/侦察与攻击工具指纹/*.rules"
-      - "规则检测/侦察与攻击工具指纹/lua/**"
-      - "规则检测/侦察与攻击工具指纹/zeek/**"
+      - "规则检测/suricata/侦察与攻击工具指纹/*.rules"
+      - "规则检测/suricata/侦察与攻击工具指纹/lua/**"
+      - "规则检测/zeek/侦察与攻击工具指纹/**"
       - "测试用例/assert_zeek.py"
       - "测试用例/generate_recon_pcaps.py"
       - "测试用例/recon_cases.json"
@@ -85,8 +85,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p 测试用例/stage 测试用例/out/suricata
-          cp "规则检测/侦察与攻击工具指纹/侦察与攻击工具指纹规则.rules" 测试用例/stage/
-          cp 规则检测/侦察与攻击工具指纹/lua/*.lua 测试用例/stage/
+          cp "规则检测/suricata/侦察与攻击工具指纹/侦察与攻击工具指纹规则.rules" 测试用例/stage/
+          cp 规则检测/suricata/侦察与攻击工具指纹/lua/*.lua 测试用例/stage/
           cp 测试用例/classification.config 测试用例/reference.config 测试用例/stage/
           sed \
             -e "s|__RULE_DIR__|$GITHUB_WORKSPACE/测试用例/stage|g" \
@@ -118,7 +118,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work/测试用例/zeek_out/recon \
             zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0 \
-            zeek -b -Cr /work/测试用例/recon_pcap/recon_404_burst.pcap /work/规则检测/侦察与攻击工具指纹/zeek/recon_score.zeek LogAscii::use_json=T
+            zeek -b -Cr /work/测试用例/recon_pcap/recon_404_burst.pcap /work/规则检测/zeek/侦察与攻击工具指纹/recon_score.zeek LogAscii::use_json=T
           python 测试用例/assert_zeek.py \
             --log 测试用例/zeek_out/recon/recon_correlation.log \
             --scenario recon \

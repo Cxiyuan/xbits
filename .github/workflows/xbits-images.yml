@@ -98,6 +98,27 @@ jobs:
       - name: Rule coverage gate (all SIDs must be exercised)
         run: python xbits/test/qa_rule_coverage.py
 
+      - name: Convert Sangfor probe rules (archive + transform)
+        run: |
+          if [ -d "$HOME/sangfor-rules" ]; then
+            python 规则检测/convert_sangfor.py --src "$HOME/sangfor-rules"
+          else
+            echo "Sangfor export not available in CI; using committed conversion output"
+          fi
+
+      - name: Sangfor converted rules must load in Suricata
+        run: |
+          set -euo pipefail
+          docker run --rm --network none \
+            -v "$PWD:/work" \
+            -w /work \
+            --entrypoint suricata \
+            xbits-suricata \
+            -T -c /work/docker/sangfor-validate.yaml -v -l /tmp/suri-out \
+            --set default-rule-path=/work/规则检测/suricata/sangfor \
+            --set classification-file=/work/测试用例/classification.config \
+            --set reference-config-file=/work/测试用例/reference.config
+
       - name: Central context positive/negative/missing/reverse tests
         run: |
           python xbits/test/qa_xbits_context.py \

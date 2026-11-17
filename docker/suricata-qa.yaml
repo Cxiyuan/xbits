@@ -1,7 +1,7 @@
 %YAML 1.1
 ---
 # xbits-suricata 镜像内的全规则薄 hook 测试配置。
-# 镜像构建时会把 规则检测/**/*.rules 和 lua 文件投放到 /opt/xbits/rules/qa。
+# 镜像构建时会把  和 lua 文件投放到 /opt/xbits/rules/qa。
 default-log-dir: /tmp/suri-out
 
 vars:

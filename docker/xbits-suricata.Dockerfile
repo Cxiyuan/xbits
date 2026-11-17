@@ -19,16 +19,17 @@ RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules
 # 由 CI/本地预先编译好的 Suricata 薄 hook 插件
 COPY xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
 
-# 规则检测与必要配置
-COPY 规则检测/ /opt/xbits/rules/
+# 规则检测：suricata/ 为 Suricata 规则+Lua，xbits/ 为中央引擎分析规则与元数据
+COPY 规则检测/suricata/ /opt/xbits/rules/suricata/
+COPY 规则检测/xbits/ /opt/xbits/analysis-rules/
 # Suricata Lua 规则用相对 rule-path 的 lua:xxx.lua 加载，把 lua 文件放到规则目录同级
-COPY 规则检测/Web漏洞利用/lua/ /opt/xbits/rules/Web漏洞利用/
-# 全规则 QA：把每个 .rules 和 lua 文件扁平化到 /opt/xbits/rules/qa，
-# 让 qa 配置能一次加载所有规则文件，做逐 PCAP 的完整矩阵测试。
+COPY 规则检测/suricata/Web漏洞利用/lua/ /opt/xbits/rules/suricata/Web漏洞利用/
+# 全规则 QA：把每个场景 .rules 和 lua 扁平化到 /opt/xbits/rules/qa
+# （不含 sangfor 转换规则，转换规则用 docker/sangfor-validate.yaml 单独验证加载）
 RUN mkdir -p /opt/xbits/rules/qa \
-    && find /opt/xbits/rules -type f -name '*.rules' -exec cp {} /opt/xbits/rules/qa/ \; \
-    && find /opt/xbits/rules -type f -path '*/lua/*.lua' -exec cp {} /opt/xbits/rules/qa/ \; \
-    && cp /opt/xbits/rules/DNS隧道与带外检测/dns_tunnel_allow.lst /opt/xbits/rules/qa/
+    && find /opt/xbits/rules/suricata -type f -name '*.rules' -not -path '*sangfor*' -exec cp {} /opt/xbits/rules/qa/ \; \
+    && find /opt/xbits/rules/suricata -type f -path '*/lua/*.lua' -not -path '*sangfor*' -exec cp {} /opt/xbits/rules/qa/ \; \
+    && cp /opt/xbits/rules/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst /opt/xbits/rules/qa/
 COPY 测试用例/classification.config 测试用例/reference.config /opt/xbits/rules/
 COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.yaml /opt/xbits/
 

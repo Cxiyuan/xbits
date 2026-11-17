@@ -27,8 +27,12 @@ COPY --from=plugin-builder /src/xbits/zeek-plugin /opt/xbits/zeek-plugin
 # app-id 应用识别库
 COPY app-id/ /opt/xbits/app-id/
 
-# Zeek metadata-only logging policy
+# Zeek 元数据策略 + 规则检测/zeek 场景脚本
 COPY xbits/zeek/ /opt/xbits/zeek/
+COPY 规则检测/zeek/ /opt/xbits/zeek-rules/
+
+# xbits 中央引擎分析规则与 Sangfor 元数据
+COPY 规则检测/xbits/ /opt/xbits/analysis-rules/
 
 ENV ZEEK_PLUGIN_PATH=/opt/xbits/zeek-plugin
 ENV ZEEK_PLUGIN_ACTIVATE=Xbits::Hook

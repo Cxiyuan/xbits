@@ -17,25 +17,25 @@ ROOT = Path(__file__).resolve().parents[2]
 CATEGORIES = [
     {
         "name": "dns",
-        "rule_dir": ROOT / "规则检测" / "DNS隧道与带外检测",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "DNS隧道与带外检测",
         "cases": ROOT / "测试用例" / "cases.json",
         "pcap_dir": ROOT / "测试用例" / "pcap",
     },
     {
         "name": "recon",
-        "rule_dir": ROOT / "规则检测" / "侦察与攻击工具指纹",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "侦察与攻击工具指纹",
         "cases": ROOT / "测试用例" / "recon_cases.json",
         "pcap_dir": ROOT / "测试用例" / "recon_pcap",
     },
     {
         "name": "web",
-        "rule_dir": ROOT / "规则检测" / "Web漏洞利用",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "Web漏洞利用",
         "cases": ROOT / "测试用例" / "web_cases.json",
         "pcap_dir": ROOT / "测试用例" / "web_pcap",
     },
     {
         "name": "backdoor",
-        "rule_dir": ROOT / "规则检测" / "后门通信",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "后门通信",
         "cases": ROOT / "测试用例" / "backdoor_cases.json",
         "pcap_dir": ROOT / "测试用例" / "backdoor_pcap",
     },
@@ -47,6 +47,9 @@ SID_RE = re.compile(r"\bsid\s*:\s*(\d+)")
 def rule_sids(rule_dir: Path) -> set[int]:
     sids: set[int] = set()
     for path in sorted(rule_dir.rglob("*.rules")):
+        # sangfor 转换规则暂不纳入覆盖门禁（无测试用例，独立验证加载）
+        if "sangfor" in path.parts:
+            continue
         text = path.read_text(encoding="utf-8", errors="replace")
         sids.update(int(x) for x in SID_RE.findall(text))
     return sids
