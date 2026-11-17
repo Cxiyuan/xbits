@@ -119,8 +119,8 @@ def main() -> int:
             )
             return 1
         ev = appid_alerts[0]
-        if ev.get("source") != "zeek" or ev.get("kind") != "alert":
-            print(f"APP-ID HOOK: FAIL wrong source/kind: {ev}", file=sys.stderr)
+        if ev.get("rule_id") != "qa-zeek-all" or ev.get("event") != "XbitsAlert::alert":
+            print(f"APP-ID HOOK: FAIL wrong engine record: {ev}", file=sys.stderr)
             return 1
         print("APP-ID HOOK: PASS (XbitsAlert::alert/gobuster reached xbits central engine exactly once)")
         return 0
