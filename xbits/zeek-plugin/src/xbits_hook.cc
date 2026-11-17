@@ -156,7 +156,7 @@ static std::string BuildEventJson(zeek::Event *event)
         if (args.size() >= 2)
             ValStr(args[1], sig_msg);
     } else if ((name == "http_request" || name == "http_reply" || name == "dns_request" ||
-                name == "dns_query" || name == "notice") &&
+                name == "dns_query") &&
                !args.empty()) {
         fill_conn(args[0]);
         if (name == "http_request" && args.size() >= 3) {
@@ -234,7 +234,7 @@ public:
 
         std::string name = event->Handler()->Name();
         if (name != "signature_match" && name != "http_request" && name != "http_reply" &&
-            name != "dns_request" && name != "dns_query" && name != "notice" &&
+            name != "dns_request" && name != "dns_query" &&
             name != "XbitsAlert::alert")
             return false;
 
