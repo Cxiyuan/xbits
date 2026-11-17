@@ -246,6 +246,7 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     # uricontent!:"X" → content:!"X"; http_uri（否定形式先替换）
     out = URICONTENT_NEG_RE.sub(lambda m: f'content:!"{m.group(1)}"; http_uri;', out)
     out = URICONTENT_RE.sub(lambda m: f'content:"{m.group(1)}"; http_uri;', out)
+    out = re.sub(r'"\s*,\s*(nocase|distance|within|offset|depth)\b', r'"; \1', out, flags=re.I)
     out = METHOD_RE.sub(lambda m: f'http_method; content:"{m.group(1)}";', out)
     # Snort rawbytes → Suricata pkt_data
     out = re.sub(r"\brawbytes\b", "pkt_data", out, flags=re.I)
@@ -337,7 +338,17 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         has_rel = any(x.lower().startswith(("within:", "distance:")) for x in g)
         if has_rel:
             g = [x for x in g if not x.lower().startswith(("offset:", "depth:"))]
-        fixed.extend(g)
+        # 同一 content 只保留一个 offset / depth
+        seen_abs: set[str] = set()
+        deduped: list[str] = []
+        for x in g:
+            xl = x.lower()
+            if xl.startswith(("offset:", "depth:")):
+                if xl[:6] in seen_abs:
+                    continue
+                seen_abs.add(xl[:6])
+            deduped.append(x)
+        fixed.extend(deduped)
     cleaned = fixed
     body = "; ".join(cleaned).rstrip()
     body = body.rstrip(";").rstrip()
@@ -406,6 +417,15 @@ def main() -> int:
     shutil.rmtree(OUT_XBITS, ignore_errors=True)
     OUT_XBITS.mkdir(parents=True, exist_ok=True)
     cleaned_dirs: set[Path] = set()
+
+    # 已知 Suricata 无法加载的 SID（由 CI 加载验证日志提取），直接跳过
+    quarantine: set[int] = set()
+    qfile = ROOT / "docs" / "unsupported-sids.txt"
+    if qfile.exists():
+        for raw in qfile.read_text(encoding="utf-8").splitlines():
+            raw = raw.strip()
+            if raw.isdigit():
+                quarantine.add(int(raw))
 
     # ---- Pass 1: 预扫描 depend/scope，构建反向依赖表 ----
     dep_refs: set[int] = set()  # 被依赖的请求侧 SID
@@ -503,6 +523,13 @@ def main() -> int:
                 # isdataat 偏移越界在 Suricata 会直接拒载
                 if "isdataat" in line.lower():
                     meta["skip"] = "isdataat"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
+                # 已知加载失败 SID（CI 验证日志提取）
+                if sid in quarantine:
+                    meta["skip"] = "unsupported"
                     rules_meta[str(sid)] = meta
                     n_skip += 1
                     continue
