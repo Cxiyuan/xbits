@@ -24,8 +24,8 @@ security:
 outputs:
   - eve-log:
       enabled: yes
-      filetype: regular
-      filename: /tmp/suri-out/eve.json
+      filetype: xbits-hook
+      filename: xbits-hook
       types:
         - alert
 

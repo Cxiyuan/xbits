@@ -6,6 +6,63 @@ use std::path::{Path, PathBuf};
 use crate::engine::Engine;
 use crate::model::{HookEvent, Rule};
 
+fn parse_event(line: &str) -> Option<HookEvent> {
+    // 1) xbits 薄插件格式
+    if let Ok(ev) = serde_json::from_str::<HookEvent>(line) {
+        if !ev.source.is_empty() {
+            return Some(ev);
+        }
+    }
+
+    // 2) Suricata EVE filetype 插件原样转发的 EVE JSON
+    let v: serde_json::Value = serde_json::from_str(line).ok()?;
+    let event_type = v.get("event_type")?.as_str()?;
+    let mut ev = HookEvent::default();
+    ev.source = "suricata".into();
+    ev.kind = event_type.into();
+    ev.ts = v
+        .get("timestamp")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.timestamp = ev.ts.clone();
+    ev.community_id = v
+        .get("community_id")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.src = v
+        .get("src_ip")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.dst = v
+        .get("dest_ip")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.sport = v.get("src_port").and_then(serde_json::Value::as_u64);
+    ev.dport = v.get("dest_port").and_then(serde_json::Value::as_u64);
+    ev.proto = v
+        .get("proto")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.flow_id = v.get("flow_id").map(|x| match x {
+        serde_json::Value::String(s) => s.clone(),
+        other => other.to_string(),
+    });
+    if event_type == "alert" {
+        if let Some(alert) = v.get("alert") {
+            ev.sid = alert
+                .get("signature_id")
+                .and_then(serde_json::Value::as_u64);
+            ev.signature = alert
+                .get("signature")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+        }
+    }
+    ev.extra = v.as_object().cloned().unwrap_or_default();
+    Some(ev)
+}
+
+
 struct SocketFile {
     path: PathBuf,
 }
@@ -69,10 +126,10 @@ pub fn run_hook_listener<W: Write>(
             if trimmed.is_empty() {
                 continue;
             }
-            let ev: HookEvent = match serde_json::from_str(trimmed) {
-                Ok(v) => v,
-                Err(err) => {
-                    eprintln!("xbits: bad hook event: {err}: {trimmed}");
+            let ev: HookEvent = match parse_event(trimmed) {
+                Some(v) => v,
+                None => {
+                    eprintln!("xbits: bad hook event: {trimmed}");
                     continue;
                 }
             };

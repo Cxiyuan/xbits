@@ -20,6 +20,7 @@
 #include "detect.h"
 #include "flow.h"
 #include "output.h"
+#include "output-eve.h"
 #include "output-packet.h"
 #include "util-print.h"
 
@@ -93,6 +94,29 @@ static void XbitsSendLine(const char *line)
         size_t len = strlen(line);
         ssize_t ignored = send(fd, line, len, MSG_NOSIGNAL);
         (void)ignored;
+    }
+    close(fd);
+}
+
+static void XbitsSendBuf(const char *buf, size_t len)
+{
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0)
+        return;
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", XbitsHookPath());
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+        ssize_t ignored = send(fd, buf, len, MSG_NOSIGNAL);
+        (void)ignored;
+        if (len == 0 || buf[len - 1] != '\n') {
+            const char nl = '\n';
+            ignored = send(fd, &nl, 1, MSG_NOSIGNAL);
+            (void)ignored;
+        }
     }
     close(fd);
 }
@@ -181,9 +205,65 @@ static void XbitsOnLoggingReady(void *arg)
                                  XbitsPacketCondition, NULL, XbitsThreadInit, XbitsThreadDeinit);
 }
 
+/*
+ * EVE filetype hook：官方镜像/源码构建都稳定的输出 hook。
+ * suricata.yaml 配置：
+ *   outputs:
+ *     - eve-log:
+ *         filetype: xbits-hook
+ *         types: [alert]
+ * 收到的 buffer 是完整 EVE JSON 行，直接转发给 xbits 引擎。
+ */
+static int XbitsEveInit(const SCConfNode *conf, const bool threaded, void **init_data)
+{
+    (void)conf;
+    (void)threaded;
+    *init_data = NULL;
+    return 0;
+}
+
+static int XbitsEveThreadInit(const void *init_data, const ThreadId thread_id, void **thread_data)
+{
+    (void)init_data;
+    (void)thread_id;
+    *thread_data = NULL;
+    return 0;
+}
+
+static int XbitsEveWrite(const char *buffer, const int buffer_len, const void *init_data,
+                         void *thread_data)
+{
+    (void)init_data;
+    (void)thread_data;
+    if (buffer != NULL && buffer_len > 0)
+        XbitsSendBuf(buffer, (size_t)buffer_len);
+    return 0;
+}
+
+static void XbitsEveThreadDeinit(const void *init_data, void *thread_data)
+{
+    (void)init_data;
+    (void)thread_data;
+}
+
+static void XbitsEveDeinit(void *init_data)
+{
+    (void)init_data;
+}
+
+static SCEveFileType XbitsEveFileType = {
+    .name = "xbits-hook",
+    .Init = XbitsEveInit,
+    .ThreadInit = XbitsEveThreadInit,
+    .Write = XbitsEveWrite,
+    .ThreadDeinit = XbitsEveThreadDeinit,
+    .Deinit = XbitsEveDeinit,
+};
+
 static void XbitsPluginInit(void)
 {
     SCRegisterOnLoggingReady(XbitsOnLoggingReady, NULL);
+    SCRegisterEveFileType(&XbitsEveFileType);
 }
 
 const SCPlugin XbitsPlugin = {
