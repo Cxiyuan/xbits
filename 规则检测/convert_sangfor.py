@@ -221,12 +221,10 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         # Sangfor 的 http_only_uri 作为 content/pcre 修饰符，Suricata 无等价语义，丢弃
         if tl in ("http_only_uri", "http_uri_only"):
             continue
-        # 响应方向规则里的请求侧缓冲关键字 → file_data 或丢弃
+        # 响应方向规则里的请求侧缓冲关键字 → 直接丢弃（保留 content 序列）
         if to_client:
-            if tl == "http_client_body":
-                t, tl = "file_data", "file_data"
-            elif tl in ("http_uri", "http_raw_uri", "http_method", "http_host",
-                        "http_cookie", "http_user_agent"):
+            if tl in ("http_client_body", "http_uri", "http_raw_uri", "http_method",
+                      "http_host", "http_cookie", "http_user_agent"):
                 continue
         # 悬空的 http_uri（前面不是 content）→ 丢弃，避免 Suricata 解析错误
         if tl == "http_uri" and not prev.lower().startswith("content:"):
@@ -379,6 +377,13 @@ def main() -> int:
                     meta["skip"] = "no-dependency"
                     rules_meta.setdefault(str(sid), meta)
                     no_dep_success.append(sid)
+                    n_skip += 1
+                    continue
+
+                # 负向 pcre（pcre:!"..."）Suricata 不支持
+                if re.search(r"pcre\s*:\s*!", line, re.I):
+                    meta["skip"] = "negated-pcre"
+                    rules_meta[str(sid)] = meta
                     n_skip += 1
                     continue
 
