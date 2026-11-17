@@ -143,13 +143,9 @@ static std::string BuildEventJson(zeek::Event *event)
     };
 
     const auto &args = event->Args();
-    if (name == "signature_match" && !args.empty()) {
-        if (const auto *st = args[0]->AsRecordVal()) {
-            /* signature_state field layout differs across Zeek builds; only
-             * use the portable fields here (sig_id/event_msg). */
-            ValStr(st->GetField("sig_id"), sig);
-            ValStr(st->GetField("event_msg"), sig_msg);
-        }
+    if (name == "signature_match") {
+        /* signature_state field layout is not stable across Zeek builds.
+         * The second event argument is the portable signature message. */
         if (args.size() >= 2)
             ValStr(args[1], sig_msg);
     } else if ((name == "http_request" || name == "http_reply" || name == "dns_request" ||
