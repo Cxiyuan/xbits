@@ -24,14 +24,15 @@ COPY 规则检测/suricata/ /opt/xbits/rules/suricata/
 COPY 规则检测/xbits/ /opt/xbits/analysis-rules/
 # Suricata Lua 规则用相对 rule-path 的 lua:xxx.lua 加载，把 lua 文件放到规则目录同级
 COPY 规则检测/suricata/Web漏洞利用/lua/ /opt/xbits/rules/suricata/Web漏洞利用/
-# 全规则 QA：把每个场景 .rules 和 lua 扁平化到 /opt/xbits/rules/qa
-# （不含 sangfor 转换规则，转换规则用 docker/sangfor-validate.yaml 单独验证加载）
+# 全规则 QA：只扁平化 4 个自研场景规则（转换来的分类规则不参与矩阵）
 RUN mkdir -p /opt/xbits/rules/qa /tmp/suri-out \
-    && find /opt/xbits/rules/suricata -type f -name '*.rules' -not -path '*sangfor*' -exec cp {} /opt/xbits/rules/qa/ \; \
-    && find /opt/xbits/rules/suricata -type f -path '*/lua/*.lua' -not -path '*sangfor*' -exec cp {} /opt/xbits/rules/qa/ \; \
+    && for d in "DNS隧道与带外检测" "Web漏洞利用" "侦察与攻击工具指纹" "后门通信"; do \
+         cp /opt/xbits/rules/suricata/"$d"/*.rules /opt/xbits/rules/qa/; \
+         cp /opt/xbits/rules/suricata/"$d"/lua/*.lua /opt/xbits/rules/qa/; \
+       done \
     && cp /opt/xbits/rules/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst /opt/xbits/rules/qa/
 COPY 测试用例/classification.config 测试用例/reference.config /opt/xbits/rules/
-COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.yaml docker/sangfor-validate.yaml /opt/xbits/
+COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.yaml docker/probe-rules-validate.yaml /opt/xbits/
 
 # 运行测试时可通过 -e XBITS_HOOK_SOCKET=... 覆盖
 ENV XBITS_HOOK_SOCKET=/var/run/xbits/hook.sock

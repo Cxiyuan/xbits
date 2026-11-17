@@ -98,12 +98,12 @@ jobs:
       - name: Rule coverage gate (all SIDs must be exercised)
         run: python xbits/test/qa_rule_coverage.py
 
-      - name: Convert Sangfor probe rules (archive + transform)
+      - name: Convert probe rules (archive by category)
         run: |
-          if [ -d "$HOME/sangfor-rules" ]; then
-            python 规则检测/convert_sangfor.py --src "$HOME/sangfor-rules"
+          if [ -d "$HOME/probe-rules" ]; then
+            python 规则检测/convert_probe_rules.py --src "$HOME/probe-rules"
           else
-            echo "Sangfor export not available in CI; using committed conversion output"
+            echo "Probe-rule export not available in CI; using committed conversion output"
           fi
 
       - name: Central context positive/negative/missing/reverse tests
@@ -129,13 +129,13 @@ jobs:
       - name: Show images
         run: docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | head -30
 
-      - name: Sangfor converted rules must load in Suricata
+      - name: Converted probe rules must load in Suricata
         run: |
           set -euo pipefail
           docker run --rm --network none \
             --entrypoint suricata \
             xbits-suricata \
-            -T -c /opt/xbits/sangfor-validate.yaml -v -l /tmp/suri-out
+            -T -c /opt/xbits/probe-rules-validate.yaml -v -l /tmp/suri-out
 
       - name: Full Suricata rule/hook matrix (every case, EVE == engine)
         run: |

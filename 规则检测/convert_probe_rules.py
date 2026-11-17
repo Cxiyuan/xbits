@@ -3,16 +3,14 @@
 """Sangfor (深信服) 探针规则导出 → xbits 项目规则转换器。
 
 输入：桌面 `流量检测规则` 导出目录（已解密的明文规则）。
-输出（按消费源归档，见 docs/规则归档与转换方案.md）：
-  规则检测/suricata/sangfor/*.rules          强规则（sf_snort/WAF/PVS/UTM）
-  规则检测/suricata/sangfor/weak/*.rules      弱/泛化规则（低置信度，交 xbits 收敛）
-  规则检测/suricata/sangfor/success/*.rules   PVS 成功确认规则（flowbits 门控）
-  规则检测/xbits/sangfor/rules_meta.json     每条规则元数据（depend/scope/holetype/tier）
-  规则检测/xbits/sangfor/success_rules.json  PVS 成功确认依赖（中央引擎联动）
-  规则检测/xbits/sangfor/audit_rules.json    云审计规则（仅元数据）
-  规则检测/xbits/sangfor/sid_library.json    SID → 名称/类别/危险等级映射
-  规则检测/xbits/sangfor/exceptions.json     例外/强 SID 列表
-  docker/sangfor-validate.yaml               Suricata 加载验证配置（生成）
+输出（按攻击类别归档，不设厂商目录，见 docs/规则归档与转换方案.md）：
+  规则检测/suricata/<类目>/<规则>.rules        按攻击类别归档的 Suricata 规则
+  规则检测/xbits/规则库元数据/rules_meta.json  每条规则元数据（depend/scope/holetype/tier）
+  规则检测/xbits/规则库元数据/success_rules.json  PVS 成功确认依赖（中央引擎联动）
+  规则检测/xbits/规则库元数据/audit_rules.json 云审计规则（仅元数据）
+  规则检测/xbits/规则库元数据/sid_library.json SID → 名称/类别/危险等级映射
+  规则检测/xbits/规则库元数据/exceptions.json 例外/强 SID 列表
+  docker/probe-rules-validate.yaml           Suricata 加载验证配置（生成）
 
 转换原则：
   * 只取 etc_fw（现网生效）；lib_* 基线库跳过（SID 重复）；
@@ -38,8 +36,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-OUT_SURICATA = ROOT / "suricata" / "sangfor"
-OUT_XBITS = ROOT / "xbits" / "sangfor"
+OUT_SURICATA = ROOT / "suricata"
+OUT_XBITS = ROOT / "xbits" / "规则库元数据"
 
 # Suricata 转换源（现网 etc_fw）
 SURICATA_SOURCES = [
@@ -60,6 +58,63 @@ WEAK_FILES = {
     "web_scan.rules",
     "malice_url_report.rules",
 }
+
+# 规则类别归档：源文件 stem → 类别目录（相对 规则检测/suricata/）
+# 同类文件放同一目录；未列出的进入“其他”
+CATEGORY_MAP = {
+    # ---- IPS / sf_snort ----
+    "web": "Web攻击/Web服务漏洞",
+    "web_browse": "Web攻击/浏览器漏洞",
+    "web_activex": "Web攻击/客户端组件漏洞",
+    "application": "应用软件漏洞",
+    "system": "主机系统漏洞",
+    "file": "文件与协议解析漏洞",
+    "network_device": "网络设备漏洞",
+    "database": "网络服务漏洞/数据库",
+    "dns": "网络服务漏洞/DNS",
+    "ftp": "网络服务漏洞/FTP",
+    "mail": "网络服务漏洞/邮件",
+    "telnet": "网络服务漏洞/Telnet",
+    "tftp": "网络服务漏洞/TFTP",
+    "media": "应用软件漏洞/媒体服务",
+    "config_error": "配置与运维缺陷",
+    "other": "其他",
+    "bp_ips": "其他",
+    "shellcode": "恶意软件/Shellcode",
+    "spyware": "恶意软件/间谍软件",
+    "trojan": "恶意软件/木马",
+    "backdoor": "恶意软件/后门",
+    "worm": "恶意软件/蠕虫",
+    "brute_force": "暴力破解",
+    # ---- WAF ----
+    "sql.strong": "Web攻击/SQL注入",
+    "sql.weak": "Web攻击/SQL注入",
+    "sql": "Web攻击/SQL注入",
+    "xss": "Web攻击/XSS",
+    "webshell": "Web攻击/WebShell",
+    "webshell_detect": "Web攻击/WebShell",
+    "webshell_detect.request": "Web攻击/WebShell",
+    "webapp": "Web攻击/Web应用漏洞",
+    "web_scan": "Web攻击/扫描器",
+    "information_disclose": "Web攻击/信息泄露",
+    "gray_keyword": "Web攻击/敏感关键词",
+    "oscmd": "Web攻击/命令注入",
+    "cmd": "Web攻击/命令注入",
+    "cmd_executed": "Web攻击/命令执行",
+    "cmd_executed.request": "Web攻击/命令执行",
+    "directory_traversal": "Web攻击/目录遍历",
+    "directory_tranversal": "Web攻击/目录遍历",
+    "file_include": "Web攻击/文件包含",
+    "file_upload": "Web攻击/文件上传",
+    "rfi": "Web攻击/文件包含",
+    "login": "Web攻击/登录绕过",
+    # ---- UTM ----
+    "utm_request_rules": "恶意软件/C2与远控",
+    "utm_response_rules": "恶意软件/C2与远控",
+    "malice_url_report": "恶意URL",
+}
+
+SUCCESS_CATEGORY = "攻击成功确认"
 
 # xbits 元数据源
 CLOUD_GLOBS = ["etc_fw/cloudrules/common_rules/report/*.rules"]
@@ -301,11 +356,10 @@ def main() -> int:
         print(f"missing source dir: {src}", file=sys.stderr)
         return 2
 
-    # 清理旧产物，避免被跳过规则留下的陈旧文件混入
-    shutil.rmtree(OUT_SURICATA, ignore_errors=True)
+    # 只清理转换器自己生成的类目目录；场景目录（DNS隧道/Web漏洞/侦察/后门）不能动
     shutil.rmtree(OUT_XBITS, ignore_errors=True)
-    OUT_SURICATA.mkdir(parents=True, exist_ok=True)
     OUT_XBITS.mkdir(parents=True, exist_ok=True)
+    cleaned_dirs: set[Path] = set()
 
     # ---- Pass 1: 预扫描 depend/scope，构建反向依赖表 ----
     dep_refs: set[int] = set()  # 被依赖的请求侧 SID
@@ -342,8 +396,20 @@ def main() -> int:
         for path in sorted(src.glob(pattern)):
             rel = path.relative_to(src).as_posix()
             tier = "weak" if path.name in WEAK_FILES else "strong"
-            subdir = "weak" if tier == "weak" else ("success" if group == "pvs-success" else "")
-            out_dir = OUT_SURICATA / subdir if subdir else OUT_SURICATA
+            stem = path.stem
+            if group == "pvs-success":
+                category = f"{SUCCESS_CATEGORY}/{stem}"
+                success_root = OUT_SURICATA / SUCCESS_CATEGORY
+                if success_root not in cleaned_dirs:
+                    shutil.rmtree(success_root, ignore_errors=True)
+                    cleaned_dirs.add(success_root)
+            else:
+                category = CATEGORY_MAP.get(stem, "其他")
+            meta_category = category
+            out_dir = OUT_SURICATA / category
+            if out_dir not in cleaned_dirs:
+                shutil.rmtree(out_dir, ignore_errors=True)
+                cleaned_dirs.add(out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
             converted: list[str] = []
             n_ok = n_skip = n_dupe = 0
@@ -356,6 +422,7 @@ def main() -> int:
                 meta["source"] = rel
                 meta["group"] = group
                 meta["tier"] = tier
+                meta["category"] = meta_category
                 deps = meta.get("depends", []) + meta.get("scopes", [])
                 primary_dep = deps[0] if deps else None
 
@@ -401,7 +468,10 @@ def main() -> int:
                 converted.append(rule)
                 n_ok += 1
             if converted:
-                out_name = "sangfor_" + re.sub(r"[^0-9A-Za-z_.-]+", "_", path.stem) + ".rules"
+                safe_stem = re.sub(r"[^0-9A-Za-z_.\-]+", "-", stem)
+                out_name = f"{safe_stem}.rules"
+                if (out_dir / out_name).exists():
+                    out_name = f"{group}-{out_name}"
                 header = (
                     f"# Converted from Sangfor export: {rel}\n"
                     f"# rules={n_ok} skipped={n_skip} dup_sid={n_dupe}\n"
@@ -490,7 +560,7 @@ def main() -> int:
     validate_yaml = [
         "%YAML 1.1",
         "---",
-        "# Sangfor 转换规则的 Suricata 加载验证配置（由 convert_sangfor.py 生成）",
+        "# 探针规则转换产物的 Suricata 加载验证配置（由 convert_probe_rules.py 生成）",
         "default-log-dir: /tmp/suri-out",
         "",
         "vars:",
@@ -502,17 +572,13 @@ def main() -> int:
         '    HTTP_PORTS: "[80,8080,8000,443,8443]"',
         '    MAIL_PORTS: "[25,110,143,587,993,995]"',
         "",
-        "default-rule-path: /opt/xbits/rules/suricata/sangfor",
+        "default-rule-path: /opt/xbits/rules/suricata",
         "rule-files:",
     ]
     for rel_out, _n in rule_files:
-        name = rel_out.rsplit("/", 1)[-1]
-        subdir = ""
-        if "/weak/" in rel_out:
-            subdir = "weak/"
-        elif "/success/" in rel_out:
-            subdir = "success/"
-        validate_yaml.append(f"  - {subdir}{name}")
+        # rel_out 形如 规则检测/suricata/<category>/<file>.rules
+        rel_rule = rel_out.split("规则检测/suricata/", 1)[-1]
+        validate_yaml.append(f'  - "{rel_rule}"')
     validate_yaml += [
         "",
         "classification-file: /opt/xbits/rules/classification.config",
@@ -526,7 +592,7 @@ def main() -> int:
     ]
     docker_dir = ROOT.parent / "docker"
     docker_dir.mkdir(exist_ok=True)
-    (docker_dir / "sangfor-validate.yaml").write_text("\n".join(validate_yaml), encoding="utf-8")
+    (docker_dir / "probe-rules-validate.yaml").write_text("\n".join(validate_yaml), encoding="utf-8")
 
     total_ok = sum(v["ok"] for v in stats.values())
     total_skip = sum(v["skip"] for v in stats.values())

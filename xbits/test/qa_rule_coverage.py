@@ -47,9 +47,6 @@ SID_RE = re.compile(r"\bsid\s*:\s*(\d+)")
 def rule_sids(rule_dir: Path) -> set[int]:
     sids: set[int] = set()
     for path in sorted(rule_dir.rglob("*.rules")):
-        # sangfor 转换规则暂不纳入覆盖门禁（无测试用例，独立验证加载）
-        if "sangfor" in path.parts:
-            continue
         text = path.read_text(encoding="utf-8", errors="replace")
         sids.update(int(x) for x in SID_RE.findall(text))
     return sids
