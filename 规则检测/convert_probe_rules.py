@@ -291,6 +291,20 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
             continue
         if tl == "nocase" and prev.lower() == "nocase":
             continue
+        # PCRE 兼容性：Python re 编译不过 / 含 P 修饰符的规则跳过，避免 Suricata 拒载
+        if tl.startswith("pcre:"):
+            m = re.match(r'pcre\s*:\s*"(.*)"$', t, re.S)
+            if m:
+                s = m.group(1)
+                last = s.rfind("/")
+                if s.startswith("/") and last > 1:
+                    pat, flags = s[1:last], s[last + 1:]
+                    if "P" in flags:
+                        return None
+                    try:
+                        re.compile(pat)
+                    except Exception:
+                        return None
         cleaned.append(t)
         prev = t
     if injections:
