@@ -1,0 +1,41 @@
+[
+  {
+    "id": "xb-suricata-web-sqli",
+    "name": "Suricata Web SQLi",
+    "source": "suricata",
+    "kind": "alert",
+    "signature_contains": "SQL",
+    "group_by": "community_id",
+    "require_context": true,
+    "min_confidence": 80,
+    "benign_uri_contains": ["/healthz", "/health", "/favicon.ico"],
+    "score": 20,
+    "threshold": 20,
+    "reason": "suricata-web-sqli"
+  },
+  {
+    "id": "xb-suricata-recon",
+    "name": "Suricata Recon",
+    "source": "suricata",
+    "kind": "alert",
+    "signature_contains": "扫描",
+    "group_by": "src",
+    "require_context": true,
+    "min_confidence": 60,
+    "score": 10,
+    "threshold": 10,
+    "reason": "suricata-recon"
+  },
+  {
+    "id": "xb-zeek-appid-scanner",
+    "name": "Zeek app-id scanner alert",
+    "source": "zeek",
+    "kind": "alert",
+    "event": "XbitsAlert::alert",
+    "alert_kind": "scanner",
+    "group_by": "src",
+    "score": 30,
+    "threshold": 30,
+    "reason": "zeek-appid-scanner"
+  }
+]

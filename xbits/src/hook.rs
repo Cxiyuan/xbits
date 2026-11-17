@@ -43,6 +43,13 @@ fn parse_event(line: &str) -> Option<HookEvent> {
         .get("proto")
         .and_then(serde_json::Value::as_str)
         .map(str::to_string);
+    ev.host = v
+        .pointer("/http/hostname")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.status = v
+        .pointer("/http/status")
+        .and_then(serde_json::Value::as_u64);
     ev.flow_id = v.get("flow_id").map(|x| match x {
         serde_json::Value::String(s) => s.clone(),
         other => other.to_string(),
@@ -75,7 +82,7 @@ impl Drop for SocketFile {
 
 /// 监听 Suricata/Zeek 薄 hook 插件推来的 JSONL 事件，交给中央引擎处理，
 /// 把命中的引擎告警写到 `writer`（通常是 stdout，由 Zeek Input raw 消费）。
-pub fn run_hook_listener<W: Write>(
+pub fn run_hook_listener<W: Write + ?Sized>(
     socket_path: &str,
     rules: Vec<Rule>,
     writer: &mut W,

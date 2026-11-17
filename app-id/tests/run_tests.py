@@ -85,12 +85,10 @@ def main():
                 if os.path.isfile(fpath) and FORBIDDEN_RE.match(fn) and os.path.getsize(fpath) > 0:
                     fails.append(f"[ALERT-LEAK] {c['pcap']} 默认告警输出未禁止: {fn}")
                     ann("error", f"ALERT-LEAK {c['pcap']}", fn)
-            # 告警只能经 XbitsAlert 输出
-            xrows = parse_tsv(os.path.join(work, "xbits_alert.log"))
-            xhit = [x for x in xrows if x.get("src") == c["client"]]
-            if c["expect"] != "negative" and not xhit:
-                fails.append(f"[NO-ALERT] {c['pcap']} 未通过 XbitsAlert 输出告警")
-                ann("error", f"NO-ALERT {c['pcap']}", "xbits_alert.log 无记录")
+            # 告警不再由 Zeek 落盘：xbits_alert.log 必须不存在，告警交给 xbits。
+            if os.path.exists(os.path.join(work, "xbits_alert.log")):
+                fails.append(f"[XBIT-ALERT-LEAK] {c['pcap']} Zeek 不应再写 xbits_alert.log")
+                ann("error", f"XBIT-ALERT-LEAK {c['pcap']}", "xbits_alert.log 存在")
             if c["pcap"].startswith("ua_"):
                 ua_cases += 1
                 if any("from_sig" in (x.get("evidence", "") or "") for x in found):
@@ -132,10 +130,9 @@ def main():
                 fails.append("[REG-GATE] zeek err " + (r.stderr or "")[-300:])
                 ann("error", "REG-GATE", "zeek err")
             else:
-                xr = parse_tsv(os.path.join(work, "xbits_alert.log"))
-                if any(x.get("src") == gc["client"] for x in xr):
-                    fails.append("[REG-GATE] 未注册 scanner 却产生 xbits_alert")
-                    ann("error", "REG-GATE", "未注册却输出 xbits_alert")
+                if os.path.exists(os.path.join(work, "xbits_alert.log")):
+                    fails.append("[REG-GATE] xbits_alert.log 不应由 Zeek 产生")
+                    ann("error", "REG-GATE", "xbits_alert.log 存在")
                 for fn in os.listdir(work):
                     fpath = os.path.join(work, fn)
                     if os.path.isfile(fpath) and FORBIDDEN_RE.match(fn) and os.path.getsize(fpath) > 0:

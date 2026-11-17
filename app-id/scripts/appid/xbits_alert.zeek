@@ -2,8 +2,8 @@
 ##!
 ##! 目的：
 ##!   1) 关闭 Zeek 默认“告警类”日志输出：notice.log / notice_alarm.log / signatures.log / weird.log / intel.log；
-##!   2) 所有告警输出统一走 XbitsAlert 接口：只有被 register 注册的 kind 才输出；
-##!   3) 下游可在自己的脚本里 `event XbitsAlert::alert(info)` 订阅，或读 `xbits_alert.log`。
+##!   2) 不再直接写 xbits_alert.log；所有告警事件统一通过 XbitsAlert::alert 交给 xbits 中央分析引擎；
+##!   3) xbits 通过其规则/配置管理允许输出的告警类别与最终落盘。
 ##!
 ##! 用法：
 ##!   redef XbitsAlert::registered += { "scanner" };     # 注册允许输出的告警类别
@@ -55,19 +55,14 @@ function emit(kind: string, name: string, severity: string, src: addr, evidence:
 	{
 	if ( ! enabled )
 		return;
-	if ( ! ( allow_all || kind in registered ) )
-		return;
 
 	local i = Info($ts=network_time(), $kind=kind, $name=name,
 	               $severity=severity, $src=src, $evidence=evidence);
-	Log::write(XbitsAlert::LOG, i);
+	# No Log::write here: xbits central analysis engine owns alert output.
 	event XbitsAlert::alert(i);
 	}
 
-event zeek_init() &priority=5
-	{
-	Log::create_stream(XbitsAlert::LOG, [$columns=Info, $path="xbits_alert", $policy=log_policy]);
-	}
+# 不创建 xbits_alert 日志流；告警统一由 xbits 落盘。
 
 # 关闭默认告警输出（在 base 各 zeek_init(priority=5/0) 创建流之后执行）
 event zeek_init() &priority=-100

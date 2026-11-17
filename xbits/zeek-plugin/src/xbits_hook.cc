@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cctype>
 #include <string>
 
 #include <sys/socket.h>
@@ -117,12 +118,31 @@ static bool ValPort(const zeek::ValPtr &v, uint64_t &out)
     return false;
 }
 
+static bool ValCount(const zeek::ValPtr &v, uint64_t &out)
+{
+    if (!v)
+        return false;
+    if (const auto *c = v->AsCountVal()) {
+        out = c->Get();
+        return true;
+    }
+    return false;
+}
+
+static std::string Lower(std::string s)
+{
+    for (char &c : s)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
 static std::string BuildEventJson(zeek::Event *event)
 {
     std::string name = event->Handler() ? event->Handler()->Name() : "";
     std::string uid, src, dst, proto, method, uri, sig, sig_msg;
     std::string alert_kind, alert_name, severity;
-    uint64_t sport = 0, dport = 0;
+    std::string host, user_agent, header_name, header_value;
+    uint64_t sport = 0, dport = 0, status = 0;
 
     auto fill_conn = [&](const zeek::ValPtr &v) {
         if (!v)
@@ -148,21 +168,30 @@ static std::string BuildEventJson(zeek::Event *event)
          * The second event argument is the portable signature message. */
         if (args.size() >= 2)
             ValStr(args[1], sig_msg);
-    } else if ((name == "http_request" || name == "http_reply" || name == "dns_request" ||
-                name == "dns_query") &&
+    } else if ((name == "http_request" || name == "http_reply" || name == "http_header" ||
+                name == "dns_request" || name == "dns_query") &&
                !args.empty()) {
-        // Do not blindly dereference args[0] as connection here: Zeek's
-        // app-id scripts can register handlers whose argument layout differs
-        // from the base analyzer's event signature.  Event name/args below
-        // are sufficient for xbits context; signature_match and XbitsAlert
-        // carry their own structured records.
+        fill_conn(args[0]);
         if (name == "http_request" && args.size() >= 3) {
             ValStr(args[1], method);
             ValStr(args[2], uri);
+            proto = "tcp";
+        } else if (name == "http_header" && args.size() >= 4) {
+            ValStr(args[2], header_name);
+            ValStr(args[3], header_value);
+            const std::string hn = Lower(header_name);
+            if (hn == "host")
+                host = header_value;
+            else if (hn == "user-agent")
+                user_agent = header_value;
+            proto = "tcp";
         } else if (name == "http_reply" && args.size() >= 4) {
+            ValCount(args[2], status);
             ValStr(args[3], sig_msg); // reason phrase as extra context
+            proto = "tcp";
         } else if (name == "dns_request" && args.size() >= 3) {
             ValStr(args[2], uri); // query name
+            proto = "udp";
         }
     } else if (name == "XbitsAlert::alert" && !args.empty()) {
         // app-id / scanner 的统一告警事件：Info 记录
@@ -194,6 +223,16 @@ static std::string BuildEventJson(zeek::Event *event)
         out += ",\"method\":\"" + JsonEscape(method) + "\"";
     if (!uri.empty())
         out += ",\"uri\":\"" + JsonEscape(uri) + "\"";
+    if (!host.empty())
+        out += ",\"host\":\"" + JsonEscape(host) + "\"";
+    if (!user_agent.empty())
+        out += ",\"user_agent\":\"" + JsonEscape(user_agent) + "\"";
+    if (!header_name.empty())
+        out += ",\"header_name\":\"" + JsonEscape(header_name) + "\"";
+    if (!header_value.empty())
+        out += ",\"header_value\":\"" + JsonEscape(header_value) + "\"";
+    if (status != 0)
+        out += ",\"status\":" + std::to_string(status);
     if (!sig.empty())
         out += ",\"signature\":\"" + JsonEscape(sig) + "\"";
     if (!sig_msg.empty())
@@ -231,7 +270,7 @@ public:
 
         std::string name = event->Handler()->Name();
         if (name != "signature_match" && name != "http_request" && name != "http_reply" &&
-            name != "dns_request" && name != "dns_query" &&
+            name != "http_header" && name != "dns_request" && name != "dns_query" &&
             name != "XbitsAlert::alert")
             return false;
 

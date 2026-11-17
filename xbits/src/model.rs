@@ -44,6 +44,16 @@ pub struct HookEvent {
     #[serde(default)]
     pub host: Option<String>,
     #[serde(default)]
+    pub user_agent: Option<String>,
+    #[serde(default)]
+    pub status: Option<u64>,
+    #[serde(default)]
+    pub alert_kind: Option<String>,
+    #[serde(default)]
+    pub alert_name: Option<String>,
+    #[serde(default)]
+    pub severity: Option<String>,
+    #[serde(default)]
     pub flow_id: Option<String>,
     #[serde(default)]
     pub tx_id: Option<u64>,
@@ -73,6 +83,16 @@ pub struct Rule {
     pub method: Option<String>,
     #[serde(default)]
     pub group_by: Option<String>, // community_id | src | uid
+    #[serde(default)]
+    pub require_context: bool,
+    #[serde(default)]
+    pub benign_uri_contains: Vec<String>,
+    #[serde(default)]
+    pub benign_host_contains: Vec<String>,
+    #[serde(default)]
+    pub min_confidence: Option<u64>,
+    #[serde(default)]
+    pub alert_kind: Option<String>,
     #[serde(default = "one")]
     pub score: u64,
     #[serde(default = "one")]
@@ -123,6 +143,17 @@ impl Rule {
         }
         if let Some(v) = &self.method {
             if !ev.method.as_deref().unwrap_or("").eq_ignore_ascii_case(v) {
+                return false;
+            }
+        }
+        if let Some(v) = &self.alert_kind {
+            if !v.is_empty()
+                && !ev
+                    .alert_kind
+                    .as_deref()
+                    .unwrap_or("")
+                    .eq_ignore_ascii_case(v)
+            {
                 return false;
             }
         }

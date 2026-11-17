@@ -1,6 +1,8 @@
 use std::env;
 use std::fs;
+use std::fs::File;
 use std::io;
+use std::io::BufWriter;
 
 use xbits::hook::run_hook_listener;
 use xbits::model::Rule;
@@ -24,6 +26,7 @@ fn main() -> io::Result<()> {
     let mut socket = String::from("/var/run/suricata/eve.sock");
     let mut hook_socket: Option<String> = None;
     let mut rules_file: Option<String> = None;
+    let mut alert_file: Option<String> = None;
     let mut once = false;
     let mut stdin_mode = false;
 
@@ -45,6 +48,11 @@ fn main() -> io::Result<()> {
                     io::Error::new(io::ErrorKind::InvalidInput, "--rules value missing")
                 })?);
             }
+            "--alert-file" | "--out-file" => {
+                alert_file = Some(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--alert-file value missing")
+                })?);
+            }
             "--once" => once = true,
             "--stdin" => stdin_mode = true,
             "--help" | "-h" => {
@@ -52,7 +60,7 @@ fn main() -> io::Result<()> {
                     "xbits: Suricata EVE / thin-hook -> Zeek event stream + central engine\n\
                      usage:\n\
                        xbits [--socket PATH] [--once]        # Suricata EVE unix_stream bridge\n\
-                       xbits --hook-socket PATH [--rules R]  # Suricata/Zeek thin-hook engine\n\
+                       xbits --hook-socket PATH [--rules R] [--alert-file F]  # hook + central engine\n\
                        xbits --stdin                         # offline EVE stdin"
                 );
                 return Ok(());
@@ -67,11 +75,13 @@ fn main() -> io::Result<()> {
     }
 
     let rules = load_rules(rules_file)?;
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
+    let mut out: Box<dyn io::Write> = match alert_file {
+        Some(path) => Box::new(BufWriter::new(File::create(path)?)),
+        None => Box::new(io::stdout()),
+    };
 
     if let Some(path) = hook_socket {
-        return run_hook_listener(&path, rules, &mut out);
+        return run_hook_listener(&path, rules, &mut *out);
     }
 
     if stdin_mode {
