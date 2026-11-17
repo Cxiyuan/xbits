@@ -110,7 +110,8 @@ def main() -> int:
         ev for ev in got
         if ev.get("rule_id") == "xb-suricata-web-sqli"
         and int(ev.get("confidence", 0)) >= 80
-        and "host=" in ev.get("evidence", "")
+        and "uid=" in ev.get("evidence", "")
+        and "method=" in ev.get("evidence", "")
         and "uri=" in ev.get("evidence", "")
     ]
     if len(matched) != 1:
