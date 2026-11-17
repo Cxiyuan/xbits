@@ -71,6 +71,10 @@ def main() -> int:
                 "/redefs/xbits_alert_reg.zeek",
             ]
             p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120)
+            print("=== zeek stdout ===")
+            print(p.stdout[-4000:])
+            print("=== zeek stderr ===")
+            print(p.stderr[-8000:])
             if p.returncode != 0:
                 print("zeek/app-id hook run failed", file=sys.stderr)
                 print(p.stdout[-2000:], file=sys.stderr)
