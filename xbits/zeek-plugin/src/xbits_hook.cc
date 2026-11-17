@@ -145,7 +145,7 @@ static std::string BuildEventJson(zeek::Event *event)
     const auto &args = event->Args();
     if (name == "signature_match" && !args.empty()) {
         if (const auto *st = args[0]->AsRecordVal()) {
-            ValStr(st->GetField("uid"), uid);
+            /* zeek::signature_state in Zeek 9.0.1 does not expose uid. */
             ValAddr(st->GetField("src_addr"), src);
             ValAddr(st->GetField("dst_addr"), dst);
             ValPort(st->GetField("src_port"), sport);
