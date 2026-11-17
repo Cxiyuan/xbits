@@ -156,6 +156,7 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     if injections:
         out = out + "; " + "; ".join(injections)
     out = out + ";"
+    out = re.sub(r";\s+\)", ";)", out)
     out = re.sub(r";\s+", "; ", out)
     out = re.sub(r"\(\s*;", "(", out)
     return out.strip()
