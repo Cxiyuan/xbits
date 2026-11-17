@@ -235,7 +235,6 @@ public:
             name != "XbitsAlert::alert")
             return false;
 
-        fprintf(stderr, "xbits-hook event: %s\n", name.c_str());
         SendLine(BuildEventJson(event));
         return false; // 继续让 Zeek 正常处理事件
     }

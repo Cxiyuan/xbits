@@ -226,6 +226,25 @@ for k in range(3):
                      resp_bytes(200), t0=1700000400.0 + k)
 emit("neg_go", pk, "negative")
 
+# app-identity test PCAPs (not part of scanner manifest)
+p = []
+p.extend(tcp_stream("10.2.0.1", 42001,
+                    req_bytes("/", "Mozilla/5.0", host="facebook.com"),
+                    resp_bytes(200)))
+wrpcap(os.path.join(OUT, "app_identity_http_host.pcap"), p)
+
+p = []
+p.extend(tcp_stream("10.2.0.2", 42002,
+                    req_bytes("/", "Dropbox/1.0", host="unknown.local"),
+                    resp_bytes(200)))
+wrpcap(os.path.join(OUT, "app_identity_http_ua.pcap"), p)
+
+p = []
+p.extend(tcp_stream("10.2.0.3", 42003,
+                    req_bytes("/", "Mozilla/5.0", host="unknown.local"),
+                    resp_bytes(200)))
+wrpcap(os.path.join(OUT, "app_identity_negative.pcap"), p)
+
 with open(os.path.join(HERE, "manifest.json"), "w", encoding="utf-8") as f:
     json.dump(MANIFEST, f, ensure_ascii=False, indent=2)
 

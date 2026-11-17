@@ -125,6 +125,9 @@ jobs:
       - name: app-id scanner test inside xbits-zeek image
         run: python xbits/test/qa_appid_image.py
 
+      - name: app-id application identity exact mapping test
+        run: python xbits/test/qa_appid_identity.py
+
       - name: app-id XbitsAlert::alert -> xbits central engine hook
         run: |
           python xbits/test/qa_appid_hook.py \

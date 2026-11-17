@@ -98,6 +98,44 @@ function note_app(c: connection, app: string, category: string, evidence: string
     per_conn[key] = r;
     }
 
+# HTTP Host / User-Agent -> application classification.
+# The mapping tables are &redef; production can populate them via mapping files,
+# tests use app-id/tests/redefs/app_identity_map.zeek.
+event http_header(c: connection, is_orig: bool, name: string, value: string)
+    {
+    if ( ! is_orig )
+        return;
+    local hname = to_lower(name);
+    if ( hname == "host" )
+        {
+        local app = lookup_suffix(value);
+        if ( app != "" )
+            {
+            local cat = app_category[app];
+            note_app(c, app, cat, "http_host=" + value, 0.90);
+            }
+        }
+    else if ( hname == "user-agent" )
+        {
+        local app = lookup_ua(value);
+        if ( app != "" )
+            {
+            local cat = app_category[app];
+            note_app(c, app, cat, "http_ua=" + value, 0.80);
+            }
+        }
+    }
+
+event dns_request(c: connection, msg: dns_msg, query: string, qtype: count, qclass: count)
+    {
+    local app = lookup_suffix(query);
+    if ( app != "" )
+        {
+        local cat = app_category[app];
+        note_app(c, app, cat, "dns_qname=" + query, 0.85);
+        }
+    }
+
 event zeek_init()
     {
     Log::create_stream(XbitsAppId::LOG, [$columns=XbitsAppId::Info, $path="app_identity"]);
