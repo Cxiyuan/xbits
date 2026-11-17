@@ -21,6 +21,8 @@ COPY xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
 
 # 规则检测与必要配置
 COPY 规则检测/ /opt/xbits/rules/
+# Suricata Lua 规则用相对 rule-path 的 lua:xxx.lua 加载，把 lua 文件放到规则目录同级
+COPY 规则检测/Web漏洞利用/lua/ /opt/xbits/rules/Web漏洞利用/
 COPY 测试用例/classification.config 测试用例/reference.config /opt/xbits/rules/
 COPY docker/suricata-test.yaml /opt/xbits/suricata-test.yaml
 
