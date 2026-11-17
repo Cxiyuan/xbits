@@ -1,4 +1,4 @@
-name: xbits-images
+﻿name: xbits-images
 
 on:
   workflow_dispatch:
@@ -122,7 +122,7 @@ jobs:
           echo "=== xbits-suricata: run pcap with thin hook ==="
           docker run --rm --network none \
             -v /tmp:/tmp \
-            -v "$PWD/测试用例/web_pcap:/pcap:ro" \
+            -v /tmp/web-pcap:/pcap:ro \
             -e XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
             --entrypoint suricata \
             xbits-suricata \
@@ -133,7 +133,7 @@ jobs:
           echo "=== xbits-zeek: run pcap with thin hook ==="
           docker run --rm --network none \
             -v /tmp:/tmp \
-            -v "$PWD/测试用例/web_pcap:/pcap:ro" \
+            -v /tmp/web-pcap:/pcap:ro \
             -e ZEEK_PLUGIN_PATH=/opt/xbits/zeek-plugin \
             -e ZEEK_PLUGIN_ACTIVATE=Xbits::Hook \
             -e XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
