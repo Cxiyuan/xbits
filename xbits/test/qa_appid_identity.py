@@ -39,7 +39,7 @@ def parse_tsv(path: Path):
     return rows
 
 
-def run_case(pcap: Path, expected: dict | None) -> tuple[bool, str]:
+def run_case(pcap: Path, expected: dict | None, mapping: str) -> tuple[bool, str]:
     work = Path(tempfile.mkdtemp(prefix="xbits-appid-identity-"))
     try:
         cmd = [
@@ -55,7 +55,7 @@ def run_case(pcap: Path, expected: dict | None) -> tuple[bool, str]:
             IMAGE,
             "-Cr", f"/pcap/{pcap.name}",
             "/opt/xbits/app-id/scripts/__load__.zeek",
-            "/redefs/app_identity_map.zeek",
+            f"/redefs/{mapping}",
         ]
         p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120)
         if p.returncode != 0:
@@ -80,17 +80,17 @@ def run_case(pcap: Path, expected: dict | None) -> tuple[bool, str]:
 
 def main() -> int:
     cases = [
-        ("app_identity_http_host.pcap", {"src": "10.2.0.1", "app": "Facebook", "category": "social"}),
-        ("app_identity_http_ua.pcap", {"src": "10.2.0.2", "app": "Dropbox", "category": "cloud"}),
-        ("app_identity_negative.pcap", None),
+        ("app_identity_http_host.pcap", {"src": "10.2.0.1", "app": "Facebook", "category": "social"}, "app_identity_host_map.zeek"),
+        ("app_identity_http_ua.pcap", {"src": "10.2.0.2", "app": "Dropbox", "category": "cloud"}, "app_identity_ua_map.zeek"),
+        ("app_identity_negative.pcap", None, "app_identity_host_map.zeek"),
     ]
     failed = []
-    for name, expected in cases:
+    for name, expected, mapping in cases:
         pcap = PCAP_DIR / name
         if not pcap.is_file():
             failed.append(f"missing pcap: {pcap}")
             continue
-        ok, msg = run_case(pcap, expected)
+        ok, msg = run_case(pcap, expected, mapping)
         print(("PASS " if ok else "FAIL ") + msg)
         if not ok:
             failed.append(msg)
