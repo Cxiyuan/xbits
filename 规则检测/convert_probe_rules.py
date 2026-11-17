@@ -248,6 +248,8 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     out = re.sub(r"\bclasstype\s*:\s*[^;]+;?", "", out, flags=re.I)
     # Snort-only 关键字
     out = re.sub(r"\b(?:resp|logto)\s*:\s*[^;]+;?", "", out, flags=re.I)
+    # reference 的厂商私有格式会导致 Suricata 解析失败（CVE 等元数据已入 sid_library）
+    out = re.sub(r"\breference\s*:\s*[^;]+;?", "", out, flags=re.I)
     # 残留的 uricontent（无引号等怪形态）也剥离，避免 Suricata 拒载
     out = re.sub(r"\buricontent\s*:\s*[^;]+;?", "", out, flags=re.I)
 
