@@ -1,5 +1,5 @@
 # Converted from Sangfor export: etc_fw/waf/rules/xss.rules
-# rules=308 skipped=0 dup_sid=0
+# rules=304 skipped=4 dup_sid=0
 alert tcp any any -> any $HTTP_PORTS (msg:"Dvwa Application Exploit Attack"; flow:to_server,established; content:"vulnerabilities/xss_s/"; http_uri; nocase; pcre:"/txtname=[^&]*('|"|<|>|:|\;|\(|\)|=|A1234B)/iU"; sid:13030209;)
 alert tcp any any -> any $HTTP_PORTS (msg:"XSS Scripting Attack"; flow:to_server,established; content:"onAbort"; http_uri; nocase; pcre:"/<[a-zA-Z][^>]*[^?&\w]onAbort[^0-9a-zA-Z]*=[+\s'"]*[:\w]+\(/isU"; sid:13030001; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"XSS Scripting Attack"; flow:to_server,established; content:"onActivate"; http_uri; nocase; pcre:"/<[a-zA-Z][^>]*[^?&\w]onActivate[^0-9a-zA-Z]*=[+\s'"]*[:\w]+\(/isU"; sid:13030002; rev:1;)
@@ -304,7 +304,3 @@ alert tcp any any -> any $HTTP_PORTS (msg:"SSRF Detect of file protocol in jump 
 alert tcp any any -> any $HTTP_PORTS (msg:"SSRF Detect of gopher protocol in jump page"; flow:to_client,established; content:"gopher"; http_header; nocase; pcre:"/Location\:[^\r\n]*gopher\:\/\//iD"; sid:13032088; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"SSRF Detect of dict protocol in jump page"; flow:to_client,established; content:"dict"; http_header; nocase; pcre:"/Location\:[^\r\n]*dict\:\/\//iD"; sid:13032089; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"XSS Scripting Attack"; flow:to_server,established; content:"Type/Action/S/JavaScript/JS"; nocase; pcre:"/(app|this|window)\.(alert|exportDataObject|submitform|launchURL|open)/i"; sid:13030250; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"XSS Scripting Attack"; flow:to_server,established; content:"script"; nocase; pcre:"/script\x3e.*\{[^\}]*\x3a(onclick|ondatabinding|ondblclick|ondisposed|oninit|onkeydown|onkeypress|onkeyup|onload|onmousedown|onmousemove|onmouseout|onmouseover|onmouseup|onprerender|onunload|onerror|onfocus|script|expression|iframe|href|alert)\s*\}.*\x3c\/script/iU"; sid:13030251; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"XSS Scripting Attack"; flow:to_server,established; content:"<!ENTITY"; nocase; pcre:"/<\x21ENTITY(\s|\+)+%(\s|\+)*\w+(\s|\+)+(system|public)(\s|\+|\'|\")+(file|http)\x3a/iU"; sid:13030229;)
-alert tcp any any -> any $HTTP_PORTS (msg:"XSS Scripting Attack"; flow:to_server,established; content:"<!ENTITY"; nocase; pcre:"/<\x21ENTITY(\s|\+)+\w+(\s|\+)+(system|public)(\s|\+|\x27|\x22)+/iU"; sid:13030233;)
-alert tcp any any -> any $HTTP_PORTS (msg:"SSRF Detect Sensitive link of oast fun"; flow:to_server,established; content:"oast.fun"; nocase; pcre:"/\=[^\r\n\x26]*oast\.fun/iU"; sid:13030252; rev:1;)

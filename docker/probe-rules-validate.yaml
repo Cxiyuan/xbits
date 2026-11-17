@@ -56,7 +56,6 @@ rule-files:
   - "恶意软件/蠕虫/worm.rules"
   - "恶意软件/间谍软件/spyware.rules"
   - "攻击成功确认/component/component.rules"
-  - "攻击成功确认/information_disclose/information_disclose.rules"
   - "文件与协议解析漏洞/file.rules"
   - "暴力破解/brute_force.rules"
   - "网络服务漏洞/DNS/dns.rules"

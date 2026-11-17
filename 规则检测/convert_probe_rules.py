@@ -137,10 +137,12 @@ STRIP_KWS = [
     re.compile(r"\bdepend\s*:\s*[^;]+;?", re.I),
     re.compile(r"\bdepended\s*:\s*[^;]+;?", re.I),
     re.compile(r"\baction\s*:\s*[^;]*audit[^;]*;?", re.I),
-    re.compile(r"\bstatus_code\s*:\s*[^;]+;?", re.I),
-    re.compile(r"\brate\s*:\s*[^;]+;?", re.I),
 ]
-METHOD_RE = re.compile(r'\bmethod\s*:\s*"([^"]*)"\s*;?', re.I)
+# 仅用于元数据保留；检测语义由 semantic_skip_reason / token 转换处理
+REFERENCE_RE = re.compile(r"\breference\s*:\s*([^;]+)", re.I)
+CLASSTYPE_RE = re.compile(r"\bclasstype\s*:\s*([^;]+)", re.I)
+STATUS_CODE_RE = re.compile(r"\bstatus_code\s*:\s*([^;]+)", re.I)
+RATE_RE = re.compile(r"\brate\s*:\s*([^;]+)", re.I)
 # Sangfor 语义/DSL 关键字：Suricata 无法等价执行，交 xbits/Zeek 语义层
 DSL_RE = re.compile(r"\b(uriarg|decode|grammar|payload_extract|result)\s*:", re.I)
 URICONTENT_RE = re.compile(r'\buricontent\s*:\s*"(.*?)"\s*;', re.I)
@@ -203,6 +205,18 @@ def extract_meta(line: str) -> dict:
                 meta[key] = [int(x) for x in m.group(1).split(",") if x.strip()]
             else:
                 meta[key] = int(m.group(1))
+    refs = [x.strip() for x in REFERENCE_RE.findall(line)]
+    if refs:
+        meta["references"] = refs
+    m = CLASSTYPE_RE.search(line)
+    if m:
+        meta["classtype"] = m.group(1).strip()
+    m = STATUS_CODE_RE.search(line)
+    if m:
+        meta["status_code"] = m.group(1).strip()
+    m = RATE_RE.search(line)
+    if m:
+        meta["rate"] = m.group(1).strip()
     return meta
 
 
@@ -234,6 +248,83 @@ def split_options(opts: str) -> list[str]:
     return tokens
 
 
+REQUEST_BUFFERS = {
+    "http_client_body", "http_uri", "http_raw_uri", "http_method", "http_host",
+    "http_cookie", "http_user_agent", "http_only_uri", "http_uri_only",
+}
+
+
+def rule_option_tokens(line: str) -> list[str]:
+    if "(" not in line or ")" not in line:
+        return []
+    body = line[line.find("(") + 1 : line.rfind(")")]
+    return [t.strip() for t in split_options(body) if t.strip()]
+
+
+def semantic_skip_reason(line: str) -> str | None:
+    """识别无法等价转换的语义；这些规则不进入 Suricata，避免降级使用。"""
+    tokens = rule_option_tokens(line)
+    flow_token = next((t for t in tokens if t.lower().startswith("flow:")), "")
+    to_client = "to_client" in flow_token.lower()
+
+    for t in tokens:
+        tl = t.lower()
+        if tl.startswith("rate:"):
+            return "rate-unsupported"
+        if tl in ("http_only_uri", "http_uri_only"):
+            return "http-only-uri-unsupported"
+        if tl == "rawbytes":
+            return "rawbytes-unsupported"
+        if tl.startswith(("resp:", "logto:")):
+            return "snort-action-unsupported"
+        if tl.startswith("method:"):
+            return "method-unsupported"
+        if tl.startswith("status_code:"):
+            value = t.split(":", 1)[1].strip().strip('"')
+            if not re.fullmatch(r"\d{3}", value):
+                return "status-code-multi"
+
+    if re.search(r"\s<>\s", line) and not flow_token:
+        return "bidirectional-no-flow"
+    if to_client and any(t.lower() in REQUEST_BUFFERS for t in tokens):
+        return "response-direction-conflict"
+
+    prev = ""
+    for t in tokens:
+        tl = t.lower()
+        if tl == "http_uri" and not prev.lower().startswith("content:"):
+            return "dangling-http-uri"
+        prev = t
+
+    groups: list[list[str]] = []
+    cur: list[str] = []
+    for t in tokens:
+        if t.lower().startswith("content:"):
+            if cur:
+                groups.append(cur)
+            cur = [t]
+        else:
+            cur.append(t)
+    if cur:
+        groups.append(cur)
+    for g in groups:
+        abs_keys: list[str] = []
+        rel = False
+        for x in g:
+            xl = x.lower()
+            if xl.startswith("offset:"):
+                abs_keys.append("offset")
+            elif xl.startswith("depth:"):
+                abs_keys.append("depth")
+            if xl.startswith(("within:", "distance:")):
+                rel = True
+        if rel and abs_keys:
+            return "mixed-position"
+        if len(abs_keys) != len(set(abs_keys)):
+            return "duplicate-position"
+    return None
+
+
 def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> str | None:
     """Return cleaned Suricata rule text or None (if unconvertible)."""
     if MAIL_URI_RE.search(line):
@@ -252,9 +343,6 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     out = URICONTENT_NEG_RE.sub(lambda m: f'content:!"{m.group(1)}"; http_uri;', out)
     out = URICONTENT_RE.sub(lambda m: f'content:"{m.group(1)}"; http_uri;', out)
     out = re.sub(r'"\s*,\s*(nocase|distance|within|offset|depth)\b', r'"; \1', out, flags=re.I)
-    out = METHOD_RE.sub(lambda m: f'http_method; content:"{m.group(1)}";', out)
-    # Snort rawbytes → Suricata pkt_data
-    out = re.sub(r"\brawbytes\b", "pkt_data", out, flags=re.I)
     for rx in STRIP_KWS:
         out = rx.sub("", out)
     # classtype 剥离（未知 classtype 会导致加载失败；语义在 xbits sid_library）
@@ -288,17 +376,25 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         if not t:
             continue
         tl = t.lower()
-        # Sangfor 的 http_only_uri 作为 content/pcre 修饰符，Suricata 无等价语义，丢弃
-        if tl in ("http_only_uri", "http_uri_only"):
+        # 无法等价转换的语义一律返回 None（由主流程记入 semantic_gaps）
+        if tl in ("http_only_uri", "http_uri_only", "rawbytes"):
+            return None
+        if tl.startswith(("rate:", "method:", "resp:", "logto:")):
+            return None
+        # status_code:N → Suricata HTTP 响应状态码约束
+        if tl.startswith("status_code:"):
+            value = t.split(":", 1)[1].strip().strip('"')
+            if not re.fullmatch(r"\d{3}", value):
+                return None
+            cleaned.append(f'content:"{value}"')
+            cleaned.append("http_stat_code")
+            prev = "http_stat_code"
             continue
-        # 响应方向规则里的请求侧缓冲关键字 → 直接丢弃（保留 content 序列）
-        if to_client:
-            if tl in ("http_client_body", "http_uri", "http_raw_uri", "http_method",
-                      "http_host", "http_cookie", "http_user_agent"):
-                continue
-        # 悬空的 http_uri（前面不是 content）→ 丢弃，避免 Suricata 解析错误
+        if to_client and tl in REQUEST_BUFFERS:
+            return None
+        # 悬空的 http_uri（前面不是 content）→ 规则语义不完整，不使用
         if tl == "http_uri" and not prev.lower().startswith("content:"):
-            continue
+            return None
         # pcre 后重复的 nocase（Snort 允许，Suricata 报错）
         if tl == "nocase" and prev.lower().startswith("pcre:"):
             continue
@@ -341,19 +437,19 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     fixed: list[str] = []
     for g in groups:
         has_rel = any(x.lower().startswith(("within:", "distance:")) for x in g)
-        if has_rel:
-            g = [x for x in g if not x.lower().startswith(("offset:", "depth:"))]
-        # 同一 content 只保留一个 offset / depth
-        seen_abs: set[str] = set()
-        deduped: list[str] = []
+        abs_keys: list[str] = []
         for x in g:
             xl = x.lower()
-            if xl.startswith(("offset:", "depth:")):
-                if xl[:6] in seen_abs:
-                    continue
-                seen_abs.add(xl[:6])
-            deduped.append(x)
-        fixed.extend(deduped)
+            if xl.startswith("offset:"):
+                abs_keys.append("offset")
+            elif xl.startswith("depth:"):
+                abs_keys.append("depth")
+        # 绝对/相对定位混用或重复的原始约束无法等价表达，直接不使用该规则
+        if has_rel and abs_keys:
+            return None
+        if len(abs_keys) != len(set(abs_keys)):
+            return None
+        fixed.extend(g)
     cleaned = fixed
     body = "; ".join(cleaned).rstrip()
     body = body.rstrip(";").rstrip()
@@ -473,6 +569,7 @@ def main() -> int:
         "sid_library.json",
         "exceptions.json",
         "dead_rules.json",
+        "semantic_gaps.json",
     ):
         (OUT_XBITS / generated).unlink(missing_ok=True)
     cleaned_dirs: set[Path] = set()
@@ -557,6 +654,14 @@ def main() -> int:
                     n_skip += 1
                     continue
 
+                # 不能等价转换的语义：不降级使用，直接剔除并保留元数据
+                sem_reason = semantic_skip_reason(line)
+                if sem_reason:
+                    meta["skip"] = sem_reason
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
                 # Sangfor 语义/DSL 规则：Suricata 无法等价执行，只保留元数据
                 if DSL_RE.search(line):
                     meta["skip"] = "dsl-semantic"
@@ -596,14 +701,16 @@ def main() -> int:
                 if sid in seen_sids:
                     n_dupe += 1
                     continue
-                seen_sids.add(sid)
-                rules_meta[str(sid)] = meta
 
                 flowbit_set = sid if sid in dep_refs else None
                 rule = convert_rule(line, flowbit_set, primary_dep)
                 if rule is None:
+                    meta["skip"] = "convert-rule-none"
+                    rules_meta[str(sid)] = meta
                     n_skip += 1
                     continue
+                seen_sids.add(sid)
+                rules_meta[str(sid)] = meta
                 converted.append(rule)
                 n_ok += 1
             if converted:
@@ -670,7 +777,24 @@ def main() -> int:
                     break
         if not entry.get("name") and meta.get("msg"):
             entry["name"] = meta["msg"]
+        for field in ("classtype", "references", "status_code", "rate", "skip", "category"):
+            if meta.get(field):
+                entry[field] = meta[field]
         sid_library[sid_str] = entry
+
+    # 语义降级/无法等价转换规则报告（只保留元数据，不进入 Suricata）
+    gaps: dict[str, list[int]] = {}
+    for sid_str, meta in rules_meta.items():
+        reason = meta.get("skip")
+        if reason:
+            gaps.setdefault(reason, []).append(int(sid_str))
+    semantic_gaps = {
+        "counts": {k: len(v) for k, v in sorted(gaps.items())},
+        "sids": {k: sorted(v) for k, v in sorted(gaps.items())},
+    }
+    (OUT_XBITS / "semantic_gaps.json").write_text(
+        json.dumps(semantic_gaps, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
 
     # ---- 5) 例外 / 强 SID ----
     exceptions = {

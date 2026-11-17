@@ -16,6 +16,7 @@
   - `rules_meta.json`：每条规则元数据（depend/scope/holetype/tier/category）；
   - `success_rules.json`：PVS 成功确认依赖；
   - `dead_rules.json`：已清理的失效规则；
+  - `semantic_gaps.json`：无法等价转换而剔除的 SID 与原因；
   - `audit_rules.json`：云审计规则；
   - `sid_library.json`：SID → 名称/类别/危险等级映射；
   - `exceptions.json`：例外/强 SID 列表。

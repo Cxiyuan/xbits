@@ -7,6 +7,7 @@
 | `rules_meta.json` | 每条规则元数据：`depend`/`scope`/`holetype`/`tier`/`category`/源文件 |
 | `success_rules.json` | PVS 成功确认依赖关系（响应侧 SID 依赖哪些请求侧 SID） |
 | `dead_rules.json` | 已清理的失效规则（orphan flowbits / 无检测原语） |
+| `semantic_gaps.json` | 无法等价转换而剔除的 SID 与原因（仅保留元数据） |
 | `audit_rules.json` | 云审计规则（仅元数据，不进入 Suricata 告警） |
 | `sid_library.json` | SID → 规则名/危险等级/类别/子类别/所属类目 |
 | `exceptions.json` | 例外列表与强 SID 名单 |

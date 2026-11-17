@@ -1,4 +1,3 @@
 # Converted from Sangfor export: etc_fw/pvs/rules/success/component.rules
 # rules=2 skipped=461 dup_sid=0
 alert tcp any any -> any $HTTP_PORTS (msg:"Dahua Onvif Authorization Vulnerability"; flow:to_client,established; content:"JFIF"; nocase; sid:17115353; rev:1; flowbits:isset,xb_dep_11070336;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Post-Exploitation Tool CobaltStrike Communication"; flow:to_client,established; content:"Content-Length|3a 20|0|0d 0a|"; http_header; pcre:"/Date\x3a\x20[^\r\n]+\x0d\x0aContent\x2dType\x3a\x20(text\x2fhtml|application\x2foctet\x2dstream)\x0d\x0aContent\x2dLength\x3a\x200\x0d\x0a\x0d\x0a/i"; sid:17115354; rev:1; flowbits:isset,xb_dep_11225424;)

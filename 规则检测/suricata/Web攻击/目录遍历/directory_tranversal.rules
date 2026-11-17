@@ -1,5 +1,5 @@
 # Converted from Sangfor export: etc_fw/waf/rules/directory_tranversal.rules
-# rules=51 skipped=0 dup_sid=0
+# rules=45 skipped=6 dup_sid=0
 alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:".."; http_uri; pcre:"/[^.](\w+\/|\w+\\|\.\/|\.\\|=)(\\|\/|\s|\+)?(\.\.[\/\\]{1,2})(\s|\w|&)/iU"; sid:13050001;)
 alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:".."; http_uri; pcre:"/\?[^\r\n<>]*(\.\.[\/\\]{1,3}){2}/iU"; sid:13050002; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:".."; http_uri; pcre:"/^(\/|\w)[^?\r\n]*(\.\.[\/\\]{1,3}){2}/iU"; sid:13050047; rev:1;)
@@ -45,9 +45,3 @@ alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to
 alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"..%c0%af..%c0%af"; nocase; sid:13050049; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"..%00"; pcre:"/[^\r\n]*?=?(\.\.%00[\/\\]){1,}/i"; sid:13050050; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"..%3C%3E"; nocase; pcre:"/[^\r\n]*?=?(\.\.%3C%3E[\/\\]){1,}/i"; sid:13050051; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"Li4vLi4vLi4v"; nocase; sid:13050052; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"Ly4uLy4uLy4u"; nocase; sid:13050053; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"Li8uLi8uLi8u"; nocase; sid:13050054; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"Li5cLi5cLi5c"; nocase; sid:13050055; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"LlwuLlwuLlwu"; nocase; sid:13050056; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Directory Tranversal Attack"; flow:to_server,established; content:"XC4uXC4uXC4u"; nocase; sid:13050057; rev:1;)
