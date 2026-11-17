@@ -1,5 +1,5 @@
 # Converted from Sangfor export: etc_fw/sf_snort/rules/brute_force.rules
-# rules=97 skipped=0 dup_sid=0
+# rules=96 skipped=1 dup_sid=0
 alert tcp any any -> any 21 (msg:"FTP Server Brute Force Exploit"; flow:to_client,established; content:"530 "; depth:4; sid:11080001; rev:1;)
 alert tcp any any -> any 143 (msg:"IMAP Server Brute Force Exploit"; flow:to_client,established; content:"NO"; nocase; pcre:"/(Login failed|Login error|Bad LOGIN|Authentication failed)/i"; sid:11080003; rev:1;)
 alert tcp any any -> any 23 (msg:"TELNET Server Brute Force Exploit"; flow:to_client,established; content:"Login incorrect"; nocase; sid:11080002; rev:1;)
@@ -88,7 +88,6 @@ alert tcp any any -> any 25 (msg:"SMTP Server Brute Force Exploit"; flow:to_clie
 alert tcp any any -> any 389 (msg:"Ldap Server User Login Successfull"; flow:to_client,established; content:"|61 07 0a 01 00 04 00 04 00|"; sid:11180061; rev:1;)
 alert tcp any any -> any 6379 (msg:"Redis Server User Login Successfull"; flow:to_server,established; content:"AUTH|0d 0a|"; offset:8; depth:6; flowbits:set,sf_11180062; flowbits:noalert; sid:11180062; rev:1;)
 alert tcp any any -> any 6379 (msg:"Redis Server User Login Successfull"; flow:to_client,established; flowbits:isset,sf_11180062; content:"+OK|0d 0a|"; offset:0; depth:5; flowbits:unset,sf_11180062; sid:11180063; rev:1;)
-alert tcp any any -> any 135 (msg:"WMI Server User Login Successfull"; flow:to_client,established; content:"|02|"; offset:2; depth:1; isdataat:700,relative; content:"|00 00 00 00|"; sid:11180067; rev:1;)
 alert udp any any -> any 88 (msg:"Kerberos Server User Login Successfull"; flow:to_client; content:"|05 a1 03 02 01 0b|"; offset:12; depth:6; sid:11180068; rev:1;)
 alert tcp any any -> any 5000 (msg:"Sybase User Login Successfull"; flow:to_client,established; content:"|04 01|"; depth:2; content:"Changed database context to"; nocase; sid:11180077; rev:1;)
 alert tcp any any -> any 23 (msg:"Telnet Ubuntu User Login Successfull"; flow:to_client,established; content:"Welcome|20|to|20|Ubuntu"; offset:0; depth:17; nocase; sid:11180074; rev:1;)

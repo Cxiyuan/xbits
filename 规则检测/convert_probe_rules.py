@@ -236,6 +236,12 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         return None
     out = line
     out = re.sub(r"\s+<>\s+", " -> ", out)  # Suricata 不支持双向
+    # 端口列表中的变量展开（Suricata 不支持 [$HTTP_PORTS,8443] 混写）
+    out = re.sub(
+        r"\[\$HTTP_PORTS([^\]]*)\]",
+        lambda m: "[80,443,8080,8443" + m.group(1) + "]",
+        out,
+    )
     # uricontent!:"X" → content:!"X"; http_uri（否定形式先替换）
     out = URICONTENT_NEG_RE.sub(lambda m: f'content:!"{m.group(1)}"; http_uri;', out)
     out = URICONTENT_RE.sub(lambda m: f'content:"{m.group(1)}"; http_uri;', out)
@@ -299,7 +305,7 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
                 last = s.rfind("/")
                 if s.startswith("/") and last > 1:
                     pat, flags = s[1:last], s[last + 1:]
-                    if "P" in flags:
+                    if flags.count("P") or sum(flags.count(c) for c in "UBP") > 1:
                         return None
                     try:
                         re.compile(pat)
@@ -490,6 +496,13 @@ def main() -> int:
                     n_skip += 1
                     continue
 
+                # isdataat 偏移越界在 Suricata 会直接拒载
+                if "isdataat" in line.lower():
+                    meta["skip"] = "isdataat"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
                 if sid in seen_sids:
                     n_dupe += 1
                     continue
@@ -604,6 +617,11 @@ def main() -> int:
         '    HOME_NET: "any"',
         '    EXTERNAL_NET: "any"',
         '    CLIENT_NET: "any"',
+        '    HTTP_SERVERS: "any"',
+        '    SMTP_SERVERS: "any"',
+        '    DNS_SERVERS: "any"',
+        '    SQL_SERVERS: "any"',
+        '    MAIL_SERVERS: "any"',
         "  port-groups:",
         '    HTTP_PORTS: "[80,8080,8000,443,8443]"',
         '    MAIL_PORTS: "[25,110,143,587,993,995]"',
