@@ -46,6 +46,7 @@ def main() -> int:
     try:
         sock = work / "hook.sock"
         alerts = work / "alerts.jsonl"
+        (work / "suri").mkdir(parents=True, exist_ok=True)
         engine = subprocess.Popen(
             [str(args.xbits), "--hook-socket", str(sock), "--rules", str(args.rules),
              "--alert-file", str(alerts)],
