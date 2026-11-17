@@ -2,6 +2,10 @@
 ##! UA 命中爬虫特征但源 IP 不在爬虫网段 → 伪造爬虫告警。
 ##! 与自研脚本一致使用 Log 框架，便于 -b 模式加载与 xbits 消费。
 
+@load base/frameworks/logging
+@load base/protocols/conn
+@load base/protocols/http
+
 module XbitsCrawler;
 
 export {
