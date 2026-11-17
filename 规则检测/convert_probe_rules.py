@@ -236,6 +236,8 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     if MAIL_URI_RE.search(line):
         return None
     out = line
+    # 组合动作 alert|log 非 Suricata 合法值
+    out = re.sub(r"^(alert|log|pass|drop)\|(?:alert|log|pass|drop)\b", lambda m: m.group(1), out, flags=re.I)
     out = re.sub(r"\s+<>\s+", " -> ", out)  # Suricata 不支持双向
     # 端口列表中的变量展开（Suricata 不支持 [$HTTP_PORTS,8443] 混写）
     out = re.sub(
