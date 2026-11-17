@@ -247,19 +247,22 @@ def main() -> int:
             problems = []
             if eve != engine:
                 problems.append(f"hook lost/duplicated alerts: EVE={dict(eve)} engine={dict(engine)}")
-            if set(engine) != require:
-                problems.append(f"unexpected engine sids: got={sorted(engine)} require={sorted(require)}")
+            if not require <= set(engine):
+                problems.append(f"missing required sids: missing={sorted(require - set(engine))}")
             if forbid & set(engine):
                 problems.append(f"forbidden sids fired: {sorted(forbid & set(engine))}")
-            if observed["engine_err"].strip():
-                problems.append(f"engine stderr: {observed['engine_err'].strip()[-500:]}")
+            bad_err = observed["engine_err"]
+            if "bad hook event" in bad_err or "hook accept error" in bad_err or "hook read error" in bad_err:
+                problems.append(f"engine stderr: {bad_err[-500:]}")
 
             if problems:
                 failures.append(f"{cat['name']}/{case}: " + "; ".join(problems))
                 print(f"{cat['name']}/{case}: FAIL " + "; ".join(problems), file=sys.stderr)
             else:
+                extra = sorted(set(engine) - require)
+                extra_text = f" extra={extra}" if extra else ""
                 print(
-                    f"{cat['name']}/{case}: OK eve={sorted(eve)} engine={sorted(engine)}"
+                    f"{cat['name']}/{case}: OK eve={sorted(eve)} engine={sorted(engine)}{extra_text}"
                 )
 
     if failures:

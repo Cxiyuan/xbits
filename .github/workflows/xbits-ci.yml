@@ -317,8 +317,8 @@ jobs:
       - name: Runtime test xbits Suricata thin hook
         run: |
           set -euo pipefail
-          sed -e 's|filetype: unix_stream|filetype: regular|' \
-              -e "s|filename: .*eve.sock|filename: $GITHUB_WORKSPACE/测试用例/out/suricata/xbits-web/hook-eve.json|" \
+          sed -e 's|filetype: unix_stream|filetype: xbits-hook|' \
+              -e "s|filename: .*eve.sock|filename: xbits-hook|" \
               测试用例/suricata-web-xbits.yaml > 测试用例/suricata-hook-test.yaml
           printf '\nplugins:\n  - %s/xbits/suricata-plugin/xbits-suricata-hook.so\n' "$GITHUB_WORKSPACE" >> 测试用例/suricata-hook-test.yaml
           chmod +x xbits/target/release/xbits

@@ -262,7 +262,11 @@ static SCEveFileType XbitsEveFileType = {
 
 static void XbitsPluginInit(void)
 {
-    SCRegisterOnLoggingReady(XbitsOnLoggingReady, NULL);
+    /*
+     * Use only the EVE filetype hook.  The packet logger is kept in this
+     * plugin for reference/backward compatibility, but registering both
+     * paths makes every alert arrive twice in a normal EVE configuration.
+     */
     SCRegisterEveFileType(&XbitsEveFileType);
 }
 
