@@ -108,31 +108,31 @@ event http_header(c: connection, is_orig: bool, name: string, value: string)
     local hname = to_lower(name);
     if ( hname == "host" )
         {
-        local appname = lookup_suffix(value);
-        if ( appname != "" )
+        local host_app = lookup_suffix(value);
+        if ( host_app != "" )
             {
-            local appcat = app_category[appname];
-            note_app(c, appname, appcat, "http_host=" + value, 0.90);
+            local host_cat = app_category[host_app];
+            note_app(c, host_app, host_cat, "http_host=" + value, 0.90);
             }
         }
     else if ( hname == "user-agent" )
         {
-        local appname = lookup_ua(value);
-        if ( appname != "" )
+        local ua_app = lookup_ua(value);
+        if ( ua_app != "" )
             {
-            local appcat = app_category[appname];
-            note_app(c, appname, appcat, "http_ua=" + value, 0.80);
+            local ua_cat = app_category[ua_app];
+            note_app(c, ua_app, ua_cat, "http_ua=" + value, 0.80);
             }
         }
     }
 
 event dns_request(c: connection, msg: dns_msg, query: string, qtype: count, qclass: count)
     {
-    local appname = lookup_suffix(query);
-    if ( appname != "" )
+    local dns_app = lookup_suffix(query);
+    if ( dns_app != "" )
         {
-        local appcat = app_category[appname];
-        note_app(c, appname, appcat, "dns_qname=" + query, 0.85);
+        local dns_cat = app_category[dns_app];
+        note_app(c, dns_app, dns_cat, "dns_qname=" + query, 0.85);
         }
     }
 
