@@ -1,9 +1,8 @@
 # Converted from Sangfor export: etc_fw/sf_snort/rules/telnet.rules
-# rules=18 skipped=2 dup_sid=0
+# rules=17 skipped=3 dup_sid=0
 alert tcp any any -> any 23 (msg:"CCProxy Telnet Proxy Ping Overflow Vulnerability(CVE-2004-2416)"; flow:to_server,established; content:"p"; depth:1; nocase; pcre:"/^p[ \t]+[^\x00\x07\x08\x0a\x0d\x20]{1013}/im"; sid:11060012;)
 alert tcp any any -> any 23 (msg:"Linux BSD-derived Telnet Service Encryption Key ID Buffer Overflow Vulnerability(CVE-2011-4862)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol telnet; content:"|ff fa 26 07|"; depth:4; pcre:"/^\xff\xfa\x26\x07[^\x00]{76}./is"; sid:11060013;)
 alert tcp any any -> any 23 (msg:"Multiple Vendor System V Derived Login Buffer Overflow Vulnerability(CVE-2001-0797)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol telnet; content:" a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a"; nocase; sid:11060014;)
-alert tcp any any -> any 23 (msg:"Multiple Vendor Telnet Client Buffer Overflow(CVE-2005-0468)"; flow:to_client,established; metadata:type ONLY_SERVICE,protocol telnet; content:"|FF FA 27 01|"; pcre:"/^.+\x02[\x01-\x03]/R"; content:"|FF F0|"; distance:0; sid:11060017; rev:1;)
 alert tcp any any -> any 23 (msg:"Sun Solaris Telnet Remote Authentication Bypass Vulnerability(CVE-2007-0882)"; flow:to_server,established; content:"|FF FA 27 00 00|USER|01|-"; pkt_data; pcre:"/\xff\xfa\x27\x00\x00USER\x01-(f|d/dev/console)/"; sid:10136;)
 alert tcp any any -> any 23 (msg:"MIT Kerberos 5 Telnet Daemon Authentication Bypass Vulnerability(CVE-2007-0956)"; flow:to_server,established; content:"|FF FA 27 00 00|USER|01|-e"; pkt_data; sid:10464;)
 alert tcp any any -> any 23 (msg:"Multiple Vendor Telnetd Buffer Overflow Vulnerability(CVE-2001-0554)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol telnet; dsize:>200; content:"|FF F6 FF F6|"; depth:50; offset:200; pkt_data; sid:1252;)

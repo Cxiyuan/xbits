@@ -1,5 +1,5 @@
 # Converted from Sangfor export: etc_fw/sf_snort/rules/ftp.rules
-# rules=99 skipped=20 dup_sid=0
+# rules=98 skipped=21 dup_sid=0
 alert tcp any any -> any 21 (msg:"(MS09-053)Microsoft IIS FTP LIST Globbing Denial Of Service Vulnerability(CVE-2009-2521)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"LIST -R"; nocase; content:"*/.."; within:20; distance:1; sid:11030001;)
 alert tcp any any -> any 21 (msg:"(MS09-053)Microsoft IIS FTP NLST Globbing Denial Of Service Vulnerability(CVE-2009-2521)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"NLST -R"; nocase; content:"*/.."; within:20; distance:1; sid:11030002;)
 alert tcp any any -> any 21 (msg:"Anonymous FTP Service User Login"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"anonymous"; nocase; pcre:"/^USER\s+anonymous\x0d\x0a/mi"; sid:11030008;)
@@ -61,7 +61,6 @@ alert tcp any any -> any 5466 (msg:"Wing FTP Server Remote Code Execution Vulner
 alert tcp any any -> any 21 (msg:"(MS11-004)Microsoft IIS FTP Server Encoded Response Overflow Vulnerability(CVE-2010-3972)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"|ff ff|"; content:"|ff ff|"; distance:0; content:"|ff ff|"; distance:0; pcre:"/^[^\s]*\xff\xff/"; sid:11030076; rev:1;)
 alert tcp any any -> any 21 (msg:"(MS11-004)Microsoft IIS FTP Server Encoded Response Overflow Vulnerability(CVE-2010-3972)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"|ef 83 b0 ef 83 b0 ef 83 b0|"; content:"|ff ff ef ef bb|"; content:"|ff ef bb bf|"; sid:11030077; rev:1;)
 alert tcp any any -> any 21 (msg:"Multiple Vendors OPIE Off-by-one Stack Buffer Overflow Vulnerability(CVE-2010-1938)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"USER"; nocase; offset:0; depth:4; pcre:"/^USER\s+[^\r\n\s]{32}/i"; sid:11030078; rev:1;)
-alert tcp any any -> any 21 (msg:"ProFTPD FTP Server TELNET_IAC Stack Buffer Overflow Vulnerability(CVE-2010-4221)"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"AAAAAAAAAAAAAAAAAAAAAAAA"; offset:0; depth:24; pcre:"/A{976}/R"; sid:11030079; rev:1;)
 alert tcp any any -> any 21 (msg:"Freefloat FTP Server Invalid Command Buffer Overflow Vulnerability"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"Invalidcommand"; nocase; pcre:"/Invalidcommand[^\n]{229}/i"; sid:11030086; rev:1;)
 alert udp any any -> any 5151 (msg:"IPSwitch WS_FTP Log Server Long Unicode String Vulnerability(CVE-2007-3823)"; flow:to_server; content:"|AB AA|"; depth:2; byte_test:2,>,2123,0,relative,little; sid:12076;)
 alert|log tcp any any -> any 21 (msg:"Ipswitch WS_FTP Server Resource Consumption Remote Denial Of Service Vulnerability"; flow:to_server,established; metadata:type ONLY_SERVICE,protocol ftp; content:"CWD"; nocase; content:"..."; distance:0; pcre:"/^CWD[\t ]+\.\.\./mi"; sid:1229;)

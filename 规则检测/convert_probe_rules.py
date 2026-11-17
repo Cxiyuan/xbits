@@ -135,6 +135,7 @@ STRIP_KWS = [
     re.compile(r"\bdepended\s*:\s*[^;]+;?", re.I),
     re.compile(r"\baction\s*:\s*[^;]*audit[^;]*;?", re.I),
     re.compile(r"\bstatus_code\s*:\s*[^;]+;?", re.I),
+    re.compile(r"\brate\s*:\s*[^;]+;?", re.I),
 ]
 METHOD_RE = re.compile(r'\bmethod\s*:\s*"([^"]*)"\s*;?', re.I)
 # Sangfor 语义/DSL 关键字：Suricata 无法等价执行，交 xbits/Zeek 语义层
@@ -305,7 +306,10 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
                 last = s.rfind("/")
                 if s.startswith("/") and last > 1:
                     pat, flags = s[1:last], s[last + 1:]
-                    if flags.count("P") or sum(flags.count(c) for c in "UBP") > 1:
+                    # R/P/B 在 Suricata 中语义/前置条件不同，直接跳过
+                    if any(c in flags for c in "RPB"):
+                        return None
+                    if sum(flags.count(c) for c in "UBP") > 1:
                         return None
                     try:
                         re.compile(pat)
