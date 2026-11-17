@@ -19,6 +19,9 @@ def main() -> int:
         "docker", "run", "--rm", "--network", "none",
         "-v", f"{(ROOT / 'app-id' / 'tests').resolve()}:/opt/xbits/app-id/tests:ro",
         "-e", "PATH=/usr/local/zeek/bin:/usr/local/bin:/usr/bin:/bin",
+        # app-id isolated test: do not activate the xbits hook plugin here.
+        "-e", "ZEEK_PLUGIN_PATH=",
+        "-e", "ZEEK_PLUGIN_ACTIVATE=",
         "--entrypoint", "python3",
         "xbits-zeek",
         "/opt/xbits/app-id/tests/run_tests.py",
