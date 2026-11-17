@@ -147,6 +147,34 @@ def extract_meta(line: str) -> dict:
     return meta
 
 
+def split_options(opts: str) -> list[str]:
+    """按分号拆分规则选项，尊重双引号与反斜杠转义。"""
+    tokens, cur = [], []
+    inq = esc = False
+    for ch in opts:
+        if esc:
+            cur.append(ch)
+            esc = False
+            continue
+        if ch == "\\":
+            cur.append(ch)
+            esc = True
+            continue
+        if ch == '"':
+            inq = not inq
+            cur.append(ch)
+            continue
+        if ch == ";" and not inq:
+            tokens.append("".join(cur).strip())
+            cur = []
+            continue
+        cur.append(ch)
+    tail = "".join(cur).strip()
+    if tail:
+        tokens.append(tail)
+    return tokens
+
+
 def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> str | None:
     """Return cleaned Suricata rule text or None (if unconvertible)."""
     if MAIL_URI_RE.search(line):
@@ -157,8 +185,6 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     out = URICONTENT_NEG_RE.sub(lambda m: f'content:!"{m.group(1)}"; http_uri;', out)
     out = URICONTENT_RE.sub(lambda m: f'content:"{m.group(1)}"; http_uri;', out)
     out = METHOD_RE.sub(lambda m: f'http_method; content:"{m.group(1)}";', out)
-    # Sangfor 自定义 URI 限定修饰符 → Suricata http_uri
-    out = re.sub(r"\bhttp_only_uri\b", "http_uri", out, flags=re.I)
     # Snort rawbytes → Suricata pkt_data
     out = re.sub(r"\brawbytes\b", "pkt_data", out, flags=re.I)
     for rx in STRIP_KWS:
@@ -181,12 +207,29 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     out = re.sub(r";\s+\)", ";)", out)
     out = re.sub(r";\s+", "; ", out)
     out = re.sub(r"\(\s*;", "(", out)
-    # 取出选项体（去掉结尾的 ')'），注入字段必须插在 ')' 之前
+    # 取出选项体（去掉结尾的 ')'），按分号拆分后做最后清理
     body = out[:-1].rstrip() if out.endswith(")") else out
-    body = body.rstrip().rstrip(";").rstrip()
+    tokens = split_options(body)
+    cleaned: list[str] = []
+    prev = ""
+    for tok in tokens:
+        t = tok.strip()
+        if not t:
+            continue
+        tl = t.lower()
+        # Sangfor 的 http_only_uri 作为 content/pcre 修饰符，Suricata 无等价语义，丢弃
+        if tl in ("http_only_uri", "http_uri_only"):
+            continue
+        # pcre 后重复的 nocase（Snort 允许，Suricata 报错）
+        if tl == "nocase" and prev.lower().startswith("pcre:"):
+            continue
+        if tl == "nocase" and prev.lower() == "nocase":
+            continue
+        cleaned.append(t)
+        prev = t
     if injections:
-        body = body + "; " + "; ".join(injections)
-    return body + ";)"
+        cleaned.extend(injections)
+    return "; ".join(cleaned) + ";)"
 
 
 def parse_ini_sections(path: Path):

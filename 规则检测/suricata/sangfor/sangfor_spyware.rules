@@ -1,7 +1,7 @@
 # Converted from Sangfor export: etc_fw/sf_snort/rules/spyware.rules
 # rules=13 skipped=0 dup_sid=0
 alert tcp any any -> any $HTTP_PORTS (msg:"Information Stealer Communication"; flow:to_server,established; content:"ZLMediaKit"; nocase; http_header; content:"uptocycle"; nocase; http_header; pcre:"/aps\x2ephp\x2f(generic\x2fprocess|udata\x2fheartbeat|udata\x2fpc_domain_info|udata\x2fcomp_info|udata\x2finstall_info|udata\x2fbrowsing_history|Isfreed\x2fsanll|checkver\x2findex)/iI"; sid:10030000; rev:1;)
-alert tcp any any -> any $HTTP_PORTS (msg:"Information Stealer Communication"; flow:to_server,established; content:"ZLMediaKit"; nocase; http_header; content:"uptocycle"; nocase; http_header; content:"/update/index.ini"; http_uri; nocase; sid:10030001; rev:1;)
+alert tcp any any -> any $HTTP_PORTS (msg:"Information Stealer Communication"; flow:to_server,established; content:"ZLMediaKit"; nocase; http_header; content:"uptocycle"; nocase; http_header; content:"/update/index.ini"; nocase; sid:10030001; rev:1;)
 alert tcp any any -> any $HTTP_PORTS (msg:"Rogue AV Download/Update Attempt"; flow:to_server,established; content:"|2F 3F|b|3D|1s1"; nocase; http_uri; content:"Mozilla"; nocase; pcre:"/^User\x2DAgent\x3A\s*Mozilla\x0d?$/smi"; sid:16695;)
 alert tcp any any -> any $HTTP_PORTS (msg:"Spyeye Bot Contact To C&C Server Attempt"; flow:to_server,established; content:"|2E|php|3F|guid|3D|"; nocase; http_uri; content:"ccrc|3D|"; nocase; http_uri; content:"ver|3D|"; nocase; http_uri; content:"stat|3D|"; nocase; http_uri; content:"cpu|3D|"; nocase; http_uri; sid:16669;)
 alert udp any any -> any 53 (msg:"Torpig Bot Sinkhole Server DNS Lookup Attempt"; flow:to_server; content:"torpig-sinkhole|03|org"; nocase; sid:16693;)
