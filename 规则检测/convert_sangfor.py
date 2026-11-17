@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -241,6 +242,9 @@ def main() -> int:
         print(f"missing source dir: {src}", file=sys.stderr)
         return 2
 
+    # 清理旧产物，避免被跳过规则留下的陈旧文件混入
+    shutil.rmtree(OUT_SURICATA, ignore_errors=True)
+    shutil.rmtree(OUT_XBITS, ignore_errors=True)
     OUT_SURICATA.mkdir(parents=True, exist_ok=True)
     OUT_XBITS.mkdir(parents=True, exist_ok=True)
 
