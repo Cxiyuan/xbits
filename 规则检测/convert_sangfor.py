@@ -157,6 +157,10 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     out = URICONTENT_NEG_RE.sub(lambda m: f'content:!"{m.group(1)}"; http_uri;', out)
     out = URICONTENT_RE.sub(lambda m: f'content:"{m.group(1)}"; http_uri;', out)
     out = METHOD_RE.sub(lambda m: f'http_method; content:"{m.group(1)}";', out)
+    # Sangfor 自定义 URI 限定修饰符 → Suricata http_uri
+    out = re.sub(r"\bhttp_only_uri\b", "http_uri", out, flags=re.I)
+    # Snort rawbytes → Suricata pkt_data
+    out = re.sub(r"\brawbytes\b", "pkt_data", out, flags=re.I)
     for rx in STRIP_KWS:
         out = rx.sub("", out)
     # classtype 剥离（未知 classtype 会导致加载失败；语义在 xbits sid_library）
