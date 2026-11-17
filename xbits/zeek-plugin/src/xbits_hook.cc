@@ -158,7 +158,11 @@ static std::string BuildEventJson(zeek::Event *event)
     } else if ((name == "http_request" || name == "http_reply" || name == "dns_request" ||
                 name == "dns_query") &&
                !args.empty()) {
-        fill_conn(args[0]);
+        // Do not blindly dereference args[0] as connection here: Zeek's
+        // app-id scripts can register handlers whose argument layout differs
+        // from the base analyzer's event signature.  Event name/args below
+        // are sufficient for xbits context; signature_match and XbitsAlert
+        // carry their own structured records.
         if (name == "http_request" && args.size() >= 3) {
             ValStr(args[1], method);
             ValStr(args[2], uri);
