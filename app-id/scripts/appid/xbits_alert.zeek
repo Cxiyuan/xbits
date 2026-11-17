@@ -90,3 +90,8 @@ hook Notice::policy(n: Notice::Info)
 	delete n$actions[Notice::ACTION_PAGE];
 @endif
 	}
+
+# 无副作用 handler：让 Xbits 薄 hook 能观察到统一告警事件
+event alert(info: Info)
+	{
+	}
