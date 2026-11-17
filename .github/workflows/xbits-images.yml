@@ -126,9 +126,26 @@ jobs:
             -f docker/xbits-zeek.Dockerfile \
             .
 
+      - name: Convert probe rules to Zeek behavior data
+        run: |
+          if [ -d "$HOME/probe-rules" ]; then
+            python 规则检测/convert_probe_zeek.py --src "$HOME/probe-rules"
+          else
+            echo "Probe-rule export not available in CI; using committed Zeek conversion"
+          fi
       - name: Show images
         run: docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | head -30
 
+      - name: Zeek behavior scripts compile
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/work" -w /tmp --entrypoint zeek xbits-zeek \
+            -b -Cr /work/测试用例/web_pcap/web_sqli_uri_union.pcap \
+            /opt/xbits/zeek-rules/Web行为/crawler_whitelist.zeek \
+            /opt/xbits/zeek-rules/威胁情报/white_domains.zeek \
+            /opt/xbits/zeek-rules/威胁情报/public_dns_servers.zeek \
+            /opt/xbits/zeek-rules/威胁情报/botnet_apps.zeek \
+            LogAscii::use_json=T
       - name: Converted probe rules must load in Suricata
         run: |
           set -euo pipefail
