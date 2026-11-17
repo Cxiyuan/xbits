@@ -1,0 +1,131 @@
+name: xbits-images
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "docker/**"
+      - "xbits/**"
+      - "app-id/**"
+      - "规则检测/**"
+      - "测试用例/generate_web_pcaps.py"
+      - ".github/workflows/xbits-images.yml"
+  pull_request:
+    paths:
+      - "docker/**"
+      - "xbits/**"
+      - "app-id/**"
+      - "规则检测/**"
+      - "测试用例/generate_web_pcaps.py"
+      - ".github/workflows/xbits-images.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    name: Build xbits-suricata / xbits-zeek and test thin hooks
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Install test PCAP generator dependency
+        run: python -m pip install --disable-pip-version-check scapy==2.6.1
+
+      - name: Install pinned Rust 1.85.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain 1.85.0
+          . "$HOME/.cargo/env"
+          rustup default 1.85.0
+          cargo --version
+
+      - name: Build xbits engine
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --manifest-path xbits/Cargo.toml --release --locked
+
+      - name: Generate Web PCAP
+        run: python 测试用例/generate_web_pcaps.py --out /tmp/web-pcap
+
+      - name: Build official-image based xbits-suricata
+        run: |
+          docker build --pull \
+            -t xbits-suricata \
+            -f docker/xbits-suricata.Dockerfile \
+            .
+
+      - name: Build official-image based xbits-zeek
+        run: |
+          docker build --pull \
+            -t xbits-zeek \
+            -f docker/xbits-zeek.Dockerfile \
+            .
+
+      - name: Show images
+        run: docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | head -30
+
+      - name: Test Suricata + Zeek thin hooks through xbits central engine
+        run: |
+          set -euo pipefail
+          rm -f /tmp/xbits-hook.sock /tmp/xbits-hook.out /tmp/xbits-hook.err
+          mkdir -p /tmp/suri-out
+          xbits/target/release/xbits \
+            --hook-socket /tmp/xbits-hook.sock \
+            --rules xbits/rules/default.json \
+            >/tmp/xbits-hook.out 2>/tmp/xbits-hook.err &
+          echo $! >/tmp/xbits-hook.pid
+          for i in $(seq 1 100); do
+            [ -S /tmp/xbits-hook.sock ] && break
+            sleep 0.1
+          done
+
+          echo "=== xbits-suricata: run pcap with thin hook ==="
+          docker run --rm --network none \
+            -v /tmp:/tmp \
+            -v "$PWD/测试用例/web_pcap:/pcap:ro" \
+            -e XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
+            --entrypoint suricata \
+            xbits-suricata \
+            -r /pcap/web_sqli_uri_union.pcap \
+            -c /opt/xbits/suricata-test.yaml \
+            -l /tmp/suri-out
+
+          echo "=== xbits-zeek: run pcap with thin hook ==="
+          docker run --rm --network none \
+            -v /tmp:/tmp \
+            -v "$PWD/测试用例/web_pcap:/pcap:ro" \
+            -e ZEEK_PLUGIN_PATH=/opt/xbits/zeek-plugin \
+            -e ZEEK_PLUGIN_ACTIVATE=Xbits::Hook \
+            -e XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
+            --entrypoint /usr/local/zeek/bin/zeek \
+            xbits-zeek \
+            -Cr /pcap/web_sqli_uri_union.pcap
+
+          sleep 1
+          echo "=== xbits central engine output ==="
+          cat /tmp/xbits-hook.out
+          echo "=== assertions ==="
+          grep -q '"rule_id":"xb-suricata-web-sqli"' /tmp/xbits-hook.out
+          grep -q '"rule_id":"xb-zeek-http-request"' /tmp/xbits-hook.out
+          echo "PASS: both thin hooks reached xbits central engine"
+          kill $(cat /tmp/xbits-hook.pid) || true
+
+      - name: Upload xbits hook logs
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: xbits-hook-images-test-logs
+          path: |
+            /tmp/xbits-hook.out
+            /tmp/xbits-hook.err
+            /tmp/suri-out
+          if-no-files-found: ignore

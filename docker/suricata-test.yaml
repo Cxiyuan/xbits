@@ -1,0 +1,34 @@
+%YAML 1.1
+---
+# xbits-suricata 镜像内的薄 hook 测试配置。
+# 规则、Lua、classification/reference 由 Dockerfile 安装到 /opt/xbits/rules。
+default-log-dir: /tmp/suri-out
+
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8]"
+    EXTERNAL_NET: "[203.0.113.0/24]"
+    CLIENT_NET: "[10.0.0.0/8]"
+
+default-rule-path: /opt/xbits/rules/Web漏洞利用
+rule-files:
+  - Web漏洞利用规则.rules
+
+classification-file: /opt/xbits/rules/classification.config
+reference-config-file: /opt/xbits/rules/reference.config
+
+security:
+  lua:
+    allow-rules: yes
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /tmp/suri-out/eve.json
+      types:
+        - alert
+
+# 薄 hook 插件
+plugins:
+  - /opt/xbits/plugins/xbits-suricata-hook.so
