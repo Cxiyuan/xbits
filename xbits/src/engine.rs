@@ -149,7 +149,7 @@ impl Engine {
             (ev.event.as_ref(), &mut dst.event),
         ] {
             if src.is_some() {
-                *dst_field = src.clone();
+                *dst_field = src.cloned();
             }
         }
         if ev.sport.is_some() {
