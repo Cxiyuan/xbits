@@ -220,6 +220,9 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         # Sangfor 的 http_only_uri 作为 content/pcre 修饰符，Suricata 无等价语义，丢弃
         if tl in ("http_only_uri", "http_uri_only"):
             continue
+        # 悬空的 http_uri（前面不是 content）→ 丢弃，避免 Suricata 解析错误
+        if tl == "http_uri" and not prev.lower().startswith("content:"):
+            continue
         # pcre 后重复的 nocase（Snort 允许，Suricata 报错）
         if tl == "nocase" and prev.lower().startswith("pcre:"):
             continue
@@ -229,7 +232,10 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         prev = t
     if injections:
         cleaned.extend(injections)
-    return "; ".join(cleaned) + ";)"
+    body = "; ".join(cleaned).rstrip()
+    body = body.rstrip(";").rstrip()
+    body = re.sub(r";\s*;", ";", body)
+    return body + ";)"
 
 
 def parse_ini_sections(path: Path):
