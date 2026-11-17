@@ -78,7 +78,11 @@ STRIP_KWS = [
     re.compile(r"\bdepend\s*:\s*[^;]+;?", re.I),
     re.compile(r"\bdepended\s*:\s*[^;]+;?", re.I),
     re.compile(r"\baction\s*:\s*[^;]*audit[^;]*;?", re.I),
+    re.compile(r"\bstatus_code\s*:\s*[^;]+;?", re.I),
 ]
+METHOD_RE = re.compile(r'\bmethod\s*:\s*"([^"]*)"\s*;?', re.I)
+# Sangfor 语义/DSL 关键字：Suricata 无法等价执行，交 xbits/Zeek 语义层
+DSL_RE = re.compile(r"\b(uriarg|decode|grammar|payload_extract|result)\s*:", re.I)
 URICONTENT_RE = re.compile(r'\buricontent\s*:\s*"(.*?)"\s*;', re.I)
 URICONTENT_NEG_RE = re.compile(r'\buricontent\s*:\s*!\s*"(.*?)"\s*;', re.I)
 MAIL_URI_RE = re.compile(r"\bmail_uri\b", re.I)
@@ -151,6 +155,7 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     # uricontent!:"X" → content:!"X"; http_uri（否定形式先替换）
     out = URICONTENT_NEG_RE.sub(lambda m: f'content:!"{m.group(1)}"; http_uri;', out)
     out = URICONTENT_RE.sub(lambda m: f'content:"{m.group(1)}"; http_uri;', out)
+    out = METHOD_RE.sub(lambda m: f'http_method; content:"{m.group(1)}";', out)
     for rx in STRIP_KWS:
         out = rx.sub("", out)
     # classtype 剥离（未知 classtype 会导致加载失败；语义在 xbits sid_library）
@@ -293,6 +298,13 @@ def main() -> int:
 
                 if MAIL_URI_RE.search(line):
                     meta["skip"] = "mail_uri"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
+                # Sangfor 语义/DSL 规则：Suricata 无法等价执行，只保留元数据
+                if DSL_RE.search(line):
+                    meta["skip"] = "dsl-semantic"
                     rules_meta[str(sid)] = meta
                     n_skip += 1
                     continue
