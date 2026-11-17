@@ -1,6 +1,6 @@
 # xbits-zeek（Zeek 9.0.1）HTTP 解析字段盘点与欠缺分析
 
-> 源码：`source/xbits-zeek`（Zeek 9.0.1）。
+> 源码：`xbits-zeek`（源码目录已移除，后续仅使用官方 Zeek 9.0.1 容器镜像）。
 > 依据：`scripts/base/protocols/http/{main.zeek,entities.zeek,files.zeek}`、`src/analyzer/protocol/http/{HTTP.h,events.bif}`、`scripts/policy/protocols/http/*`。
 
 ## 1. 默认 `http.log` 直接输出的字段（`HTTP::Info`）
@@ -102,6 +102,6 @@ Suricata 的 `http.*` 关键字覆盖更广；Zeek `http.log` **缺**以下（�
 - 补齐优先级：`http_all_headers`（头值）> `http_entity_data`/files（体/文件）> query/body 解析 > HTTP/2 外部支持。
 
 ## 9. 实现状态（已按要求还原）
-- 曾对 `source/xbits-zeek/scripts/base/protocols/http/main.zeek` 做过 HTTP 扩展字段采集实现（完整头/Cookie/认证/Query/表单/JSON/XML/Body 分层），**现已还原**：该文件已恢复为 Zeek 9.0.1 原始内容，且不再纳入仓库跟踪。
+- 曾对 `xbits-zeek` 的 `scripts/base/protocols/http/main.zeek` 做过 HTTP 扩展字段采集实现（完整头/Cookie/认证/Query/表单/JSON/XML/Body 分层），**现已还原**：该文件已恢复为 Zeek 9.0.1 原始内容，且 `source/` 本地源码目录已删除；后续不使用本地源码，仅使用官方 Zeek 9.0.1 容器镜像。
 - 相关 HTTP 字段测试（`run_http_fields.py`、`http_fields.pcap` 生成、CI overlay 步骤）已一并移除。
 - 本文 §1–§8 的字段盘点/欠缺分析仍然有效，可作为后续（如改到 C++ HTTP 分析器原生实现）的依据。
