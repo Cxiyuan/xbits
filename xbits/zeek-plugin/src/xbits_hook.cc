@@ -121,6 +121,7 @@ static std::string BuildEventJson(zeek::Event *event)
 {
     std::string name = event->Handler() ? event->Handler()->Name() : "";
     std::string uid, src, dst, proto, method, uri, sig, sig_msg;
+    std::string alert_kind, alert_name, severity;
     uint64_t sport = 0, dport = 0;
 
     auto fill_conn = [&](const zeek::ValPtr &v) {
@@ -166,9 +167,20 @@ static std::string BuildEventJson(zeek::Event *event)
         } else if (name == "dns_request" && args.size() >= 3) {
             ValStr(args[2], uri); // query name
         }
+    } else if (name == "XbitsAlert::alert" && !args.empty()) {
+        // app-id / scanner 的统一告警事件：Info 记录
+        if (const auto *info = args[0]->AsRecordVal()) {
+            ValStr(info->GetField("kind"), alert_kind);
+            ValStr(info->GetField("name"), alert_name);
+            ValStr(info->GetField("severity"), severity);
+            ValAddr(info->GetField("src"), src);
+            ValStr(info->GetField("evidence"), sig_msg);
+            sig = alert_name;
+        }
     }
 
-    std::string out = "{\"source\":\"zeek\",\"kind\":\"event\",\"event\":\"" + JsonEscape(name) + "\"";
+    std::string kind = (name == "XbitsAlert::alert") ? "alert" : "event";
+    std::string out = "{\"source\":\"zeek\",\"kind\":\"" + kind + "\",\"event\":\"" + JsonEscape(name) + "\"";
     if (!uid.empty())
         out += ",\"uid\":\"" + JsonEscape(uid) + "\"";
     if (!src.empty())
@@ -189,7 +201,11 @@ static std::string BuildEventJson(zeek::Event *event)
         out += ",\"signature\":\"" + JsonEscape(sig) + "\"";
     if (!sig_msg.empty())
         out += ",\"desc\":\"" + JsonEscape(sig_msg) + "\"";
-    else
+    if (!alert_kind.empty())
+        out += ",\"alert_kind\":\"" + JsonEscape(alert_kind) + "\"";
+    if (!severity.empty())
+        out += ",\"severity\":\"" + JsonEscape(severity) + "\"";
+    if (sig_msg.empty() && name != "XbitsAlert::alert")
         out += ",\"desc\":\"" + JsonEscape(zeek::obj_desc(event)) + "\"";
     out += ",\"ts\":\"" + std::to_string(event->Time()) + "\"}";
     return out;
@@ -218,7 +234,8 @@ public:
 
         std::string name = event->Handler()->Name();
         if (name != "signature_match" && name != "http_request" && name != "http_reply" &&
-            name != "dns_request" && name != "dns_query" && name != "notice")
+            name != "dns_request" && name != "dns_query" && name != "notice" &&
+            name != "XbitsAlert::alert")
             return false;
 
         SendLine(BuildEventJson(event));

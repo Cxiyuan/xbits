@@ -1,0 +1,20 @@
+[
+  {
+    "id": "qa-suricata-all",
+    "name": "QA Suricata all alerts",
+    "source": "suricata",
+    "group_by": "src",
+    "score": 1,
+    "threshold": 1,
+    "reason": "qa-suricata-all"
+  },
+  {
+    "id": "qa-zeek-all",
+    "name": "QA Zeek all events",
+    "source": "zeek",
+    "group_by": "uid",
+    "score": 1,
+    "threshold": 1,
+    "reason": "qa-zeek-all"
+  }
+]

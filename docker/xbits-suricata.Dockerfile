@@ -23,8 +23,14 @@ COPY xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
 COPY 规则检测/ /opt/xbits/rules/
 # Suricata Lua 规则用相对 rule-path 的 lua:xxx.lua 加载，把 lua 文件放到规则目录同级
 COPY 规则检测/Web漏洞利用/lua/ /opt/xbits/rules/Web漏洞利用/
+# 全规则 QA：把每个 .rules 和 lua 文件扁平化到 /opt/xbits/rules/qa，
+# 让 qa 配置能一次加载所有规则文件，做逐 PCAP 的完整矩阵测试。
+RUN mkdir -p /opt/xbits/rules/qa \
+    && find /opt/xbits/rules -type f -name '*.rules' -exec cp {} /opt/xbits/rules/qa/ \; \
+    && find /opt/xbits/rules -type f -path '*/lua/*.lua' -exec cp {} /opt/xbits/rules/qa/ \; \
+    && cp /opt/xbits/rules/DNS隧道与带外检测/dns_tunnel_allow.lst /opt/xbits/rules/qa/
 COPY 测试用例/classification.config 测试用例/reference.config /opt/xbits/rules/
-COPY docker/suricata-test.yaml /opt/xbits/suricata-test.yaml
+COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.yaml /opt/xbits/
 
 # 运行测试时可通过 -e XBITS_HOOK_SOCKET=... 覆盖
 ENV XBITS_HOOK_SOCKET=/var/run/xbits/hook.sock

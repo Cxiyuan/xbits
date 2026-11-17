@@ -1,0 +1,38 @@
+%YAML 1.1
+---
+# xbits-suricata 镜像内的全规则薄 hook 测试配置。
+# 镜像构建时会把 规则检测/**/*.rules 和 lua 文件投放到 /opt/xbits/rules/qa。
+default-log-dir: /tmp/suri-out
+
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8]"
+    EXTERNAL_NET: "[203.0.113.0/24]"
+    CLIENT_NET: "[10.0.0.0/8]"
+
+default-rule-path: /opt/xbits/rules/qa
+rule-files:
+  - DNS隧道与带外检测规则.rules
+  - 侦察与攻击工具指纹规则.rules
+  - Web漏洞利用规则.rules
+  - WebShell后门通信规则.rules
+  - 命令与控制信标规则.rules
+
+classification-file: /opt/xbits/rules/classification.config
+reference-config-file: /opt/xbits/rules/reference.config
+
+security:
+  lua:
+    allow-rules: yes
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: xbits-hook
+      filename: xbits-hook
+      types:
+        - alert
+
+# 薄 hook 插件
+plugins:
+  - /opt/xbits/plugins/xbits-suricata-hook.so

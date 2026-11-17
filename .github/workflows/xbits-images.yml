@@ -1,4 +1,4 @@
-﻿name: xbits-images
+name: xbits-images
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
   build-and-test:
     name: Build xbits-suricata / xbits-zeek and test thin hooks
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -85,7 +85,18 @@ jobs:
         run: make -C xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-8.0.8
 
       - name: Generate Web PCAP
-        run: python 测试用例/generate_web_pcaps.py --out /tmp/web-pcap
+        run: python 测试用例/generate_web_pcaps.py --out 测试用例/web_pcap
+
+      - name: Generate all QA PCAPs (rules + app-id)
+        run: |
+          set -euo pipefail
+          python 测试用例/generate_pcaps.py --out 测试用例/pcap
+          python 测试用例/generate_recon_pcaps.py --out 测试用例/recon_pcap
+          python 测试用例/generate_backdoor_pcaps.py --out 测试用例/backdoor_pcap
+          python app-id/tests/gen_pcaps.py
+
+      - name: Rule coverage gate (all SIDs must be exercised)
+        run: python xbits/test/qa_rule_coverage.py
 
       - name: Build official-image based xbits-suricata
         run: |
@@ -103,6 +114,23 @@ jobs:
 
       - name: Show images
         run: docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | head -30
+
+      - name: Full Suricata rule/hook matrix (every case, EVE == engine)
+        run: |
+          python xbits/test/qa_suricata_hook_matrix.py \
+            --image xbits-suricata \
+            --xbits xbits/target/release/xbits \
+            --rules xbits/rules/qa-all.json
+
+      - name: app-id scanner test inside xbits-zeek image
+        run: python xbits/test/qa_appid_image.py
+
+      - name: app-id XbitsAlert::alert -> xbits central engine hook
+        run: |
+          python xbits/test/qa_appid_hook.py \
+            --image xbits-zeek \
+            --xbits xbits/target/release/xbits \
+            --rules xbits/rules/qa-all.json
 
       - name: Test Suricata + Zeek thin hooks through xbits central engine
         run: |
@@ -122,7 +150,7 @@ jobs:
           echo "=== xbits-suricata: run pcap with thin hook ==="
           docker run --rm --network none \
             -v /tmp:/tmp \
-            -v /tmp/web-pcap:/pcap:ro \
+            -v "$PWD/测试用例/web_pcap:/pcap:ro" \
             -e XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
             --entrypoint suricata \
             xbits-suricata \
@@ -133,7 +161,7 @@ jobs:
           echo "=== xbits-zeek: run pcap with thin hook ==="
           docker run --rm --network none \
             -v /tmp:/tmp \
-            -v /tmp/web-pcap:/pcap:ro \
+            -v "$PWD/测试用例/web_pcap:/pcap:ro" \
             -e ZEEK_PLUGIN_PATH=/opt/xbits/zeek-plugin \
             -e ZEEK_PLUGIN_ACTIVATE=Xbits::Hook \
             -e XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \

@@ -17,6 +17,8 @@ RUN make -C /src/xbits/zeek-plugin
 FROM zeek/zeek:9.0.1
 
 USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /opt/xbits
 
 # Zeek 薄 hook 动态插件目录（__zeek_plugin__ + lib/*.so）

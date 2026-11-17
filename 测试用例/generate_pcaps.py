@@ -350,6 +350,13 @@ def main() -> int:
     )
     write("doh_negative", p, args.out)
 
+    # High-frequency long domain: exercises DNS rule 9109007 (threshold 200/60s).
+    p = []
+    for i in range(200):
+        q = "a" + f"{i:03d}" + deterministic_token(50, ALNUM) + ".evil.example"
+        dns_transaction(p, q, "A", dns_answer(q, "A", "10.0.0.1", 300), offset=i * 0.1)
+    write("highfreq_long_positive", p, args.out)
+
     print("wrote PCAPs to", args.out)
     return 0
 
