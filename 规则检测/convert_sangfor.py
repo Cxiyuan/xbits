@@ -92,8 +92,22 @@ DEPENDED_RE = re.compile(r"\bdepended\s*:\s*(\d+)")
 MSG_RE = re.compile(r'\bmsg\s*:\s*"(.*?)"\s*;', re.I)
 
 
+def read_rule_bytes(path: Path) -> bytes | None:
+    """读取规则文件；Windows Defender 可能拦截含 WebShell 的文本，用扩展路径规避。"""
+    for candidate in (path, Path("\\\\?\\" + str(path))):
+        try:
+            return candidate.read_bytes()
+        except OSError:
+            continue
+    return None
+
+
 def iter_rule_lines(path: Path):
-    text = path.read_bytes().decode("utf-8", "replace")
+    data = read_rule_bytes(path)
+    if data is None:
+        print(f"WARN: unreadable rule file (skipped): {path}", file=sys.stderr)
+        return
+    text = data.decode("utf-8", "replace")
     for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
@@ -148,18 +162,21 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
 
     injections = []
     if flowbit_set is not None:
-        injections.append(f"flowbits:set,xb_dep_{flowbit_set};")
+        injections.append(f"flowbits:set,xb_dep_{flowbit_set}")
     if flowbit_is is not None:
-        injections.append(f"flowbits:isset,xb_dep_{flowbit_is};")
+        injections.append(f"flowbits:isset,xb_dep_{flowbit_is}")
 
-    out = out.rstrip().rstrip(";").strip()
-    if injections:
-        out = out + "; " + "; ".join(injections)
-    out = out + ";"
+    # 规整：折叠 "; )" 与多余空白
+    out = out.strip()
     out = re.sub(r";\s+\)", ";)", out)
     out = re.sub(r";\s+", "; ", out)
     out = re.sub(r"\(\s*;", "(", out)
-    return out.strip()
+    # 取出选项体（去掉结尾的 ')'），注入字段必须插在 ')' 之前
+    body = out[:-1].rstrip() if out.endswith(")") else out
+    body = body.rstrip().rstrip(";").rstrip()
+    if injections:
+        body = body + "; " + "; ".join(injections)
+    return body + ";)"
 
 
 def parse_ini_sections(path: Path):
