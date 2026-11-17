@@ -22,6 +22,8 @@ rule-files:
   - "Web攻击/SQL注入/sql.rules"
   - "Web攻击/SQL注入/sql.strong.rules"
   - "Web攻击/SQL注入/sql.weak.rules"
+  - "Web攻击/WebShell/pvs-webshell.rules"
+  - "Web攻击/WebShell/webshell.rules"
   - "Web攻击/WebShell/webshell_detect.request.rules"
   - "Web攻击/WebShell/webshell_detect.rules"
   - "Web攻击/Web应用漏洞/webapp.rules"
