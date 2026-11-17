@@ -1,3 +1,0 @@
-# Converted from Sangfor export: etc_fw/pvs/rules/success/login.rules
-# rules=1 skipped=195 dup_sid=0
-alert tcp any any -> any $HTTP_PORTS (msg:"Successful Login Detected on NZCMS"; flow:to_client,established; content:"|3c|title|3e b6 d4 cf|"; nocase; sid:17010241; rev:2; flowbits:isset,xb_dep_17010240;)

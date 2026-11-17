@@ -1,0 +1,1550 @@
+[
+ {
+  "sid": 11021464,
+  "file": "suricata/Web攻击/Web服务漏洞/web.rules",
+  "missing": [
+   "SQUID_1130308030"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 10010671,
+  "file": "suricata/主机系统漏洞/system.rules",
+  "missing": [
+   "VNC_protocal"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 12032738,
+  "file": "suricata/应用软件漏洞/application.rules",
+  "missing": [],
+  "reason": "no-primitive"
+ },
+ {
+  "sid": 12032765,
+  "file": "suricata/应用软件漏洞/application.rules",
+  "missing": [
+   "Bingxie_12032764"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 12032678,
+  "file": "suricata/应用软件漏洞/application.rules",
+  "missing": [
+   "nps_12032677"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 10020257,
+  "file": "suricata/恶意软件/后门/backdoor.rules",
+  "missing": [
+   "Bingxie_10020256"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 10020259,
+  "file": "suricata/恶意软件/后门/backdoor.rules",
+  "missing": [],
+  "reason": "no-primitive"
+ },
+ {
+  "sid": 10020583,
+  "file": "suricata/恶意软件/后门/backdoor.rules",
+  "missing": [
+   "cs_10020582"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184001,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180008"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184002,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180008"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184003,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180002"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184004,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180003"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184005,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180004"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184006,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180005"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184007,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180005"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184008,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180005"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184009,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180005"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184010,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184011,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184012,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184013,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184014,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184015,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184016,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184017,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184019,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182275"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184031,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182097"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184032,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180009"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184035,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184037,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180005"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184040,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180008"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184041,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184042,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184043,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184051,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184052,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184053,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184054,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184055,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184056,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184057,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184058,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184059,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184060,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184061,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184062,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184063,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184064,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184070,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180018"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184071,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180018"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184148,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184073,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184078,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184079,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184080,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184081,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184082,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180023"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184083,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180024"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184085,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180002"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184086,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180025"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184087,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184088,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184089,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180028"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184104,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180024"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184105,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182072"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184106,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182198"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184107,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182116"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184108,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182321"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184109,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182172"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184110,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182159"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184112,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182375"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184113,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182269"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184114,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182196"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184115,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182329"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184116,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182385"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184117,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182290"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184118,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182186"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184119,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180007"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184120,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182253"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184121,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182253"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184122,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184123,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184124,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184125,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184126,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184127,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184128,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184129,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184130,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184131,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184132,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184133,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184134,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184135,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184136,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180014"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184137,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184138,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184139,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182066"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184140,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182330"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184141,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182310"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184142,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182409"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184161,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182396"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184162,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182216"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184149,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180031"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184163,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180030"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184164,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180030"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184165,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180030"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184175,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180004"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184176,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180004"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184177,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180004"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184182,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184183,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184184,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180022"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184185,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184186,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184187,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184188,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184189,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184190,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180026"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184206,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184207,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184208,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180020"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184156,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182091"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184157,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180004"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184158,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180032"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184159,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17182390"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184160,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180033"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184020,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184021,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184022,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184023,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184024,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184025,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184026,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184027,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184028,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184029,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184030,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184036,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184038,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184039,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184044,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184045,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184046,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184096,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184097,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184047,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184048,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184049,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184050,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180012"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184065,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184066,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184209,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184067,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180016"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184068,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184072,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184090,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180029"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184150,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184151,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184152,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184153,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184154,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180012"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184166,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184167,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184168,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180011"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184169,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184170,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184171,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184172,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184173,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184174,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180010"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184178,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184179,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184180,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184181,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180019"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184191,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184192,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184193,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184194,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184195,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184196,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180017"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184197,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184198,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184199,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180015"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184200,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184201,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184202,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180021"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184203,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180012"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184204,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180012"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17184205,
+  "file": "suricata/攻击成功确认/cmd_executed/cmd_executed.rules",
+  "missing": [
+   "xb_dep_17180012"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 17010241,
+  "file": "suricata/攻击成功确认/login/login.rules",
+  "missing": [
+   "xb_dep_17010240"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 12020782,
+  "file": "suricata/文件与协议解析漏洞/file.rules",
+  "missing": [
+   "cav_2015_2170"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 12020758,
+  "file": "suricata/文件与协议解析漏洞/file.rules",
+  "missing": [
+   "imgsource_FSC20100810-15"
+  ],
+  "reason": "orphan"
+ },
+ {
+  "sid": 10010672,
+  "file": "suricata/主机系统漏洞/system.rules",
+  "missing": [
+   "VNC_request"
+  ],
+  "reason": "orphan"
+ }
+]

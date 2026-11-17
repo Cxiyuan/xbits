@@ -39,6 +39,9 @@ ROOT = Path(__file__).resolve().parent
 OUT_SURICATA = ROOT / "suricata"
 OUT_XBITS = ROOT / "xbits" / "规则库元数据"
 
+# 自研场景目录，不参与外部规则清理
+SCENARIO_DIRS = {"DNS隧道与带外检测", "Web漏洞利用", "侦察与攻击工具指纹", "后门通信"}
+
 # Suricata 转换源（现网 etc_fw）
 SURICATA_SOURCES = [
     ("sf_snort", "etc_fw/sf_snort/rules/*.rules"),
@@ -358,6 +361,52 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     return body + ";)"
 
 
+def cleanup_dead_flowbits(out_suricata: Path) -> dict:
+    """删除永远不会触发或没有检测原语的 flowbits:isset 规则，并返回清理统计。"""
+    prim = re.compile(
+        r"\b(content|pcre|byte_test|byte_jump|byte_extract|byte_math|dsize|"
+        r"isdataat|urilen|filemagic|fileext|filename|tls_|dns_|http_|ssh_|smtp_|ftp_)\b"
+    )
+    set_bits: set[str] = set()
+    files: list[Path] = []
+    for category_dir in sorted(out_suricata.iterdir()):
+        if not category_dir.is_dir() or category_dir.name in SCENARIO_DIRS:
+            continue
+        for path in sorted(category_dir.rglob("*.rules")):
+            files.append(path)
+            text = path.read_bytes().decode("utf-8", "replace")
+            for line in text.splitlines():
+                if not line.startswith("alert"):
+                    continue
+                for m in re.finditer(r"flowbits:set,([^;]+)", line):
+                    set_bits.add(m.group(1).strip())
+
+    removed: list[dict] = []
+    for path in files:
+        text = path.read_bytes().decode("utf-8", "replace")
+        kept: list[str] = []
+        changed = False
+        for line in text.splitlines():
+            if line.startswith("alert"):
+                isset = [m.group(1).strip() for m in re.finditer(r"flowbits:isset,([^;]+)", line)]
+                if isset and (any(bit not in set_bits for bit in isset) or not prim.search(line)):
+                    sid = re.search(r"\bsid:(\d+)", line)
+                    removed.append(
+                        {
+                            "sid": int(sid.group(1)) if sid else None,
+                            "file": str(path.relative_to(ROOT)).replace("\\", "/"),
+                            "missing": [b for b in isset if b not in set_bits],
+                            "reason": "orphan" if any(b not in set_bits for b in isset) else "no-primitive",
+                        }
+                    )
+                    changed = True
+                    continue
+            kept.append(line)
+        if changed:
+            path.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")
+    return {"removed": removed, "set_bits": len(set_bits)}
+
+
 def parse_ini_sections(path: Path):
     sections: dict[str, dict[str, str]] = {}
     cur = None
@@ -416,8 +465,16 @@ def main() -> int:
         return 2
 
     # 只清理转换器自己生成的类目目录；场景目录（DNS隧道/Web漏洞/侦察/后门）不能动
-    shutil.rmtree(OUT_XBITS, ignore_errors=True)
     OUT_XBITS.mkdir(parents=True, exist_ok=True)
+    for generated in (
+        "rules_meta.json",
+        "success_rules.json",
+        "audit_rules.json",
+        "sid_library.json",
+        "exceptions.json",
+        "dead_rules.json",
+    ):
+        (OUT_XBITS / generated).unlink(missing_ok=True)
     cleaned_dirs: set[Path] = set()
 
     # 已知 Suricata 无法加载的 SID（由 CI 加载验证日志提取），直接跳过
@@ -638,6 +695,86 @@ def main() -> int:
         json.dumps(exceptions, ensure_ascii=False, indent=1), encoding="utf-8"
     )
 
+    # ---- 5.5) 清理永远不会触发的 flowbits:isset 规则 ----
+    cleanup = cleanup_dead_flowbits(OUT_SURICATA)
+    (OUT_XBITS / "dead_rules.json").write_text(
+        json.dumps(cleanup["removed"], ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+
+    # 清理后重新统计实际落盘的 SID，并过滤失效的成功确认依赖
+    emitted: set[int] = set()
+    rule_files = []
+    for category_dir in sorted(OUT_SURICATA.iterdir()):
+        if not category_dir.is_dir() or category_dir.name in SCENARIO_DIRS:
+            continue
+        for path in sorted(category_dir.rglob("*.rules")):
+            text = path.read_bytes().decode("utf-8", "replace")
+            for line in text.splitlines():
+                m = re.search(r"\bsid:(\d+)", line)
+                if m and line.startswith("alert"):
+                    emitted.add(int(m.group(1)))
+            count = sum(1 for line in text.splitlines() if line.startswith("alert"))
+            if count:
+                rule_files.append((str(path.relative_to(ROOT)).replace("\\", "/"), count))
+
+    kept_success = []
+    for e in success_rules:
+        if e["sid"] not in emitted:
+            continue
+        deps = e.get("depends", []) + e.get("scopes", [])
+        if deps and deps[0] not in emitted:
+            continue
+        kept_success.append(e)
+    success_rules = kept_success
+    (OUT_XBITS / "success_rules.json").write_text(
+        json.dumps(success_rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+    )
+
+    # 二次清理，确保清理阶段新写入/遗漏的 isset 规则也被处理
+    cleanup2 = cleanup_dead_flowbits(OUT_SURICATA)
+    if cleanup2["removed"]:
+        cleanup["removed"].extend(cleanup2["removed"])
+        (OUT_XBITS / "dead_rules.json").write_text(
+            json.dumps(cleanup["removed"], ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+
+    # 删除清空后的规则文件/目录，并按最终落盘内容重建验证清单
+    emitted2: set[int] = set()
+    rule_files = []
+    for category_dir in sorted(OUT_SURICATA.iterdir()):
+        if not category_dir.is_dir() or category_dir.name in SCENARIO_DIRS:
+            continue
+        for path in sorted(category_dir.rglob("*.rules")):
+            text = path.read_bytes().decode("utf-8", "replace")
+            lines = [l for l in text.splitlines() if l.startswith("alert")]
+            if not lines:
+                path.unlink()
+                continue
+            for line in lines:
+                m = re.search(r"\bsid:(\d+)", line)
+                if m:
+                    emitted2.add(int(m.group(1)))
+            rule_files.append((str(path.relative_to(ROOT)).replace("\\", "/"), len(lines)))
+        # 删除空子目录
+        for sub in sorted(category_dir.rglob("*"), reverse=True):
+            if sub.is_dir() and not any(sub.iterdir()):
+                sub.rmdir()
+        if not any(category_dir.iterdir()):
+            category_dir.rmdir()
+
+    kept_success = []
+    for e in success_rules:
+        if e["sid"] not in emitted2:
+            continue
+        deps = e.get("depends", []) + e.get("scopes", [])
+        if deps and deps[0] not in emitted2:
+            continue
+        kept_success.append(e)
+    success_rules = kept_success
+    (OUT_XBITS / "success_rules.json").write_text(
+        json.dumps(success_rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+    )
+
     # ---- 6) Suricata 加载验证配置 ----
     validate_yaml = [
         "%YAML 1.1",
@@ -693,6 +830,7 @@ def main() -> int:
     print(f"cloud audit rules: {len(audit_rules)}")
     print(f"sid meta entries: {len(rules_meta)}; sid library entries: {len(sid_library)}")
     print(f"flowbit-gated request sids: {len(dep_refs)}")
+    print(f"dead flowbits rules removed: {len(cleanup['removed'])}")
     return 0
 
 

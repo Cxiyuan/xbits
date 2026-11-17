@@ -10,22 +10,26 @@
     - `恶意软件/木马/`、`恶意软件/后门/`、`恶意软件/C2与远控/`、`恶意URL/`；
     - `网络服务漏洞/`、`主机系统漏洞/`、`应用软件漏洞/`、`网络设备漏洞/`；
     - `攻击成功确认/<攻击类型>/`（PVS 依赖确认规则）。
-- `zeek/`：Zeek 场景脚本（`.zeek`），按同名场景子目录组织。
+- `zeek/`：Zeek 场景脚本（`.zeek`），按场景子目录组织；`Web行为/`、`威胁情报/`
+  为外部探针转换的爬虫白名单、白域名、公共 DNS、僵尸网络元数据。
 - `xbits/规则库元数据/`：xbits 中央分析引擎消费的数据（由转换器生成，勿手改）：
   - `rules_meta.json`：每条规则元数据（depend/scope/holetype/tier/category）；
   - `success_rules.json`：PVS 成功确认依赖；
+  - `dead_rules.json`：已清理的失效规则；
   - `audit_rules.json`：云审计规则；
   - `sid_library.json`：SID → 名称/类别/危险等级映射；
   - `exceptions.json`：例外/强 SID 列表。
-- `docs/`：各场景规则设计与误报分析文档。
-- `convert_probe_rules.py`：外部探针规则导出转换器（输入桌面 `流量检测规则` 目录），
-  按类别写入 `suricata/<类目>/` 并生成 `xbits/规则库元数据/` 与
-  `docker/probe-rules-validate.yaml`。
+- `docs/`：各场景规则设计、误报分析与清理报告。
+- `convert_probe_rules.py`：外部探针 Suricata 规则转换器（按类别归档）；
+- `convert_probe_zeek.py`：外部探针 Zeek 行为/情报转换器；
+  两者输入均为桌面 `流量检测规则` 目录。
 
-详见 [docs/规则归档与转换方案.md](docs/规则归档与转换方案.md)。
+详见 [docs/规则归档与转换方案.md](docs/规则归档与转换方案.md)、
+[docs/转换规则清理报告.md](docs/转换规则清理报告.md)。
 
 重新生成转换规则：
 
 ```bash
 python 规则检测/convert_probe_rules.py --src "C:/Users/sona/Desktop/流量检测规则"
+python 规则检测/convert_probe_zeek.py   --src "C:/Users/sona/Desktop/流量检测规则"
 ```
