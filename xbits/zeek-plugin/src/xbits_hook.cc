@@ -122,11 +122,8 @@ static bool ValCount(const zeek::ValPtr &v, uint64_t &out)
 {
     if (!v)
         return false;
-    if (const auto *c = v->AsCountVal()) {
-        out = c->Get();
-        return true;
-    }
-    return false;
+    out = static_cast<uint64_t>(v->AsCount());
+    return true;
 }
 
 static std::string Lower(std::string s)
