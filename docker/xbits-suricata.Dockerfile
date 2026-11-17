@@ -20,7 +20,7 @@ RUN curl -fsSL "https://github.com/OISF/suricata/archive/refs/tags/suricata-${SU
 COPY xbits/suricata-plugin /src/xbits/suricata-plugin
 RUN make -C /src/xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-src
 
-FROM oisf/suricata:8.0.8
+FROM jasonish/suricata:8.0.8
 
 USER root
 RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules
