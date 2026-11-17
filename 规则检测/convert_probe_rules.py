@@ -576,8 +576,12 @@ def main() -> int:
         "rule-files:",
     ]
     for rel_out, _n in rule_files:
-        # rel_out 形如 规则检测/suricata/<category>/<file>.rules
-        rel_rule = rel_out.split("规则检测/suricata/", 1)[-1]
+        # rel_out 形如 suricata/<category>/<file>.rules
+        rel_rule = rel_out
+        if "规则检测/suricata/" in rel_rule:
+            rel_rule = rel_rule.split("规则检测/suricata/", 1)[1]
+        elif rel_rule.startswith("suricata/"):
+            rel_rule = rel_rule[len("suricata/"):]
         validate_yaml.append(f'  - "{rel_rule}"')
     validate_yaml += [
         "",
