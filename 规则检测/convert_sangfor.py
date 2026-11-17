@@ -210,6 +210,7 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     # 取出选项体（去掉结尾的 ')'），按分号拆分后做最后清理
     body = out[:-1].rstrip() if out.endswith(")") else out
     tokens = split_options(body)
+    to_client = bool(re.search(r"flow:[^;]*to_client", body, re.I))
     cleaned: list[str] = []
     prev = ""
     for tok in tokens:
@@ -220,6 +221,13 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         # Sangfor 的 http_only_uri 作为 content/pcre 修饰符，Suricata 无等价语义，丢弃
         if tl in ("http_only_uri", "http_uri_only"):
             continue
+        # 响应方向规则里的请求侧缓冲关键字 → file_data 或丢弃
+        if to_client:
+            if tl == "http_client_body":
+                t, tl = "file_data", "file_data"
+            elif tl in ("http_uri", "http_raw_uri", "http_method", "http_host",
+                        "http_cookie", "http_user_agent"):
+                continue
         # 悬空的 http_uri（前面不是 content）→ 丢弃，避免 Suricata 解析错误
         if tl == "http_uri" and not prev.lower().startswith("content:"):
             continue
