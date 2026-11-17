@@ -179,8 +179,7 @@ workflow run `42455328044` 三项 job 全部通过：
 
 - 只传输 `event_type=alert`；flow/http/dns 原始事件仍由 Zeek 自己解析，
   避免重复和放大。
-- xbits 不做规则判断、不做聚合；检测语义仍在 Suricata 规则/Lua 与 Zeek
-  场景脚本内。
+- xbits 中央引擎负责规则匹配、上下文关联、误报判断和置信度输出；检测语义仍由 Suricata 规则/Lua、Zeek 场景脚本和 xbits analysis rules 共同定义。
 - 同一 uid 的事件不保证跨进程顺序完整；Zeek 关联应使用内存表并允许
   事件晚到/缺失。
 - stdout 是背压边界：Zeek 读取慢会阻塞 xbits，进而影响 Suricata socket
@@ -218,4 +217,31 @@ xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/default.json
 
 规则文件为 JSON 数组（`xbits/rules/default.json` 示例），支持
 `source/kind/proto/signature_contains/event/desc_contains/method/group_by/score/threshold/reason`。
+
+## 9. 上下文关联、误报判断与统一告警落盘
+
+生产分析规则使用 `xbits/rules/analysis.json`，额外支持：
+
+- `require_context`: Suricata 告警必须等到对应 Zeek `http_request/http_header/http_reply` 上下文才输出；
+- `benign_uri_contains` / `benign_host_contains`: 正常 URI/Host 上下文可抑制误报；
+- `min_confidence`: 只输出达到置信度阈值的告警；
+- `alert_kind`: xbits 接管 Zeek `XbitsAlert::emit` 的告警类别管理（例如只接收 `scanner`）。
+
+xbits 通过 5-tuple 缓冲关联 Suricata alert 与 Zeek context；上下文缺失时不输出高置信度告警。
+
+告警统一由 xbits 落盘：
+
+```bash
+xbits --hook-socket /var/run/xbits/hook.sock \
+      --rules xbits/rules/analysis.json \
+      --alert-file /var/log/xbits/alerts.jsonl
+```
+
+此时：
+
+- Zeek `xbits_alert.zeek` 不再写 `xbits_alert.log`，只触发 `XbitsAlert::alert` 事件给薄 hook；
+- Zeek 仅保留 `conn/http/dns/ssl/app_identity/scan_report` 等元数据日志；
+- Suricata EVE 使用 `filetype: xbits-hook`，不落盘 `eve.json`/`fast.log`；
+- xbits 输出的统一告警 JSONL 是唯一告警落盘入口，包含 `confidence`、`evidence`、`rule_id`、`alert_kind` 等字段。
+
 

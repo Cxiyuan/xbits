@@ -42,5 +42,17 @@
     "score": 20,
     "threshold": 20,
     "reason": "zeek-signature-match"
+  },
+  {
+    "id": "xb-zeek-appid-scanner",
+    "name": "Zeek app-id scanner alert",
+    "source": "zeek",
+    "kind": "alert",
+    "event": "XbitsAlert::alert",
+    "alert_kind": "scanner",
+    "group_by": "src",
+    "score": 30,
+    "threshold": 30,
+    "reason": "zeek-appid-scanner"
   }
 ]
