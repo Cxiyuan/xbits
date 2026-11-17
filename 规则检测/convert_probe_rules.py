@@ -309,6 +309,26 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
         prev = t
     if injections:
         cleaned.extend(injections)
+    # 同一 content 不能同时使用绝对(offset/depth)与相对(within/distance)定位：
+    # 有相对定位时去掉绝对定位（Snort 允许混用，Suricata 拒绝）
+    groups: list[list[str]] = []
+    cur: list[str] = []
+    for tok in cleaned:
+        if tok.lower().startswith("content:"):
+            if cur:
+                groups.append(cur)
+            cur = [tok]
+        else:
+            cur.append(tok)
+    if cur:
+        groups.append(cur)
+    fixed: list[str] = []
+    for g in groups:
+        has_rel = any(x.lower().startswith(("within:", "distance:")) for x in g)
+        if has_rel:
+            g = [x for x in g if not x.lower().startswith(("offset:", "depth:"))]
+        fixed.extend(g)
+    cleaned = fixed
     body = "; ".join(cleaned).rstrip()
     body = body.rstrip(";").rstrip()
     body = re.sub(r";\s*;", ";", body)
