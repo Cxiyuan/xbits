@@ -26,7 +26,7 @@ COPY 规则检测/xbits/ /opt/xbits/analysis-rules/
 COPY 规则检测/suricata/Web漏洞利用/lua/ /opt/xbits/rules/suricata/Web漏洞利用/
 # 全规则 QA：把每个场景 .rules 和 lua 扁平化到 /opt/xbits/rules/qa
 # （不含 sangfor 转换规则，转换规则用 docker/sangfor-validate.yaml 单独验证加载）
-RUN mkdir -p /opt/xbits/rules/qa \
+RUN mkdir -p /opt/xbits/rules/qa /tmp/suri-out \
     && find /opt/xbits/rules/suricata -type f -name '*.rules' -not -path '*sangfor*' -exec cp {} /opt/xbits/rules/qa/ \; \
     && find /opt/xbits/rules/suricata -type f -path '*/lua/*.lua' -not -path '*sangfor*' -exec cp {} /opt/xbits/rules/qa/ \; \
     && cp /opt/xbits/rules/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst /opt/xbits/rules/qa/
