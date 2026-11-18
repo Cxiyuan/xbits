@@ -116,6 +116,11 @@ jobs:
       - name: Build official-image based xbits-suricata
         run: |
           set -euo pipefail
+          # CI runner 与运行时镜像同为 Ubuntu 22.04，ABI 一致
+          mkdir -p docker/stage/bin docker/stage/lib
+          cp /usr/local/bin/suricata docker/stage/bin/suricata
+          find /usr/local/lib -maxdepth 1 -name 'libsuricata*' -exec cp -a {} docker/stage/lib/ \;
+          touch docker/stage/lib/.keep
           docker build --pull \
             -t xbits-suricata \
             -f docker/xbits-suricata.Dockerfile \
