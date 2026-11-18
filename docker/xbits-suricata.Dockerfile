@@ -31,6 +31,8 @@ ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
 ENV PATH=/usr/local/cargo/bin:$PATH
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
       | sh -s -- -y --profile minimal --default-toolchain 1.85.0 \
+    && rustup default 1.85.0 \
+    && cargo --version \
     && cargo install cbindgen --version 0.27.0 --locked
 
 ARG SURICATA_VERSION=8.0.8
