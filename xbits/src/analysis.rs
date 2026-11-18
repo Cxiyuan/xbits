@@ -629,6 +629,7 @@ impl Analyzer {
             .or(event.payload.as_deref())
             .unwrap_or("");
         let is_false_positive = decision.is_false_positive();
+        let doc = normalized_document(&event, &alert, &decision, payload, self.config.max_payload);
         if is_false_positive {
             if let Some(key) = key {
                 // fp_confidence 是误报入白名单的置信度门槛：只有 validator
