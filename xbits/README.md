@@ -198,8 +198,8 @@ workflow run `42455328044` 三项 job 全部通过：
 （继续由 Zeek `Input::READER_RAW` 消费；告警最终仍由 `XbitsAlert` 输出）。
 
 ```bash
-# 1) 启动中央引擎（hook 平面）
-xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/default.json
+# 1) 启动中央引擎（hook 平面；default.json 仅兼容旧测试，生产用 analysis.json）
+xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/analysis.json
 
 # 2) Suricata 薄插件：plugins: xbits-suricata-hook.so
 #    环境变量 XBITS_HOOK_SOCKET 指向同一 socket
@@ -215,8 +215,8 @@ xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/default.json
 {"source":"zeek","kind":"event","event":"http_request","desc":"..."}
 ```
 
-规则文件为 JSON 数组（`xbits/rules/default.json` 示例），支持
-`source/kind/proto/signature_contains/event/desc_contains/method/group_by/score/threshold/reason`。
+规则文件为 JSON 数组（`xbits/rules/analysis.json` 为生产示例，`default.json` 仅兼容旧测试），支持
+`source/kind/proto/signature_contains/sid_in/event/desc_contains/method/group_by/score/threshold/reason`。
 
 ## 9. 上下文关联、误报判断与统一告警落盘
 

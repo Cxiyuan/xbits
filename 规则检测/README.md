@@ -21,7 +21,10 @@
   - `sid_library.json`：SID → 名称/类别/危险等级映射；
   - `exceptions.json`：例外/强 SID 列表。
 - `docs/`：各场景规则设计、误报分析与清理报告。
-- `convert_probe_rules.py`：外部探针 Suricata 规则转换器（按类别归档）；
+- `convert_probe_rules.py`：外部探针 Suricata 规则转换器（按类别归档），生成：
+  - `docker/probe-rules-production.yaml`：生产强规则加载集（不含 weak）；
+  - `docker/probe-rules-weak.yaml`：weak 规则单独加载集；
+  - `docker/probe-rules-validate.yaml`：全量加载验证集；
 - `convert_probe_zeek.py`：外部探针 Zeek 行为/情报转换器；
   两者输入均为桌面 `流量检测规则` 目录。
 
