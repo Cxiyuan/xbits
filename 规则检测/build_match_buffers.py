@@ -178,8 +178,13 @@ def classify(rule: str) -> dict:
     # 当规则同时声明了具体 sticky buffer 时，只用这些可导出的 buffer 做精确 key；
     # 保留裸 "lua" 会迫使 xbits 用 p->payload 等近似值，属于兜底，禁止。
     concrete = [b for b in buffers if b != "lua"]
+    # 纯 app-tx Lua 规则（除 lua 外没有任何具体 buffer）：无精确导出，
+    # 显式标记 app_tx_lua=true，xbits 对其不做抑制（判定仍走 validator）。
+    app_tx_lua = False
     if concrete:
         buffers = concrete
+    elif buffers == ["lua"]:
+        app_tx_lua = True
     primary = next((b for b in buffers if b not in {"payload", "stream", "lua"}), None)
     if primary is None and buffers:
         primary = buffers[0]
@@ -189,6 +194,7 @@ def classify(rule: str) -> dict:
         "buffers": buffers,
         "primary": primary,
         "has_payload": has_payload,
+        "app_tx_lua": app_tx_lua,
     }
 
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
@@ -80,6 +80,11 @@ struct MatchBufferMeta {
     has_payload: bool,
     #[serde(default)]
     source: Option<String>,
+    /// true: 规则以 app-layer Lua（match(args) 形式）挂载在事务上，
+    /// 没有单一精确 buffer 可导出，补丁层明确不做近似导出。
+    /// 该类规则不参与抑制，判定仍走 validator。
+    #[serde(default)]
+    app_tx_lua: bool,
 }
 
 struct Decision {
@@ -101,11 +106,32 @@ struct MatchContextEntry {
     at: Instant,
 }
 
+/// match_context-only buffer 集合：EVE/Zeek 没有等价字段（或等价字段不可靠），
+/// 精确值只能来自核心补丁导出。buffer_value 对这些一律返回 None。
+const CONTEXT_ONLY_BUFFERS: &[&str] = &[
+    "lua",
+    "http.header",
+    "http.request_header",
+    "http.response_header",
+    "http.header.raw",
+    "http.cookie",
+    "file.data",
+    "http.uri.raw",
+    "dns.rrtype",
+    "tls.alpn",
+];
+
+fn is_context_only(buffer: &str) -> bool {
+    CONTEXT_ONLY_BUFFERS.contains(&buffer)
+}
+
 /// 把 Suricata 内部 buffer 名（ DetectEngineBufferTypeGetNameById 返回，
-/// 形如 http_uri / file_data / http_raw_uri）归一到 match_buffers.json 使用的
-/// 统一名（http.uri / file.data / http.uri.raw）。
+/// 形如 http_uri / file_data / http_raw_uri / dns_query）归一到 match_buffers.json 使用的
+/// 统一名（http.uri / file.data / http.uri.raw / dns.query）。
 /// 必须与 规则检测/build_match_buffers.py 的 ALIASES 保持一致。
-/// 未命中的名字原样返回（新 buffer 尚无别名时仍可精确匹配）。
+/// 已验证的内部注册名（Suricata 8.0.8 源码）：
+///   http_uri / http_raw_uri / http_header / http_raw_header / file_data
+///   dns_query(rust multi-buffer) / dns.rrtype / tls.alpn（点号直注）
 fn canonical_buffer_name(name: &str) -> &str {
     match name {
         "http_uri" => "http.uri",
@@ -199,8 +225,7 @@ fn buffer_value(event: &HookEvent, alert: &EngineAlert, buffer: &str) -> Option<
             "http.status" | "http.stat_code" => e.status.map(|v| v.to_string()),
             // 以下 buffer 的精确值只来自 match_context 导出；
             // EVE 没有等价字段，禁止用近似值兜底。
-            "lua" | "http.header" | "http.request_header" | "http.response_header"
-            | "file.data" | "http.uri.raw" | "http.header.raw" => None,
+            b if is_context_only(b) => None,
             _ => None,
         }
     };
@@ -383,6 +408,8 @@ struct Analyzer {
     match_buffers: HashMap<String, MatchBufferMeta>,
     match_contexts: HashMap<String, MatchContextEntry>,
     whitelist: SuppressionStore,
+    /// 已记录过 app_tx_lua 提示的 SID，避免每告警刷日志。
+    app_tx_lua_logged: HashSet<u64>,
 }
 
 impl Analyzer {
@@ -398,6 +425,7 @@ impl Analyzer {
             match_buffers,
             match_contexts: HashMap::new(),
             whitelist,
+            app_tx_lua_logged: HashSet::new(),
         }
     }
 
@@ -511,26 +539,59 @@ impl Analyzer {
     }
 
     fn process(&mut self, event: HookEvent, alert: EngineAlert) {
+        let meta = self.match_buffers.get(&alert.signature_id.to_string());
+        if meta.and_then(|m| m.app_tx_lua).unwrap_or(false) {
+            // app-tx 挂载的 Lua 规则没有单一精确 buffer 可导出（补丁层明确不近似），
+            // 这类规则按元数据标记不参与抑制：每次告警仍走 validator 出判定。
+            // 仅记录一次，避免日志洪泛。
+            let first = self.app_tx_lua_logged.insert(alert.signature_id);
+            if first {
+                eprintln!(
+                    "xbits: sid {} is app-layer lua (app_tx_lua=true); no exact buffer exportable, suppression disabled, validator judgment still applies",
+                    alert.signature_id
+                );
+            }
+        }
         let key = suppression_key(
             &event,
             &alert,
-            self.match_buffers.get(&alert.signature_id.to_string()),
+            meta,
             &self.match_contexts,
         );
-        let context_used = match (&key, self.match_buffers.get(&alert.signature_id.to_string())) {
-            (Some(_), Some(meta)) => meta
-                .buffers
-                .iter()
-                .any(|b| b == "lua" || b == "http.header" || b == "file.data"),
-            _ => false,
-        };
-        if context_used && self.match_contexts.is_empty() {
-            // 依赖 match_context 导出的 SID 在没有导出通道时必须显式失败，
-            // 不允许静默回退成“不抑制/乱抑制”。
-            eprintln!(
-                "xbits: sid {} requires match_context but none received; skipping suppression",
-                alert.signature_id
-            );
+        if key.is_none() {
+            if let Some(meta) = meta {
+                if !meta.app_tx_lua {
+                    // 精确报告缺的是哪个声明 buffer（context-only 且无导出值），
+                    // 不再用“全局缓存是否为空”这种既误报又漏报的猜测。
+                    let missing: Vec<&str> = meta
+                        .buffers
+                        .iter()
+                        .map(|b| canonical_buffer_name(b))
+                        .filter(|b| is_context_only(b))
+                        .filter(|b| {
+                            let context_key = format!(
+                                "{}|{}|{}|{}|{}|{}|{}|{}",
+                                event.source,
+                                alert.signature_id,
+                                alert.src,
+                                alert.sport,
+                                alert.dst,
+                                alert.dport,
+                                alert.proto,
+                                b
+                            );
+                            !self.match_contexts.contains_key(&context_key)
+                        })
+                        .collect();
+                    if !missing.is_empty() {
+                        eprintln!(
+                            "xbits: sid {} suppression skipped: missing exact match_context for buffers [{}]",
+                            alert.signature_id,
+                            missing.join(", ")
+                        );
+                    }
+                }
+            }
         }
         let suppressed = key
             .as_deref()
@@ -784,6 +845,16 @@ mod tests {
         }
     }
 
+    fn meta_app_tx_lua() -> MatchBufferMeta {
+        MatchBufferMeta {
+            buffers: vec!["lua".to_string()],
+            primary: Some("lua".to_string()),
+            has_payload: true,
+            source: None,
+            app_tx_lua: true,
+        }
+    }
+
     fn context(
         buffer: &str,
         value: &str,
@@ -827,15 +898,26 @@ mod tests {
 
     #[test]
     fn context_only_buffers_ignore_eve_approximation() {
-        // lua/http.header/file.data/http.uri.raw 只接受 match_context 精确值；
+        // context-only buffer 只接受 match_context 精确值；
         // EVE 侧即使有 payload/uri 也不得兜底。无导出 => 无 key。
-        for buffer in ["lua", "http.header", "file.data", "http.uri.raw"] {
+        for buffer in CONTEXT_ONLY_BUFFERS {
             assert!(
                 suppression_key(&event(), &alert(), Some(&meta(&[buffer])), &HashMap::new())
                     .is_none(),
                 "{buffer} must not fall back to EVE fields"
             );
         }
+    }
+
+    #[test]
+    fn app_tx_lua_meta_explicitly_unsuppressible() {
+        // app-tx Lua 规则（buffers=["lua"] + app_tx_lua=true）：
+        // 没有 match_context 时 key 必须为 None（不近似、不抑制）。
+        assert!(
+            suppression_key(&event(), &alert(), Some(&meta_app_tx_lua()), &HashMap::new())
+                .is_none()
+        );
+        assert!(meta_app_tx_lua().app_tx_lua);
     }
 
     #[test]

@@ -233,6 +233,15 @@ White-list key 由 `xbits/src/analysis.rs` 的 `suppression_key()` 生成；
 `match_context` 事件（完整 sticky buffer Base64）；EVE/Zeek 字段只作为回退。
 buffer 取不到时**不建立抑制 key**，避免拿错字段做白名单。
 
+Context-only buffer（`lua`、`http.header`、`file.data`、`http.uri.raw`、
+`dns.rrtype`、`tls.alpn`、`http.cookie` 等）在 EVE/Zeek 中没有精确等价字段，
+**只接受 match_context 导出值**，任何近似值都不会兜底。
+
+`match_buffers.json` 中 `app_tx_lua: true` 的规则是以 app-layer Lua
+（`match(args)` 形式，检查 tx 多个字段）挂载的规则：没有单一精确 buffer 可导出，
+核心补丁明确不做近似导出，**这类规则不参与抑制**（每次告警仍走 validator 出判定，
+xbits 会记录一次说明日志）。需要抑制时必须在 Lua 脚本内显式导出实际命中的值。
+
 EVE 需要开启 payload：
 
 ```yaml
