@@ -38,8 +38,10 @@ COPY xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
 # 规则检测：suricata/ 为 Suricata 规则+Lua，xbits/ 为中央引擎分析规则与元数据
 COPY 规则检测/suricata/ /opt/xbits/rules/suricata/
 COPY 规则检测/xbits/ /opt/xbits/analysis-rules/
-# Suricata Lua 规则用相对 rule-path 的 lua:xxx.lua 加载，把 lua 文件放到规则目录同级
-COPY 规则检测/suricata/Web漏洞利用/lua/ /opt/xbits/rules/suricata/Web漏洞利用/
+# 规则用裸文件名 lua:xxx.lua 引用，Suricata 相对 default-rule-path 解析；
+# 把所有分类下的 lua 文件扁平化到规则根目录。
+RUN find /opt/xbits/rules/suricata -type f -name '*.lua' \
+      -exec cp -a {} /opt/xbits/rules/suricata/ \;
 # 全规则 QA：只扁平化 4 个自研场景规则（转换来的分类规则不参与矩阵）
 RUN mkdir -p /opt/xbits/rules/qa /tmp/suri-out \
     && for d in "DNS隧道与带外检测" "Web漏洞利用" "侦察与攻击工具指纹" "后门通信"; do \
