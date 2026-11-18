@@ -1,46 +1,40 @@
 # xbits-suricata 镜像
 #
-# 基于官方系 Suricata 8.0.8 镜像（jasonish/suricata，OISF 维护者发布），
-# 额外安装：
-#   - xbits Suricata 薄 hook 插件（/opt/xbits/plugins/xbits-suricata-hook.so）
-#   - 规则检测目录（/opt/xbits/rules）
-#   - xbits 测试配置（/opt/xbits/suricata-test.yaml）
+# 关键约束：Suricata 薄 hook 插件调用核心补丁导出符号
+# XbitsRegisterMatchContextExporter，因此镜像内的 suricata 必须是
+# 打了 xbits 核心补丁的 8.0.8。
 #
-# 构建前先由 CI/本地用 Suricata 8.0.8 源码头文件编译：
-#   make -C xbits/suricata-plugin SURICATA_SRC=/tmp/suricata-8.0.8
-# 然后：
+# 根因修复：原实现把 Ubuntu runner 编译的 suricata 二进制拷进
+# Fedora/dnf 系 jasonish 镜像，因 libpcap.so.0.8 vs .so.1 ABI 不匹配
+# 无法启动。现改为全程以 Ubuntu 22.04 为基座，在与 CI runner 完全
+# 相同的发行版环境内编译 patched Suricata，禁止跨发行版搬运二进制。
+#
+# 构建（在仓库根目录）：
 #   docker build -t xbits-suricata -f docker/xbits-suricata.Dockerfile .
 
 # ============================================================
-# Stage 1: 在与运行时镜像相同发行版（Fedora/dnf）内部编译带
-# xbits match-context 补丁的 Suricata 8.0.8。
-#
-# 根因：jasonish/suricata:8.0.8 基于 Fedora，libpcap 为
-# libpcap.so.1；若把 Ubuntu runner 编译的 suricata 二进制拷进来，
-# 会因 libpcap.so.0.8 缺失而无法启动。必须在相同发行版内编译，
-# 禁止跨发行版搬运二进制这种兜底做法。
+# Stage 1: 在 Ubuntu 22.04 内编译带 xbits 核心补丁的 Suricata 8.0.8
 # ============================================================
-FROM jasonish/suricata:8.0.8 AS suricata-builder
+FROM ubuntu:22.04 AS suricata-builder
 
-USER root
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      autoconf automake build-essential libtool pkg-config \
+      libcap-ng-dev libjansson-dev libmagic-dev libnet1-dev \
+      libpcap-dev libpcre2-dev libyaml-dev zlib1g-dev \
+      curl ca-certificates python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Rust 1.85 + cbindgen 0.27（与 CI runner 一致，Suricata 8 构建需要）
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --profile minimal --default-toolchain 1.85.0 \
+    && cargo install cbindgen --version 0.27.0 --locked
 
 ARG SURICATA_VERSION=8.0.8
 
-RUN dnf -y install \
-      autoconf automake gcc gcc-c++ make libtool pkgconf-pkg-config \
-      cbindgen rust cargo \
-      libpcap-devel jansson-devel libyaml-devel pcre2-devel \
-      libnet-devel libcap-ng-devel file-devel lz4-devel \
-      zlib-devel libnfnetlink-devel libevent-devel \
-      hyperscan-devel 2>/dev/null \
-    || dnf -y install \
-      autoconf automake gcc gcc-c++ make libtool pkgconf-pkg-config \
-      cbindgen rust cargo \
-      libpcap-devel jansson-devel libyaml-devel pcre2-devel \
-      libnet-devel libcap-ng-devel file-devel lz4-devel \
-      zlib-devel libnfnetlink-devel libevent-devel
-
-# 下载源码、打 xbits 核心补丁、编译安装到 /usr/local
 COPY xbits/suricata-plugin/apply_match_context_patch.py /tmp/apply_match_context_patch.py
 RUN set -euxo pipefail; \
     curl -fsSL \
@@ -57,14 +51,19 @@ RUN set -euxo pipefail; \
     ldconfig
 
 # ============================================================
-# Stage 2: 运行时镜像，使用同发行版编译出的 patched suricata
+# Stage 2: 运行时镜像（同为 Ubuntu 22.04，ABI 一致）
 # ============================================================
-FROM jasonish/suricata:8.0.8
+FROM ubuntu:22.04
 
-USER root
-RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libcap-ng0 libjansson4 libmagic1 libnet1 libpcap0.8 \
+      libpcre2-8-0 libyaml-0-2 zlib1g ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# 用同发行版编译的 patched Suricata 二进制与库替换官方版本
+RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules /var/log/suricata /var/run/suricata /var/lib/suricata
+
+# 用同发行版编译的 patched Suricata 二进制与库
 COPY --from=suricata-builder /usr/local/bin/suricata /usr/bin/suricata
 COPY --from=suricata-builder /usr/local/lib/ /usr/local/lib/
 RUN ldconfig && suricata --build-info | head -5
@@ -90,4 +89,4 @@ COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.ya
 # 运行测试时可通过 -e XBITS_HOOK_SOCKET=... 覆盖
 ENV XBITS_HOOK_SOCKET=/var/run/xbits/hook.sock
 
-# 官方镜像通常自带 suricata 入口；测试显式 --entrypoint suricata
+# 测试显式 --entrypoint suricata 运行
