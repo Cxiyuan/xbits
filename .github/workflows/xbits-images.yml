@@ -116,10 +116,6 @@ jobs:
       - name: Build official-image based xbits-suricata
         run: |
           set -euo pipefail
-          mkdir -p docker/stage/bin docker/stage/lib
-          cp /usr/local/bin/suricata docker/stage/bin/suricata
-          find /usr/local/lib -maxdepth 1 -name 'libsuricata*' -exec cp -a {} docker/stage/lib/ \;
-          touch docker/stage/lib/.keep
           docker build --pull \
             -t xbits-suricata \
             -f docker/xbits-suricata.Dockerfile \
