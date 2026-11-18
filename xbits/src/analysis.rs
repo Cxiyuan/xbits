@@ -540,7 +540,7 @@ impl Analyzer {
 
     fn process(&mut self, event: HookEvent, alert: EngineAlert) {
         let meta = self.match_buffers.get(&alert.signature_id.to_string());
-        if meta.and_then(|m| m.app_tx_lua).unwrap_or(false) {
+        if meta.map(|m| m.app_tx_lua).unwrap_or(false) {
             // app-tx 挂载的 Lua 规则没有单一精确 buffer 可导出（补丁层明确不近似），
             // 这类规则按元数据标记不参与抑制：每次告警仍走 validator 出判定。
             // 仅记录一次，避免日志洪泛。
