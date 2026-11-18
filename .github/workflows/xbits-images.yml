@@ -154,6 +154,13 @@ jobs:
             xbits-suricata \
             -T -c /opt/xbits/probe-rules-validate.yaml -v -l /tmp/suri-out
 
+      - name: Production and weak rule profiles load
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --entrypoint suricata xbits-suricata \
+            -T -c /opt/xbits/probe-rules-production.yaml -v -l /tmp/suri-out
+          docker run --rm --network none --entrypoint suricata xbits-suricata \
+            -T -c /opt/xbits/probe-rules-weak.yaml -v -l /tmp/suri-out
       - name: Full Suricata rule/hook matrix (every case, EVE == engine)
         run: |
           python xbits/test/qa_suricata_hook_matrix.py \

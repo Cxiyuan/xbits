@@ -4,6 +4,7 @@
   "dangling-http-uri": 2090,
   "dsl-semantic": 1811,
   "duplicate-position": 1,
+  "false-positive-quarantine": 1,
   "http-only-uri-unsupported": 2990,
   "isdataat": 150,
   "method-unsupported": 48,
@@ -4227,6 +4228,9 @@
   ],
   "duplicate-position": [
    10041593
+  ],
+  "false-positive-quarantine": [
+   13169997
   ],
   "http-only-uri-unsupported": [
    16356,

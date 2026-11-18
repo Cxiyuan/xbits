@@ -8,11 +8,11 @@
 
 | 项目 | 数量 |
 |---|---:|
-| 全部 active 规则 | 18,886 |
-| 外部探针转换规则 | 18,812 |
+| 全部 active 规则 | 18,885 |
+| 外部探针转换规则 | 18,811 |
 | 自研场景规则 | 74 |
 | weak tier 规则 | 2,668 |
-| 静态高风险 | 1 |
+| 静态高风险 | 0（已隔离 1 条） |
 | 静态中风险 | 488 |
 | 无告警状态链规则（`noalert`） | 433 |
 | 重复 content/pcre 组 | 821 组 / 2,178 条规则 |
@@ -23,13 +23,13 @@
 
 ## 2. 误报风险
 
-### 2.1 高风险（建议直接处理）
+### 2.1 高风险（已处理）
 
-| SID | 规则 | 问题 |
-|---|---|---|
-| 13169997 | `WebShell Detect` | `content:"X@Y"` + `flow:to_client,established` + `$HTTP_PORTS`，没有其他锚点/上下文，普通 HTTP 响应只要包含 `X@Y` 就命中，误报概率高 |
+| SID | 规则 | 问题 | 处理 |
+|---|---|---|---|
+| 13169997 | `WebShell Detect` | `content:"X@Y"` + `flow:to_client,established` + `$HTTP_PORTS`，没有其他锚点/上下文，普通 HTTP 响应只要包含 `X@Y` 就命中 | 已加入 `docs/false-positive-sids.txt`，转换时剔除 |
 
-建议：直接剔除，或增加 `http_server_body`/响应结构/成功链约束后再启用。
+当前 active 规则中已无静态高风险规则。
 
 ### 2.2 中风险：488 条“单一短内容/无锚点”规则
 
@@ -113,45 +113,51 @@
 
 证据：
 
-- `xb-suricata-web-sqli` 用 `signature_contains:"SQL"`；
-- `xb-suricata-recon` 用 `signature_contains:"扫描"`；
+- `analysis.json` 已改为 SID 精确选择：`xb-suricata-web-sqli` 使用 1,768 个 active SQLi SID，
+  `xb-suricata-recon` 使用 41 个自研侦察 SID，不再使用 `signature_contains:"SQL"`；
 - `xb-zeek-appid-scanner` 用事件 `XbitsAlert::alert` + `alert_kind=scanner`；
 - 引擎的 `require_context` 只检查同一 5-tuple 是否已有 Zeek HTTP context；
-- `score` 虽然累加，但 `threshold` 没有参与告警判断；
-- `success_rules.json`、`sid_library.json`、`rules_meta.json` 目前**没有被 xbits 引擎加载**；
+- `score` 已累加，`threshold` 已接入输出判断；
+- `success_rules.json`、`sid_library.json`、`rules_meta.json` 仍**没有被 xbits 引擎加载**；
 - `group_by` 只用于 score key，没有多事件序列/窗口聚合逻辑。
 
-因此它不具备：多阶段依赖、攻击成功确认、规则链、跨事件窗口、同源多告警收敛。
+因此它具备“同 5-tuple 上下文门槛 + SID 精确过滤”，但还不具备：
+多阶段依赖、攻击成功确认、规则链、跨事件窗口、同源多告警收敛。
 
 ### 4.3 误报风险
 
 | 规则 | 风险 |
 |---|---|
-| `xb-suricata-web-sqli` | `signature_contains:"SQL"` 会匹配当前 1,185 条含 SQL 的规则消息，包含 SQL Server、MySQL、Java.sql、扫描器规则等；`require_context` 只要求任意 HTTP context，`benign_uri_contains` 只有 3 个路径，误报面很大 |
-| `xb-suricata-recon` | `signature_contains:"扫描"` 主要匹配 8 条自研侦察规则，范围较小，但仍依赖后续上下文置信度 |
+| `xb-suricata-web-sqli` | 已收窄到 1,768 个 active SQLi SID，不再是 1,185 条含 SQL 的宽匹配；但 SID 数量仍大，`require_context` 只要求任意 HTTP context，`benign_uri_contains` 只有 3 个路径，仍需实网负样本验证 |
+| `xb-suricata-recon` | 41 个自研侦察 SID，范围明确，但仍依赖后续上下文置信度 |
 | `xb-zeek-appid-scanner` | 所有 app-id scanner 告警直接转发，没有上下文/阈值/误报抑制 |
-| `default.json` 的 `xb-zeek-http-request` | 对每个 HTTP request 命中；由于引擎不执行 `threshold`，如果误用 default 规则，会为每个请求输出一条告警，属于严重误报配置 |
+| `default.json` 的 `xb-zeek-http-request` | 对每个 HTTP request 命中；即使 threshold 已生效，score=5、threshold=5，每个 request 仍会输出，属于 legacy/测试配置，不能生产使用 |
 | `qa-all.json` | 测试用全量转发，不能进入生产 |
 
 ### 4.4 是否适合后续开发
 
-- **框架适合**：已有 5-tuple context、pending、confidence、evidence 的基础；
-- **当前规则不适合直接生产**：规则选择器过宽、threshold 未生效、success/tier 元数据未接入；
+- **框架适合**：已有 5-tuple context、pending、confidence、evidence、SID 精确匹配的基础；
+- **当前规则仍不宜直接生产**：`success_rules`/`tier` 未接入，缺少窗口/冷却，default 规则仍有洪泛风险；
 - 建议开发顺序：
-  1. 引擎读取 `sid_library.json`/`rules_meta.json`，按 SID 精确选出规则；
-  2. 实现 `score >= threshold` 才输出，并支持窗口/冷却；
+  1. 引擎读取 `sid_library.json`/`rules_meta.json`，补全 `category/subcategory/tier`；
+  2. 实现窗口/冷却，避免同一 rule+key 反复输出；
   3. 接入 `success_rules.json`，实现请求→响应成功确认；
   4. 接入 `tier=weak`，弱规则必须上下文/成功确认才输出；
-  5. 用 `community_id + SID` 对 Suricata/Zeek 双写结果去重；
-  6. 将 `analysis.json` 的 `signature_contains:"SQL"` 替换为明确的 SID 集合。
+  5. 用 `community_id + SID` 对 Suricata/Zeek 双写结果去重。
 
-## 5. 建议的清理优先级
+## 5. 本轮已处理 / 后续优先级
 
-1. **立即处理**：剔除或加固 SID `13169997`；
-2. **生产加载策略**：将 weak tier 2,668 条拆成独立加载集，默认不进入高置信度告警；
-3. **抽样复核**：488 条中风险单内容规则，按类别补充字段/第二特征或降级；
-4. **去重治理**：821 组同 pattern 规则、2,003 组同 msg 规则按 SID 族合并/引用化；
-5. **Zeek 去重**：`web_exploit_chain.zeek`、`backdoor_c2_score.zeek` 不再重新做内容签名，
-   改为消费 Suricata alert 或只做聚合；DNS/recon 明确由谁主告警；
-6. **xbits 开发**：先实现 threshold/score、SID 精确选择、`success_rules`、
-   `tier=weak`，再谈生产使用；禁止使用 `default.json` 作为生产规则。
+本轮已完成：
+
+1. SID `13169997` 已加入 `docs/false-positive-sids.txt` 并从 active 规则剔除；
+2. weak tier 已拆分为独立加载配置：`docker/probe-rules-weak.yaml`；
+   生产默认配置 `docker/probe-rules-production.yaml` 不加载 weak；
+3. `xbits/rules/analysis.json` 已改为 SID 精确选择，并接入 `threshold` 判断。
+
+后续：
+
+- 复核 488 条中风险单内容规则，按类别补字段/第二特征或降级；
+- 821 组同 pattern、2,003 组同 msg 规则按 SID 族合并/引用化；
+- Zeek `web_exploit_chain.zeek`、`backdoor_c2_score.zeek` 不再重新做内容签名，
+  改为消费 Suricata alert 或只做聚合；
+- xbits 增加窗口/冷却、`success_rules`、`tier=weak` 和 `community_id + SID` 去重。

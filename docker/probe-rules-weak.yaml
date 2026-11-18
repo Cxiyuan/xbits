@@ -1,0 +1,33 @@
+%YAML 1.1
+---
+# 弱规则单独加载配置（交 xbits 低置信度收敛）（由 convert_probe_rules.py 生成）
+default-log-dir: /tmp/suri-out
+
+vars:
+  address-groups:
+    HOME_NET: "any"
+    EXTERNAL_NET: "any"
+    CLIENT_NET: "any"
+    HTTP_SERVERS: "any"
+    SMTP_SERVERS: "any"
+    DNS_SERVERS: "any"
+    SQL_SERVERS: "any"
+    MAIL_SERVERS: "any"
+  port-groups:
+    HTTP_PORTS: "[80,8080,8000,443,8443]"
+    MAIL_PORTS: "[25,110,143,587,993,995]"
+
+default-rule-path: /opt/xbits/rules/suricata
+rule-files:
+  - "Web攻击/SQL注入/sql.weak.rules"
+  - "Web攻击/信息泄露/information_disclose.rules"
+  - "Web攻击/扫描器/web_scan.rules"
+  - "Web攻击/敏感关键词/gray_keyword.rules"
+  - "恶意URL/malice_url_report.rules"
+classification-file: /opt/xbits/rules/classification.config
+reference-config-file: /opt/xbits/rules/reference.config
+
+# 仅做规则加载验证：不启用插件/事件输出
+outputs:
+  - eve-log:
+      enabled: no

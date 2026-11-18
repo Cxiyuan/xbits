@@ -80,6 +80,8 @@ pub struct Rule {
     #[serde(default)]
     pub desc_contains: Option<String>,
     #[serde(default)]
+    pub sid_in: Vec<u64>,
+    #[serde(default)]
     pub method: Option<String>,
     #[serde(default)]
     pub group_by: Option<String>, // community_id | src | uid
@@ -144,6 +146,12 @@ impl Rule {
         if let Some(v) = &self.method {
             if !ev.method.as_deref().unwrap_or("").eq_ignore_ascii_case(v) {
                 return false;
+            }
+        }
+        if !self.sid_in.is_empty() {
+            match ev.sid {
+                Some(sid) if self.sid_in.contains(&sid) => {}
+                _ => return false,
             }
         }
         if let Some(v) = &self.alert_kind {

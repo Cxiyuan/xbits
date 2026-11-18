@@ -583,6 +583,15 @@ def main() -> int:
             if raw.isdigit():
                 quarantine.add(int(raw))
 
+    # 人工确认的高误报 SID，不进入 active 规则
+    fp_sids: set[int] = set()
+    fp_file = ROOT / "docs" / "false-positive-sids.txt"
+    if fp_file.exists():
+        for raw in fp_file.read_text(encoding="utf-8").splitlines():
+            raw = raw.strip()
+            if raw.isdigit():
+                fp_sids.add(int(raw))
+
     # ---- Pass 1: 预扫描 depend/scope，构建反向依赖表 ----
     dep_refs: set[int] = set()  # 被依赖的请求侧 SID
     success_rules: list[dict] = []
@@ -698,6 +707,13 @@ def main() -> int:
                     n_skip += 1
                     continue
 
+                # 人工确认的高误报 SID
+                if sid in fp_sids:
+                    meta["skip"] = "false-positive-quarantine"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
                 if sid in seen_sids:
                     n_dupe += 1
                     continue
@@ -759,6 +775,8 @@ def main() -> int:
         entry: dict = {"group": meta.get("group", "")}
         if meta.get("tier"):
             entry["tier"] = meta["tier"]
+        if meta.get("category"):
+            entry["category_dir"] = meta["category"]
         hole = lib.get(sid)
         if hole:
             entry["name"] = hole["name"]
@@ -777,7 +795,7 @@ def main() -> int:
                     break
         if not entry.get("name") and meta.get("msg"):
             entry["name"] = meta["msg"]
-        for field in ("classtype", "references", "status_code", "rate", "skip", "category"):
+        for field in ("classtype", "references", "status_code", "rate", "skip"):
             if meta.get(field):
                 entry[field] = meta[field]
         sid_library[sid_str] = entry
@@ -945,6 +963,33 @@ def main() -> int:
     docker_dir = ROOT.parent / "docker"
     docker_dir.mkdir(exist_ok=True)
     (docker_dir / "probe-rules-validate.yaml").write_text("\n".join(validate_yaml), encoding="utf-8")
+
+    # 强/弱规则分离加载集：生产默认只加载 strong，weak 单独加载给 xbits 收敛
+    prefix = validate_yaml[: validate_yaml.index("rule-files:") + 1]
+    footer_start = next(i for i, line in enumerate(validate_yaml) if line.startswith("classification-file:"))
+    footer = validate_yaml[footer_start:]
+    strong_entries: list[str] = []
+    weak_entries: list[str] = []
+    for rel_out, _n in rule_files:
+        rel_rule = rel_out
+        if "规则检测/suricata/" in rel_rule:
+            rel_rule = rel_rule.split("规则检测/suricata/", 1)[1]
+        elif rel_rule.startswith("suricata/"):
+            rel_rule = rel_rule[len("suricata/"):]
+        if Path(rel_out).name in WEAK_FILES:
+            weak_entries.append(f'  - "{rel_rule}"')
+        else:
+            strong_entries.append(f'  - "{rel_rule}"')
+
+    def write_profile(filename: str, title: str, entries: list[str]) -> None:
+        lines = list(prefix)
+        lines[2] = f"# {title}（由 convert_probe_rules.py 生成）"
+        lines += entries
+        lines += list(footer)
+        (docker_dir / filename).write_text("\n".join(lines), encoding="utf-8")
+
+    write_profile("probe-rules-production.yaml", "生产强规则加载配置", strong_entries)
+    write_profile("probe-rules-weak.yaml", "弱规则单独加载配置（交 xbits 低置信度收敛）", weak_entries)
 
     total_ok = sum(v["ok"] for v in stats.values())
     total_skip = sum(v["skip"] for v in stats.values())

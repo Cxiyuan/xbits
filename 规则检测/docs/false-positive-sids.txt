@@ -1,0 +1,4 @@
+# 人工确认的高误报 SID：转换时直接跳过，不进入 Suricata 规则文件。
+# 每行一个 SID，可附注释。
+# 13169997: WebShell Detect content:"X@Y" to_client，无其他锚点，误报风险高
+13169997

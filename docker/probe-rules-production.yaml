@@ -1,0 +1,70 @@
+%YAML 1.1
+---
+# 生产强规则加载配置（由 convert_probe_rules.py 生成）
+default-log-dir: /tmp/suri-out
+
+vars:
+  address-groups:
+    HOME_NET: "any"
+    EXTERNAL_NET: "any"
+    CLIENT_NET: "any"
+    HTTP_SERVERS: "any"
+    SMTP_SERVERS: "any"
+    DNS_SERVERS: "any"
+    SQL_SERVERS: "any"
+    MAIL_SERVERS: "any"
+  port-groups:
+    HTTP_PORTS: "[80,8080,8000,443,8443]"
+    MAIL_PORTS: "[25,110,143,587,993,995]"
+
+default-rule-path: /opt/xbits/rules/suricata
+rule-files:
+  - "Web攻击/SQL注入/sql.rules"
+  - "Web攻击/SQL注入/sql.strong.rules"
+  - "Web攻击/WebShell/pvs-webshell.rules"
+  - "Web攻击/WebShell/webshell.rules"
+  - "Web攻击/WebShell/webshell_detect.request.rules"
+  - "Web攻击/WebShell/webshell_detect.rules"
+  - "Web攻击/Web应用漏洞/webapp.rules"
+  - "Web攻击/Web服务漏洞/web.rules"
+  - "Web攻击/XSS/pvs-xss.rules"
+  - "Web攻击/XSS/xss.rules"
+  - "Web攻击/命令执行/cmd_executed.request.rules"
+  - "Web攻击/命令执行/cmd_executed.rules"
+  - "Web攻击/命令注入/cmd.rules"
+  - "Web攻击/命令注入/oscmd.rules"
+  - "Web攻击/客户端组件漏洞/web_activex.rules"
+  - "Web攻击/文件上传/file_upload.rules"
+  - "Web攻击/文件包含/file_include.rules"
+  - "Web攻击/文件包含/rfi.rules"
+  - "Web攻击/浏览器漏洞/web_browse.rules"
+  - "Web攻击/目录遍历/directory_tranversal.rules"
+  - "Web攻击/目录遍历/directory_traversal.rules"
+  - "主机系统漏洞/system.rules"
+  - "其他/bp_ips.rules"
+  - "其他/other.rules"
+  - "应用软件漏洞/application.rules"
+  - "应用软件漏洞/媒体服务/media.rules"
+  - "恶意软件/Shellcode/shellcode.rules"
+  - "恶意软件/后门/backdoor.rules"
+  - "恶意软件/木马/trojan.rules"
+  - "恶意软件/蠕虫/worm.rules"
+  - "恶意软件/间谍软件/spyware.rules"
+  - "攻击成功确认/component/component.rules"
+  - "文件与协议解析漏洞/file.rules"
+  - "暴力破解/brute_force.rules"
+  - "网络服务漏洞/DNS/dns.rules"
+  - "网络服务漏洞/FTP/ftp.rules"
+  - "网络服务漏洞/Telnet/telnet.rules"
+  - "网络服务漏洞/TFTP/tftp.rules"
+  - "网络服务漏洞/数据库/database.rules"
+  - "网络服务漏洞/邮件/mail.rules"
+  - "网络设备漏洞/network_device.rules"
+  - "配置与运维缺陷/config_error.rules"
+classification-file: /opt/xbits/rules/classification.config
+reference-config-file: /opt/xbits/rules/reference.config
+
+# 仅做规则加载验证：不启用插件/事件输出
+outputs:
+  - eve-log:
+      enabled: no

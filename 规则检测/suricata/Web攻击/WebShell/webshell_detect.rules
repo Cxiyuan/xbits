@@ -1,5 +1,5 @@
 # Converted from Sangfor export: etc_fw/waf/webshell_rules/webshell_detect.rules
-# rules=2544 skipped=0 dup_sid=0
+# rules=2543 skipped=1 dup_sid=0
 alert tcp any any -> any $HTTP_PORTS     ( msg: "WebShell Detect 7.86621 V1559101329"; flow: to_client, established, only_stream; file_data; content: "|42 69 6E 64 20 53 68 65 6C 6C|"; nocase; pcre: "/<th[^<]*\x42\x69\x6E\x64\x20\x53\x68\x65\x6C\x6C<\/th\s*>/is"; sid: 13160000; rev: 2;)
 alert tcp any any -> any $HTTP_PORTS     ( msg: "WebShell Detect 8.30491 V1559101329"; flow: to_client, established, only_stream; file_data; content: "|64 62 5F 63 6F 6C 6C 61 74 69 6F 6E|"; nocase; pcre: "/<th[^<]*\x64\x62\x5F\x63\x6F\x6C\x6C\x61\x74\x69\x6F\x6E<\/th\s*>/is"; sid: 13160001; rev: 2;)
 alert tcp any any -> any $HTTP_PORTS     ( msg: "WebShell Detect 8.55328 V1559101329"; flow: to_client, established, only_stream; file_data; content: "|73 71 6C 5F 64 61 74 61 5F 61 63 63 65 73 73|"; nocase; pcre: "/<th[^<]*\x73\x71\x6C\x5F\x64\x61\x74\x61\x5F\x61\x63\x63\x65\x73\x73<\/th\s*>/is"; sid: 13160002; rev: 2;)
@@ -2542,5 +2542,4 @@ alert tcp any any -> any $HTTP_PORTS     ( msg: "WebShell Detect 13.97823 V15591
 alert tcp any any -> any $HTTP_PORTS     ( msg: "WebShell Detect 7.07750 V1559101329"; flow: to_client, established, only_stream; file_data; content: "|2E 3A 3A 5B 53 68 65 6C 6C 20 66 75 6E 63 74 69 6F 6E 73 5D 3A 3A 2E|"; nocase; pcre: "/<b[^<]*\x2E\x3A\x3A\x5B\x53\x68\x65\x6C\x6C\x20\x66\x75\x6E\x63\x74\x69\x6F\x6E\x73\x5D\x3A\x3A\x2E<\/b\s*>/is"; sid: 13161428; rev: 2;)
 alert tcp any any -> any $HTTP_PORTS     ( msg: "WebShell Detect 7.50139 V1559101329"; flow: to_client, established, only_stream; file_data; content: "|46 69 6E 64 20 69 6E 20 66 69 6C 65 73|"; nocase; pcre: "/<b[^<]*\x46\x69\x6E\x64\x20\x69\x6E\x20\x66\x69\x6C\x65\x73<\/b\s*>/is"; sid: 13161894; rev: 2;)
 alert tcp any any -> any $HTTP_PORTS (   sid: 13169998; content: "|2D 3E 7C|"; content: "|7C 3C 2D|"; flow:to_client,established; msg: "WebShell Detect 12.00000";)
-alert tcp any any -> any $HTTP_PORTS (   sid: 13169997; content: "X@Y"; flow:to_client,established; msg: "WebShell Detect";)
 alert tcp any any -> any $HTTP_PORTS (   sid: 13169899; content: "Set-Cookie: M-cookie="; http_header; nocase; flow:to_client,established; msg: "WebShell Detect";)

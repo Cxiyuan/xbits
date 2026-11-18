@@ -225,6 +225,8 @@ xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/default.json
 - `require_context`: Suricata 告警必须等到对应 Zeek `http_request/http_header/http_reply` 上下文才输出；
 - `benign_uri_contains` / `benign_host_contains`: 正常 URI/Host 上下文可抑制误报；
 - `min_confidence`: 只输出达到置信度阈值的告警；
+- `sid_in`: 按精确 SID 集合选择规则，避免 `signature_contains` 宽匹配；
+- `score` / `threshold`: 累计分数达到阈值后才输出；
 - `alert_kind`: xbits 接管 Zeek `XbitsAlert::emit` 的告警类别管理（例如只接收 `scanner`）。
 
 xbits 通过 5-tuple 缓冲关联 Suricata alert 与 Zeek context；上下文缺失时不输出高置信度告警。

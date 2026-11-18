@@ -299,6 +299,10 @@ impl Engine {
                 continue;
             }
             let _score = self.score_for(ev, &rule);
+            // 累计分未达到规则阈值时不输出；避免 ignored threshold 导致规则洪泛
+            if _score < rule.threshold.max(1) {
+                continue;
+            }
             let context = if ev.source.eq_ignore_ascii_case("suricata") {
                 self.contexts.get(&key).map(|c| c.event.clone())
             } else {
