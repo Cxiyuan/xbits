@@ -44,6 +44,17 @@
     "sid_in": [9103005]
   },
   {
+    "id": "xb-test-low-fp",
+    "name": "test low-confidence fp",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-low-fp",
+    "sid_in": [9103006]
+  },
+  {
     "id": "xb-test-no-meta",
     "name": "test no meta",
     "source": "suricata",

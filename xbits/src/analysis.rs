@@ -95,6 +95,13 @@ struct Decision {
     validator_used: bool,
 }
 
+/// 是否允许把该误报判定写入抑制白名单。
+/// 只有明确 false_positive 且置信度达到 fp_confidence 门槛才允许，
+/// 防止低置信 FP 误杀后续真实威胁。
+fn may_whitelist(decision: &Decision, fp_confidence: u64) -> bool {
+    decision.is_false_positive() && decision.confidence >= fp_confidence
+}
+
 impl Decision {
     fn is_false_positive(&self) -> bool {
         self.verdict.eq_ignore_ascii_case("false_positive") || self.verdict.eq_ignore_ascii_case("false-positive")
@@ -621,11 +628,20 @@ impl Analyzer {
             .as_deref()
             .or(event.payload.as_deref())
             .unwrap_or("");
-        let doc = normalized_document(&event, &alert, &decision, payload, self.config.max_payload);
         let is_false_positive = decision.is_false_positive();
         if is_false_positive {
             if let Some(key) = key {
-                self.whitelist.add(key);
+                // fp_confidence 是误报入白名单的置信度门槛：只有 validator
+                // 明确判定 false_positive 且置信度达标时才写抑制 key，
+                // 否则只输出判定、不建立白名单（否则低置信 FP 会误杀后续真威胁）。
+                if may_whitelist(&decision, self.config.fp_confidence) {
+                    self.whitelist.add(key);
+                } else {
+                    eprintln!(
+                        "xbits: sid {} false_positive confidence {} < fp_confidence {}; not whitelisted",
+                        alert.signature_id, decision.confidence, self.config.fp_confidence
+                    );
+                }
             }
         }
         self.emit(&doc, !is_false_positive);
@@ -951,6 +967,25 @@ mod tests {
         assert_eq!(normalize_verdict("false-positive"), "false_positive".to_string());
         assert_eq!(normalize_verdict("FP"), "false_positive".to_string());
         assert_eq!(normalize_verdict("maybe"), "uncertain".to_string());
+    }
+
+    #[test]
+    fn fp_confidence_gates_whitelisting() {
+        let mut d = Decision {
+            verdict: "false_positive".into(),
+            confidence: 95,
+            reason: String::new(),
+            evidence: Vec::new(),
+            validator_used: true,
+        };
+        assert!(may_whitelist(&d, 90));
+        d.confidence = 60;
+        assert!(!may_whitelist(&d, 90));
+        d.confidence = 95;
+        d.verdict = "uncertain".into();
+        assert!(!may_whitelist(&d, 90));
+        d.verdict = "true_positive".into();
+        assert!(!may_whitelist(&d, 90));
     }
 
     #[test]

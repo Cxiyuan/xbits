@@ -28,5 +28,11 @@
     "primary": "http.uri.raw",
     "has_payload": false,
     "source": "testdata"
+  },
+  "9103006": {
+    "buffers": ["http.uri"],
+    "primary": "http.uri",
+    "has_payload": false,
+    "source": "testdata"
   }
 }

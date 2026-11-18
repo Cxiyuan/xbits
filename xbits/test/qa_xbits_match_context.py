@@ -181,6 +181,31 @@ ALERT_NO_META = dict(
     alert={"signature_id": 9999999, "signature": "no metadata rule"},
 )
 
+# SID 9103006: validator 返回 false_positive 但 confidence=40 < fp_confidence(90)
+ALERT_LOW_FP = dict(
+    BASE_ALERT,
+    src_port=40007,
+    flow_id=555555555,
+    uid="C555555555",
+    alert={"signature_id": 9103006, "signature": "[Web漏洞利用] low-confidence fp"},
+)
+
+MATCH_CTX_LOW_FP = {
+    "timestamp": "2026-11-08T00:00:00.500000+0000",
+    "source": "suricata",
+    "kind": "match_context",
+    "sid": 9103006,
+    "src": "203.0.113.9",
+    "sport": 40007,
+    "dst": "10.0.0.80",
+    "dport": 80,
+    "proto": "TCP",
+    "tx_id": 5,
+    "buffer": "http_uri",
+    "buffer_len": 19,
+    "buffer_b64": "L2FwaS9sb2dpbg==",
+}
+
 
 def run_case(xbits, validator, rules, match_buffers, name, match_contexts, alerts,
              want_suppressed, want_emitted):
@@ -285,6 +310,13 @@ def main() -> int:
             "uriraw-alert-without-context-not-suppressed",
             [],
             [ALERT_URIRAW, ALERT_URIRAW],
+            0,
+            2,
+        ),
+        (
+            "low-confidence-fp-not-whitelisted",
+            [MATCH_CTX_LOW_FP],
+            [ALERT_LOW_FP, ALERT_LOW_FP],
             0,
             2,
         ),
