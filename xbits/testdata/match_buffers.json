@@ -16,5 +16,17 @@
     "primary": "payload",
     "has_payload": true,
     "source": "testdata"
+  },
+  "9103004": {
+    "buffers": ["file.data"],
+    "primary": "file.data",
+    "has_payload": false,
+    "source": "testdata"
+  },
+  "9103005": {
+    "buffers": ["http.uri.raw"],
+    "primary": "http.uri.raw",
+    "has_payload": false,
+    "source": "testdata"
   }
 }

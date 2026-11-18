@@ -83,7 +83,8 @@ MATCH_CTX_URI = {
     "dport": 80,
     "proto": "TCP",
     "tx_id": 1,
-    "buffer": "http.uri",
+    # Suricata 核心补丁导出的是内部 buffer 名（http_uri），xbits 侧归一为 http.uri
+    "buffer": "http_uri",
     "buffer_len": 19,
     "buffer_b64": "L2FwaS9sb2dpbg==",  # /api/login
 }
@@ -114,9 +115,62 @@ MATCH_CTX_HEADER = {
     "dport": 80,
     "proto": "TCP",
     "tx_id": 2,
-    "buffer": "http.header",
+    # Suricata 导出 http_header，xbits 归一为 http.header
+    "buffer": "http_header",
     "buffer_len": 13,
     "buffer_b64": "dXNlci1hZ2VudA==",  # user-agent
+}
+
+# SID 9103004 declares [file.data] only
+ALERT_FILEDATA = dict(
+    BASE_ALERT,
+    src_port=40005,
+    flow_id=333333333,
+    uid="C333333333",
+    alert={"signature_id": 9103004, "signature": "[WebShell] file.data check"},
+)
+
+MATCH_CTX_FILEDATA = {
+    "timestamp": "2026-11-08T00:00:00.300000+0000",
+    "source": "suricata",
+    "kind": "match_context",
+    "sid": 9103004,
+    "src": "203.0.113.9",
+    "sport": 40005,
+    "dst": "10.0.0.80",
+    "dport": 80,
+    "proto": "TCP",
+    "tx_id": 3,
+    # Suricata 导出 file_data，xbits 归一为 file.data
+    "buffer": "file_data",
+    "buffer_len": 12,
+    "buffer_b64": "PD9waHAgZXZhbA==",  # <?php eval
+}
+
+# SID 9103005 declares [http.uri.raw] only
+ALERT_URIRAW = dict(
+    BASE_ALERT,
+    src_port=40006,
+    flow_id=444444444,
+    uid="C444444444",
+    alert={"signature_id": 9103005, "signature": "[Web漏洞利用] raw uri check"},
+)
+
+MATCH_CTX_URIRAW = {
+    "timestamp": "2026-11-08T00:00:00.400000+0000",
+    "source": "suricata",
+    "kind": "match_context",
+    "sid": 9103005,
+    "src": "203.0.113.9",
+    "sport": 40006,
+    "dst": "10.0.0.80",
+    "dport": 80,
+    "proto": "TCP",
+    "tx_id": 4,
+    # Suricata 导出 http_raw_uri，xbits 归一为 http.uri.raw
+    "buffer": "http_raw_uri",
+    "buffer_len": 23,
+    "buffer_b64": "L2FwaS8uLi8uLi9ldmMvcGFzc3dk",  # /api/../../etc/passwd
 }
 
 ALERT_NO_META = dict(
@@ -203,6 +257,34 @@ def main() -> int:
             "header-alert-without-context-not-suppressed",
             [],
             [ALERT_HEADER, ALERT_HEADER],
+            0,
+            2,
+        ),
+        (
+            "filedata-context-fp-then-suppressed",
+            [MATCH_CTX_FILEDATA],
+            [ALERT_FILEDATA, ALERT_FILEDATA],
+            1,
+            1,
+        ),
+        (
+            "filedata-alert-without-context-not-suppressed",
+            [],
+            [ALERT_FILEDATA, ALERT_FILEDATA],
+            0,
+            2,
+        ),
+        (
+            "uriraw-context-fp-then-suppressed",
+            [MATCH_CTX_URIRAW],
+            [ALERT_URIRAW, ALERT_URIRAW],
+            1,
+            1,
+        ),
+        (
+            "uriraw-alert-without-context-not-suppressed",
+            [],
+            [ALERT_URIRAW, ALERT_URIRAW],
             0,
             2,
         ),

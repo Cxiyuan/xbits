@@ -10,7 +10,7 @@ def main() -> int:
     req = json.load(sys.stdin)
     alert = req.get("alert", {})
     sid = alert.get("signature_id")
-    verdict = "false_positive" if sid in (9103001, 9103002) else "uncertain"
+    verdict = "false_positive" if sid in (9103001, 9103002, 9103004, 9103005) else "uncertain"
     out = {
         "verdict": verdict,
         "confidence": 95 if verdict == "false_positive" else 10,

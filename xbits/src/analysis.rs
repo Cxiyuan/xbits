@@ -101,8 +101,36 @@ struct MatchContextEntry {
     at: Instant,
 }
 
+/// 把 Suricata 内部 buffer 名（ DetectEngineBufferTypeGetNameById 返回，
+/// 形如 http_uri / file_data / http_raw_uri）归一到 match_buffers.json 使用的
+/// 统一名（http.uri / file.data / http.uri.raw）。
+/// 必须与 规则检测/build_match_buffers.py 的 ALIASES 保持一致。
+/// 未命中的名字原样返回（新 buffer 尚无别名时仍可精确匹配）。
+fn canonical_buffer_name(name: &str) -> &str {
+    match name {
+        "http_uri" => "http.uri",
+        "http_raw_uri" => "http.uri.raw",
+        "http_method" => "http.method",
+        "http_cookie" => "http.cookie",
+        "http_raw_cookie" => "http.cookie",
+        "http_client_body" => "http.request_body",
+        "http_server_body" => "http.response_body",
+        "http_header" => "http.header",
+        "http_raw_header" => "http.header",
+        "http_host" => "http.host",
+        "http_raw_host" => "http.host",
+        "http_user_agent" => "http.user_agent",
+        "http_stat_code" => "http.status",
+        "http_stat_msg" => "http.status_msg",
+        "file_data" => "file.data",
+        "dns_query" => "dns.query",
+        other => other,
+    }
+}
+
 fn match_context_key(event: &HookEvent) -> Option<String> {
     let buffer = event.match_context_buffer.as_deref()?;
+    let buffer = canonical_buffer_name(buffer);
     Some(format!(
         "{}|{}|{}|{}|{}|{}|{}|{}",
         event.source,
@@ -172,7 +200,7 @@ fn buffer_value(event: &HookEvent, alert: &EngineAlert, buffer: &str) -> Option<
             // 以下 buffer 的精确值只来自 match_context 导出；
             // EVE 没有等价字段，禁止用近似值兜底。
             "lua" | "http.header" | "http.request_header" | "http.response_header"
-            | "file.data" => None,
+            | "file.data" | "http.uri.raw" | "http.header.raw" => None,
             _ => None,
         }
     };
@@ -203,6 +231,8 @@ fn suppression_key(
         alert.uid.clone().unwrap_or_default(),
     ];
     for buffer in buffers {
+        // 元数据里的名字已是统一名；再次归一保证与 observe() 的缓存 key 完全一致。
+        let canonical = canonical_buffer_name(&buffer);
         let context_key = format!(
             "{}|{}|{}|{}|{}|{}|{}|{}",
             event.source,
@@ -212,7 +242,7 @@ fn suppression_key(
             alert.dst,
             alert.dport,
             alert.proto,
-            buffer
+            canonical
         );
         // 导出的 match_context 是规则实际命中的 buffer 值，永远优先；
         // EVE/Zeek 等价字段只在导出缺失时作为可靠等价物使用，
@@ -703,6 +733,136 @@ impl AnalysisPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn alert() -> EngineAlert {
+        EngineAlert {
+            timestamp: "2026-01-01T00:00:00Z".into(),
+            signature_id: 9103001,
+            signature: "test".into(),
+            community_id: "1:test".into(),
+            src: "203.0.113.9".into(),
+            dst: "10.0.0.80".into(),
+            sport: 40001,
+            dport: 80,
+            proto: "TCP".into(),
+            flow_id: "123".into(),
+            score: 20,
+            confidence: 80,
+            evidence: "test".into(),
+            reason: "test".into(),
+            rule_id: "test".into(),
+            event: None,
+            alert_kind: None,
+            alert_name: None,
+            severity: None,
+            uid: Some("C1".into()),
+            context: None,
+        }
+    }
+
+    fn event() -> HookEvent {
+        let mut ev = HookEvent::default();
+        ev.source = "suricata".into();
+        ev.kind = "alert".into();
+        // EVE 侧的近似字段齐全：header/file/lua/raw-uri 都故意不给，
+        // 只给 EVE 能表示的 uri/payload，验证它们不会被拿去兜底。
+        ev.uri = Some("/normalized".into());
+        ev.payload = Some("cGF5bG9hZA==".into());
+        ev.src = Some("203.0.113.9".into());
+        ev.dst = Some("10.0.0.80".into());
+        ev.sport = Some(40001);
+        ev.dport = Some(80);
+        ev.proto = Some("TCP".into());
+        ev.sid = Some(9103001);
+        ev
+    }
+
+    fn meta(buffers: &[&str]) -> MatchBufferMeta {
+        MatchBufferMeta {
+            buffers: buffers.iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        }
+    }
+
+    fn context(
+        buffer: &str,
+        value: &str,
+        contexts: &mut HashMap<String, MatchContextEntry>,
+    ) {
+        let mut ev = event();
+        ev.kind = "match_context".into();
+        ev.match_context_buffer = Some(buffer.into());
+        ev.match_context_value = Some(value.into());
+        let key = match_context_key(&ev).unwrap();
+        contexts.insert(
+            key,
+            MatchContextEntry {
+                value: value.into(),
+                at: Instant::now(),
+            },
+        );
+    }
+
+    #[test]
+    fn canonicalizes_suricata_buffer_names() {
+        assert_eq!(canonical_buffer_name("http_uri"), "http.uri");
+        assert_eq!(canonical_buffer_name("http_raw_uri"), "http.uri.raw");
+        assert_eq!(canonical_buffer_name("http_header"), "http.header");
+        assert_eq!(canonical_buffer_name("file_data"), "file.data");
+        assert_eq!(canonical_buffer_name("dns_query"), "dns.query");
+        // 已是统一名或未知名原样返回
+        assert_eq!(canonical_buffer_name("http.uri.raw"), "http.uri.raw");
+        assert_eq!(canonical_buffer_name("lua"), "lua");
+        assert_eq!(canonical_buffer_name("new_buffer"), "new_buffer");
+    }
+
+    #[test]
+    fn no_metadata_never_builds_key() {
+        // 即使有 payload 与完整 match_context，无 match_buffers 元数据也必须拒绝建 key。
+        let mut contexts = HashMap::new();
+        context("payload", "cGF5bG9hZA==", &mut contexts);
+        assert!(suppression_key(&event(), &alert(), None, &contexts).is_none());
+        assert!(suppression_key(&event(), &alert(), Some(&meta(&[])), &contexts).is_none());
+    }
+
+    #[test]
+    fn context_only_buffers_ignore_eve_approximation() {
+        // lua/http.header/file.data/http.uri.raw 只接受 match_context 精确值；
+        // EVE 侧即使有 payload/uri 也不得兜底。无导出 => 无 key。
+        for buffer in ["lua", "http.header", "file.data", "http.uri.raw"] {
+            assert!(
+                suppression_key(&event(), &alert(), Some(&meta(&[buffer])), &HashMap::new())
+                    .is_none(),
+                "{buffer} must not fall back to EVE fields"
+            );
+        }
+    }
+
+    #[test]
+    fn context_only_buffers_use_exact_exported_value() {
+        // Suricata 内部名（下划线）导出的 match_context 必须归一后命中元数据里的点号名。
+        let cases = [
+            ("http_header", "http.header", "dXNlci1hZ2VudA=="),
+            ("file_data", "file.data", "ZmlsZQ=="),
+            ("http_raw_uri", "http.uri.raw", "L3Jhdy91cmk="),
+            ("lua", "lua", "bHVh"),
+        ];
+        for (exported, declared, value) in cases {
+            let mut contexts = HashMap::new();
+            context(exported, value, &mut contexts);
+            let key = suppression_key(&event(), &alert(), Some(&meta(&[declared])), &contexts)
+                .unwrap_or_else(|| panic!("{declared} should build key from exact context"));
+            assert!(key.contains(&format!("{declared}={value}")));
+        }
+    }
+
+    #[test]
+    fn payload_buffer_uses_exact_context_when_present() {
+        let mut contexts = HashMap::new();
+        context("payload", "ZXhhY3Q=", &mut contexts);
+        let key = suppression_key(&event(), &alert(), Some(&meta(&["payload"])), &contexts).unwrap();
+        assert!(key.contains("payload=ZXhhY3Q="));
+    }
 
     #[test]
     fn normalizes_false_positive_verdict() {

@@ -22,6 +22,28 @@
     "sid_in": [9103002]
   },
   {
+    "id": "xb-test-filedata",
+    "name": "test file.data",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-filedata",
+    "sid_in": [9103004]
+  },
+  {
+    "id": "xb-test-uriraw",
+    "name": "test http.uri.raw",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-uriraw",
+    "sid_in": [9103005]
+  },
+  {
     "id": "xb-test-no-meta",
     "name": "test no meta",
     "source": "suricata",
