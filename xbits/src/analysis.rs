@@ -116,7 +116,6 @@ fn match_context_key(event: &HookEvent) -> Option<String> {
     ))
 }
 
-#[derive(Default)]
 struct SuppressionEntry {
     expires_at: Instant,
 }
