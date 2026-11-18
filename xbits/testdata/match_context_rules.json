@@ -1,0 +1,35 @@
+[
+  {
+    "id": "xb-test-sqli",
+    "name": "test SQLi",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-sqli",
+    "sid_in": [9103001]
+  },
+  {
+    "id": "xb-test-header",
+    "name": "test header",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-header",
+    "sid_in": [9103002]
+  },
+  {
+    "id": "xb-test-no-meta",
+    "name": "test no meta",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-no-meta",
+    "sid_in": [9999999]
+  }
+]

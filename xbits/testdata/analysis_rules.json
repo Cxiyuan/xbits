@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {
+      "id": "xb-analysis-sqli",
+      "name": "web-sqli-analysis",
+      "source": "suricata",
+      "kind": "alert",
+      "sid_in": [9103001],
+      "score": 20,
+      "threshold": 20,
+      "reason": "suricata-web-sqli"
+    }
+  ]
+}

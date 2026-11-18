@@ -1,29 +1,29 @@
 # Zeek 规则归档说明
 
-Zeek 不承担 Snort/WAF/PVS 的 content/pcre 签名匹配，只消费**行为、状态、情报与白名单**。
-本目录两类内容：
+Zeek 只做**行为分析**，不承担 Snort/WAF/PVS 的 `content/pcre` 签名匹配。
+签名命中全部在 Suricata；关联和误报收敛在 xbits。
 
-- 自研场景脚本：`DNS隧道与带外检测/`、`Web漏洞利用/`、`侦察与攻击工具指纹/`、`后门通信/`；
-- 外部探针转换：`Web行为/`、`威胁情报/`（由 `规则检测/convert_probe_zeek.py` 生成）。
+## 自研行为脚本
 
-## 已转换（来自外部探针明文配置）
+| 脚本 | 行为 |
+|---|---|
+| `DNS隧道与带外检测/dns_tunnel_score.zeek` | DNS 查询突发、TXT 突发、NXDOMAIN 突发 |
+| `侦察与攻击工具指纹/recon_score.zeek` | 404/403 突发、unique URI 突发、请求频率 |
+| `后门通信/backdoor_c2_score.zeek` | 同源重复 URI/固定请求节奏（不再做 cmd/shell 内容匹配） |
+
+## 数据 / 情报脚本
 
 | 文件 | 来源 | 用途 |
 |---|---|---|
-| `Web行为/crawler_whitelist.zeek` | `utm/search_spider.ini` | 爬虫 IP/网段/UA 校验；UA 像爬虫但源 IP 不在爬虫网段 → 伪造爬虫告警 |
-| `威胁情报/white_domains.zeek` | `utm/top100_white_domain.ini` | 业务白域名集合与 `is_white_domain()`，供误报抑制 |
-| `威胁情报/public_dns_servers.zeek` | `utm/common_dns_server.ini` | 公共 DNS 服务器集合，供 DNS 行为上下文 |
-| `威胁情报/botnet_apps.zeek` | `utm/utm_app_botnet.ini` | IRC/挖矿/Gh0st 等活动名称、危险等级、处置建议的归一化表 |
+| `威胁情报/white_domains.zeek` | `top100_white_domain.ini` | 业务白域名集合与 `is_white_domain()`，供误报抑制 |
+| `威胁情报/public_dns_servers.zeek` | `common_dns_server.ini` | 公共 DNS 服务器集合，供 DNS 行为上下文 |
+| `威胁情报/botnet_apps.zeek` | `utm_app_botnet.ini` | IRC/挖矿/Gh0st 等名称、危险等级、处置建议的归一化表 |
 
-## 不适合 Zeek 的部分（保留在 Suricata/xbits）
+## 已移出 Zeek 的内容
 
-- `sf_snort` / `waf` / `pvs` 的 `content`/`pcre` 规则：属于 Suricata 签名匹配；
-- `ua_blacklist.ini` / `ua_graylist.ini`：只有哈希后的 rule id，无明文 UA，无法生成 Zeek 名单；
-- `dynamic_domain.ini`：domain 字段为哈希值，无明文域名；
-- `sls/*.encry`：加密黑名单，需 SLS 客户端解密；
-- `dns_detect_tld.ini`：Public Suffix List，用于域名归一化而非检测；
-- `conficker_detect.ini`：仅 DGA 参数，缺少 Conficker 域名生成算法，不能直接变成检测规则；
-- `utm_abnormal_traffic_rules.ini`：仅 CRC/阈值参数，无明文语义。
+- `Web漏洞利用/web_exploit_chain.zeek`：原脚本重新做 SQLi/XXE/Log4Shell 等 content 匹配，属于 Suricata 签名；
+- `Web行为/crawler_whitelist.zeek`：UA 特征匹配属于签名，已移除；
+- 自研场景 Lua 脚本：保留在 Suricata `lua/`，作为签名增强；Zeek 不承载 Lua。
 
 ## 重新生成
 

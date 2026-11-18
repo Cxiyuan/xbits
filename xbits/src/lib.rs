@@ -5,6 +5,7 @@
 //! The output is consumed by `xbits/zeek/xbits_suricata.zeek` through Zeek's
 //! raw Input reader in execute/stream mode.
 
+pub mod analysis;
 pub mod engine;
 pub mod hook;
 pub mod model;

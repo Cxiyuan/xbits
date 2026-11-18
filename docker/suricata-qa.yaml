@@ -31,7 +31,11 @@ outputs:
       filetype: xbits-hook
       filename: xbits-hook
       types:
-        - alert
+        - alert:
+            payload: yes
+            payload-buffer-size: 16kb
+            http-body: yes
+            http-body-printable: yes
 
 # 薄 hook 插件
 plugins:

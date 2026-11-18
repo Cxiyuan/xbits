@@ -3,6 +3,7 @@ use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 
+use crate::analysis::AnalysisPipeline;
 use crate::engine::Engine;
 use crate::model::{HookEvent, Rule};
 
@@ -43,6 +44,55 @@ fn parse_event(line: &str) -> Option<HookEvent> {
         .get("proto")
         .and_then(serde_json::Value::as_str)
         .map(str::to_string);
+    ev.app_proto = v
+        .get("app_proto")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.tx_id = v
+        .get("tx_id")
+        .and_then(serde_json::Value::as_u64);
+    ev.payload = v
+        .get("payload")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.payload_printable = v
+        .get("payload_printable")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.request_body = v
+        .pointer("/http/request_body")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.response_body = v
+        .pointer("/http/response_body")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.dns_query = v
+        .pointer("/dns/queries/0/rrname")
+        .or_else(|| v.pointer("/dns/query"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.sni = v
+        .pointer("/tls/sni")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.direction = v
+        .get("direction")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.method = v
+        .pointer("/http/http_method")
+        .or_else(|| v.pointer("/http/method"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.uri = v
+        .pointer("/http/url")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    ev.user_agent = v
+        .pointer("/http/http_user_agent")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
     ev.host = v
         .pointer("/http/hostname")
         .and_then(serde_json::Value::as_str)
@@ -63,6 +113,17 @@ fn parse_event(line: &str) -> Option<HookEvent> {
                 .get("signature")
                 .and_then(serde_json::Value::as_str)
                 .map(str::to_string);
+            ev.action = alert
+                .get("action")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            ev.category = alert
+                .get("category")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            ev.severity = alert
+                .get("severity")
+                .map(|sev| sev.to_string());
         }
     }
     ev.extra = v.as_object().cloned().unwrap_or_default();
@@ -86,6 +147,15 @@ pub fn run_hook_listener<W: Write + ?Sized>(
     socket_path: &str,
     rules: Vec<Rule>,
     writer: &mut W,
+) -> io::Result<()> {
+    run_hook_listener_with_analysis(socket_path, rules, writer, None)
+}
+
+pub fn run_hook_listener_with_analysis<W: Write + ?Sized>(
+    socket_path: &str,
+    rules: Vec<Rule>,
+    writer: &mut W,
+    pipeline: Option<&AnalysisPipeline>,
 ) -> io::Result<()> {
     let path = Path::new(socket_path);
     if path.exists() {
@@ -140,7 +210,16 @@ pub fn run_hook_listener<W: Write + ?Sized>(
                     continue;
                 }
             };
+            if ev.kind.eq_ignore_ascii_case("match_context") {
+                if let Some(pipeline) = pipeline {
+                    pipeline.submit_event(ev);
+                }
+                continue;
+            }
             for alert in engine.process(&ev) {
+                if let Some(pipeline) = pipeline {
+                    pipeline.submit_alert(ev.clone(), alert.clone());
+                }
                 match serde_json::to_string(&alert) {
                     Ok(json) => {
                         writeln!(writer, "{json}")?;

@@ -1,3 +1,0 @@
-# Converted from Sangfor export: etc_fw/pvs/rules/success/component.rules
-# rules=2 skipped=461 dup_sid=0
-alert tcp any any -> any $HTTP_PORTS (msg:"Dahua Onvif Authorization Vulnerability"; flow:to_client,established; content:"JFIF"; nocase; sid:17115353; rev:1; flowbits:isset,xb_dep_11070336;)

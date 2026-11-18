@@ -191,6 +191,60 @@ workflow run `42455328044` 三项 job 全部通过：
   接受一个 Suricata 连接，读到 EOF 后退出并删除 socket。
 - 本组件不兼容其他 Suricata/Zeek 版本，只针对 8.0.8 / 9.0.1。
 
+## 7.1 深度分析流水线（可选）
+
+Hook 事件可以在 `--hook-socket` 模式下进入异步分析流水线：
+
+```bash
+xbits --hook-socket /var/run/xbits/hook.sock \
+      --rules xbits/rules/analysis.json \
+      --sid-library /opt/xbits/analysis-rules/sid_library.json \
+      --rules-meta /opt/xbits/analysis-rules/rules_meta.json \
+      --validator-cmd 'python /opt/xbits/tools/validate.py' \
+      --es-url http://127.0.0.1:9200/xbits-events/_doc \
+      --analysis-file /var/log/xbits/analysis.jsonl \
+      --match-buffers /opt/xbits/analysis-rules/规则库元数据/match_buffers.json \
+      --suppression-ttl-sec 300
+```
+
+- `--validator-cmd`：接收一行 JSON（event/alert/metadata/payload），输出
+  `{"verdict":"true_positive|false_positive|uncertain","confidence":90,"reason":"...","evidence":["..."]}`；
+- `--es-url`：直接 HTTP POST 到 Elasticsearch（当前实现支持 `http://`）；
+  `--es-auth` 可传 `ApiKey ...` 或 `Basic ...`；
+  `--es-command` 可接 `curl` 等命令，支持 HTTPS/认证；
+- `--analysis-file`：同时落一份归一化 JSONL，便于回放；
+- `--match-buffers`：按 SID 加载规则实际匹配的 buffer，
+  由 `规则检测/build_match_buffers.py` 生成；
+- `--suppression-ttl-sec`：xbits 内存抑制 TTL，默认 300 秒。
+
+**白名单只在 xbits 内部生效**：
+
+```text
+source + SID + 五元组 + 该 SID 声明的匹配 buffer 值
+```
+
+误报判定后写入 xbits `SuppressionStore`，后续相同 key 的事件在写 ES 前被丢弃；
+不会向 Suricata/Zeek 发送任何 dataset、pass 规则或规则重载命令。
+被抑制事件只写审计文件，不写主 ES 索引。
+
+White-list key 由 `xbits/src/analysis.rs` 的 `suppression_key()` 生成；
+`match_buffers.json` 告诉 xbits 该 SID 应取 `payload`、`http.uri`、
+`http.request_body`、`dns.query` 还是其他 buffer。优先使用 Suricata 核心补丁导出的
+`match_context` 事件（完整 sticky buffer Base64）；EVE/Zeek 字段只作为回退。
+buffer 取不到时**不建立抑制 key**，避免拿错字段做白名单。
+
+EVE 需要开启 payload：
+
+```yaml
+eve-log:
+  types:
+    - alert:
+        payload: yes
+        payload-buffer-size: 16kb
+```
+
+否则分析器只能拿到告警元数据，不能做 payload 特征验证。
+
 ## 8. 中央分析引擎（薄 hook 平面）
 
 在原有 EVE 桥之外，`xbits` 新增 `--hook-socket` 模式：接收 **Suricata/Zeek 进程内薄插件**

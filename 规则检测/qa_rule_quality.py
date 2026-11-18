@@ -121,6 +121,8 @@ def parse_rule(line: str):
     pcres = [m.group(1) for m in re.finditer(r'\bpcre\s*:\s*"((?:[^"\\]|\\.)*)"', body)]
     primitives = set(re.findall(r"\b(" + "|".join(sorted(PRIM_KW)) + r")\s*:", body, re.I))
     buffers = set(re.findall(r"\b(" + "|".join(sorted(HTTP_BUFFERS)) + r")\b", body, re.I))
+    if re.search(r"\btls\.alpn\b", body, re.I):
+        buffers.add("tls.alpn")
     has_flow = bool(re.search(r"\bflow\s*:", body, re.I))
     noalert = bool(re.search(r"\bnoalert\b", body, re.I))
     pattern = " ".join(sorted(x[0] for x in pos_contents)) + " || " + " ".join(sorted(pcres))
@@ -160,12 +162,13 @@ def classify(r, tier: str | None):
     if not has_pos_primitive(r):
         flags.append("no-positive-primitive")
     if len(pos) == 1 and pos[0][1] <= 3 and not r["pcres"] and not r["primitives"]:
-        if not any(x in r["buffers"] or x.startswith("http_") for x in r["tokens"]) and not any(
+        if "tls.alpn" not in r["buffers"] and not any(x in r["buffers"] or x.startswith("http_") for x in r["tokens"]) and not any(
             x.lower().startswith(("depth:", "offset:", "within:", "distance:")) for x in r["tokens"]
         ):
             flags.append("short-single-content")
     if len(pos) == 1 and pos[0][1] <= 6 and not r["pcres"] and not r["primitives"]:
-        flags.append("generic-single-content")
+        if "tls.alpn" not in r["buffers"]:
+            flags.append("generic-single-content")
     if not pos and r["pcres"]:
         for p in r["pcres"]:
             pat = p.strip()

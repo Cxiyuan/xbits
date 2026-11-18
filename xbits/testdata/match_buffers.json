@@ -1,0 +1,20 @@
+{
+  "9103001": {
+    "buffers": ["http.uri"],
+    "primary": "http.uri",
+    "has_payload": false,
+    "source": "testdata"
+  },
+  "9103002": {
+    "buffers": ["http.header"],
+    "primary": "http.header",
+    "has_payload": false,
+    "source": "testdata"
+  },
+  "9103003": {
+    "buffers": ["payload"],
+    "primary": "payload",
+    "has_payload": true,
+    "source": "testdata"
+  }
+}

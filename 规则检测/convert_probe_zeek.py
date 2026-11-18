@@ -5,10 +5,11 @@
 Snort/WAF/PVS 的 content/pcre 规则不适合 Zeek；本转换器只提取
 真正适合 Zeek 的**明文情报与白名单**，生成可直接加载的 Zeek 脚本：
 
-  规则检测/zeek/Web行为/crawler_whitelist.zeek   搜索引擎爬虫 IP/网段/UA 校验
   规则检测/zeek/威胁情报/white_domains.zeek      业务白域名（减少 DNS/HTTP 误报）
   规则检测/zeek/威胁情报/public_dns_servers.zeek 公共 DNS 服务器清单
   规则检测/zeek/威胁情报/botnet_apps.zeek        僵尸网络/挖矿应用元数据
+
+Zeek 不做 content/UA 签名匹配；爬虫 UA 签名归 Suricata。
 
 输入：桌面 `流量检测规则` 导出目录。
 无法转换的内容（哈希化 UA 名单、SLS 加密黑名单、Snort 内容规则、
@@ -232,7 +233,7 @@ def main() -> int:
         print(f"missing UTM dir: {src}", file=sys.stderr)
         return 2
 
-    write_crawler_whitelist(src / "search_spider.ini", OUT / "Web行为" / "crawler_whitelist.zeek")
+    # Zeek 只做行为/情报数据；爬虫 UA 匹配属于 Suricata 签名，不再生成 crawler_whitelist.zeek。
     write_white_domains(src / "top100_white_domain.ini", OUT / "威胁情报" / "white_domains.zeek")
     write_public_dns(src / "common_dns_server.ini", OUT / "威胁情报" / "public_dns_servers.zeek")
     write_botnet_apps(src / "utm_app_botnet.ini", OUT / "威胁情报" / "botnet_apps.zeek")

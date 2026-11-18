@@ -21,10 +21,11 @@
   * classtype 全部剥离（类别语义走 xbits sid_library；
     未知 classtype 会导致 Suricata 拒绝加载）；
   * mail_uri / cloud audit 规则不进 Suricata；
-  * PVS depend/scope 语义 → Suricata flowbits 门控：
-      被依赖的请求规则追加 flowbits:set,xb_dep_<sid>；
-      带 depend/scope 的响应规则追加 flowbits:isset,xb_dep_<主依赖>；
-      无任何依赖的成功确认规则不进 Suricata（避免 200 OK 泛匹配噪声）。
+  * Suricata 只做签名命中：
+       - noalert / flowbits / depend/scope 状态链与请求→响应关联规则
+         不进入 active 规则，依赖写入 success_rules.json 交 xbits；
+       - threshold 等行为选项剥离；DNS/侦察/C2 行为由 Zeek 脚本负责；
+  * 成功确认依赖元数据完整保留，active 规则不注入 flowbits。
 """
 from __future__ import annotations
 
@@ -137,6 +138,7 @@ STRIP_KWS = [
     re.compile(r"\bdepend\s*:\s*[^;]+;?", re.I),
     re.compile(r"\bdepended\s*:\s*[^;]+;?", re.I),
     re.compile(r"\baction\s*:\s*[^;]*audit[^;]*;?", re.I),
+    re.compile(r"\bthreshold\s*:\s*[^;]+;?", re.I),
 ]
 # 仅用于元数据保留；检测语义由 semantic_skip_reason / token 转换处理
 REFERENCE_RE = re.compile(r"\breference\s*:\s*([^;]+)", re.I)
@@ -663,6 +665,27 @@ def main() -> int:
                     n_skip += 1
                     continue
 
+                # Suricata 只做签名命中：状态链/无告警规则不进入
+                if re.search(r"\bnoalert\b", line, re.I):
+                    meta["skip"] = "state-noalert"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
+                # 源规则自带的 flowbits 属于跨包状态关联，交给 xbits
+                if re.search(r"\bflowbits\s*:", line, re.I):
+                    meta["skip"] = "flowbits-correlation"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
+                # depend/scope 的响应确认规则属于请求→响应关联，交给 xbits
+                if deps:
+                    meta["skip"] = "dependency-correlation"
+                    rules_meta[str(sid)] = meta
+                    n_skip += 1
+                    continue
+
                 # 不能等价转换的语义：不降级使用，直接剔除并保留元数据
                 sem_reason = semantic_skip_reason(line)
                 if sem_reason:
@@ -718,8 +741,8 @@ def main() -> int:
                     n_dupe += 1
                     continue
 
-                flowbit_set = sid if sid in dep_refs else None
-                rule = convert_rule(line, flowbit_set, primary_dep)
+                flowbit_set = None
+                rule = convert_rule(line, flowbit_set, None)
                 if rule is None:
                     meta["skip"] = "convert-rule-none"
                     rules_meta[str(sid)] = meta
@@ -859,19 +882,7 @@ def main() -> int:
             if count:
                 rule_files.append((str(path.relative_to(ROOT)).replace("\\", "/"), count))
 
-    kept_success = []
-    for e in success_rules:
-        if e["sid"] not in emitted:
-            continue
-        deps = e.get("depends", []) + e.get("scopes", [])
-        if deps and deps[0] not in emitted:
-            continue
-        kept_success.append(e)
-    success_rules = kept_success
-    (OUT_XBITS / "success_rules.json").write_text(
-        json.dumps(success_rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-    )
-
+    # 成功确认依赖保留为 xbits 元数据（active 规则不再注入 flowbits）
     # 二次清理，确保清理阶段新写入/遗漏的 isset 规则也被处理
     cleanup2 = cleanup_dead_flowbits(OUT_SURICATA)
     if cleanup2["removed"]:
@@ -904,19 +915,7 @@ def main() -> int:
         if not any(category_dir.iterdir()):
             category_dir.rmdir()
 
-    kept_success = []
-    for e in success_rules:
-        if e["sid"] not in emitted2:
-            continue
-        deps = e.get("depends", []) + e.get("scopes", [])
-        if deps and deps[0] not in emitted2:
-            continue
-        kept_success.append(e)
-    success_rules = kept_success
-    (OUT_XBITS / "success_rules.json").write_text(
-        json.dumps(success_rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-    )
-
+    # success_rules.json 保留全量依赖元数据，供 xbits 后续关联
     # ---- 6) Suricata 加载验证配置 ----
     validate_yaml = [
         "%YAML 1.1",

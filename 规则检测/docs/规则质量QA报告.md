@@ -8,15 +8,15 @@
 
 | 项目 | 数量 |
 |---|---:|
-| 全部 active 规则 | 18,885 |
-| 外部探针转换规则 | 18,811 |
+| 全部 active 规则 | 17,477 |
+| 外部探针转换规则 | 17,403 |
 | 自研场景规则 | 74 |
 | weak tier 规则 | 2,668 |
-| 静态高风险 | 0（已隔离 1 条） |
-| 静态中风险 | 488 |
-| 无告警状态链规则（`noalert`） | 433 |
-| 重复 content/pcre 组 | 821 组 / 2,178 条规则 |
-| 相同 msg 组 | 2,003 组 |
+| 静态高风险 | 0 |
+| 静态中风险 | 55 |
+| 无告警状态链规则（`noalert`） | 0（场景 flowbits 19 条） |
+| 重复 content/pcre 组 | 742 组 / 1,564 条规则 |
+| 相同 msg 组 | 1,647 组 |
 
 现有 CI 负样本只有 5 个，且 `qa-all`/规则矩阵主要覆盖自研场景；
 **不能把 CI 的 0/5 误报率当成全量规则质量结论**。
@@ -31,7 +31,7 @@
 
 当前 active 规则中已无静态高风险规则。
 
-### 2.2 中风险：488 条“单一短内容/无锚点”规则
+### 2.2 中风险：55 条“单一短内容/无锚点”规则
 
 典型特征：只有 1 个 `content`，长度 ≤6，且没有 `pcre`、`byte_test`、
 `dsize`、`urilen`、`filemagic`、`depth/offset/within/distance` 等约束。
@@ -58,46 +58,53 @@
 - weak 规则单独加载，交给 xbits 做低置信度/上下文收敛；
 - **当前 xbits 尚未消费 `tier=weak`，所以不能依赖 xbits 自动降噪**。
 
-### 2.4 状态链规则：433 条
+### 2.4 状态链规则：自研场景保留 19 条 flowbits
 
-`flowbits:noalert` 的状态/链式规则本身不告警，不应算误报；需要确认它们都有
-后续消费规则。当前 orphan `flowbits:isset` 已清理为 0，但状态链规则仍需在
-变更规则时回归验证。
+转换规则不再注入 flowbits；自研场景保留 19 条 flowbits 状态链、41 条 Lua 规则、
+63 条 threshold 条件，用于在签名阶段减少误报、提高精确度。
+当前 active 规则无 `noalert`，也没有转换规则残留的 flowbits。
 
 ### 2.5 重复与近似重复
 
-- 821 组规则使用完全相同的 content/pcre 组合，共 2,178 条；
-- 最大一组是 296 条 PVS SQL 响应确认规则，共用
-  `content:"HTTP/1." + pcre:"HTTP/1.[10] 200 OK"`，靠不同 flowbits 区分；
-  它们不是简单的完全重复，但属于“同一模板批量生成”，可合并/引用化；
-- 2,003 组规则 msg 相同，例如 `Trojan-Ransom.Cerber` 952 个 SID、
+- 742 组规则使用完全相同的 content/pcre 组合，共 1,564 条；
+- 最大一组仍是 PVS SQL 响应确认模板，靠不同依赖 SID 区分；
+- 1,647 组规则 msg 相同，例如 `Trojan-Ransom.Cerber` 952 个 SID、
   `XSS Scripting Attack` 214 个 SID、`WebShell Detect` 207 个 SID；
   这些需要按 SID 族管理，不能按 msg 做告警去重。
 
+## 2.6 Lua 强化
+
+已为 **7,024 条转换规则**挂载 Lua 上下文增强脚本，覆盖：
+
+- WebShell：3,393 条（响应 2,847 / 请求 546）
+- SQLi：543 条（含扫描器内 2 条特例）
+- 敏感关键词：1,488 条
+- 扫描器：184 条（仅工具指纹子集）
+- 信息泄露：486 条（响应 81 / 请求 405；另扫描器内 1 条特例）
+- 恶意 URL：52 条
+- 命令执行/注入：314 条
+- 目录遍历/文件包含：104 条
+- 文件上传：31 条
+- XSS：428 条
+
+自研场景另有 41 条 `lua:` 规则、33 个 Lua 脚本保留。
+详见 [Lua强化方案.md](Lua强化方案.md) 与 [Lua强化清单.json](Lua强化清单.json)。
+
 ## 3. Suricata 与 Zeek 检测内容重叠
 
-当前 4 个自研场景都存在两层检测：Suricata 规则/Lua + Zeek 行为脚本。
-两者都会写各自日志，但 xbits 没有自动按 SID 去重。
+清理后按引擎拆分，**不再有 content/pcre 双写**：
 
-| 场景 | Suricata 规则数 | Zeek 脚本 | 重叠情况 |
+| 场景 | Suricata 签名/Lua 规则 | Zeek 行为脚本 | 当前边界 |
 |---|---:|---|---|
-| DNS 隧道 | 13 | `dns_tunnel_score.zeek` | Zeek 50 查询/30 NXDOMAIN 阈值，与 Suricata 高频 DNS 规则、Lua 规则重叠；Zeek 引用 9109103/9109201/9109202 等 SID |
-| Web 漏洞利用 | 9 | `web_exploit_chain.zeek` | Zeek `inspect()` 重新匹配 SQLi/XXE/Log4Shell/路径穿越/SSRF/SSTI/WebShell/反序列化/命令注入，与 9 条 Suricata 规则几乎一一重叠 |
-| 侦察/扫描 | 41 | `recon_score.zeek` | Zeek 统计 404/403 突发、unique URI，与 Suricata 的 404 burst、scanner UA、路径规则重叠；Zeek 引用 4 个 SID |
-| 后门/C2 | 11 | `backdoor_c2_score.zeek` | Zeek `inspect()` 匹配 cmd/z0/pass/exec/shell.php，与 WebShell/命令注入规则重叠；C2 重复 URI 与信标规则重叠 |
-| 爬虫白名单 | 侦察/Web 扫描器规则 | `crawler_whitelist.zeek` | 白名单/伪造爬虫逻辑与 Suricata scanner UA 规则部分重叠；Zeek 更偏 FP 抑制 |
+| DNS 隧道 | 13 | `dns_tunnel_score.zeek` | Suricata 用 Lua/签名判断 OOB 域名、长标签、DoH/DoT；Zeek 统计查询/NXDOMAIN 突发 |
+| Web 漏洞利用 | 9 | 无 | Suricata 的 Lua 负责 SQLi/XXE/Log4Shell 等签名增强；Zeek 不再重复内容匹配 |
+| 侦察/扫描 | 41 | `recon_score.zeek` | Suricata 用 Lua/UA/路径签名；Zeek 统计 404/403、unique URI 频率 |
+| 后门/C2 | 11 | `backdoor_c2_score.zeek` | Suricata 用 Lua/内容签名；Zeek 只统计同源重复 URI |
+| 爬虫/Web 行为 | 已移除 | 已移除 | UA 签名归 Suricata，Zeek 不再做 UA/content 匹配 |
 
-**结论：存在实质性重叠，且当前是“双写”而不是“单主检测 + 单副关联”。**
-如果同时加载，同一攻击可能产生 Suricata alert + Zeek correlation log 两份结果。
-
-建议按场景确定唯一检测 owner：
-
-- Suricata：负责一次性 content/pcre 命中；
-- Zeek：只做计数、时序、阈值、上下文富化，不再重新做内容签名；
-- xbits：按 `community_id`/5-tuple/SID 去重、评分、成功确认。
-
-如果短期不能改 Zeek 脚本，至少应在 xbits 以 `community_id + related_sids`
-做 5 分钟窗口去重，避免双告警。
+**结论：** Suricata 与 Zeek 现在是“签名命中”和“行为统计”两个维度，
+同一流量可能同时产生一条签名告警和一条行为关联日志，但不再重复做同一内容匹配。
+xbits 负责按 `community_id`/5-tuple 把两类事件关联、评分、去重和成功确认。
 
 ## 4. xbits 规则评估
 
@@ -113,7 +120,7 @@
 
 证据：
 
-- `analysis.json` 已改为 SID 精确选择：`xb-suricata-web-sqli` 使用 1,768 个 active SQLi SID，
+- `analysis.json` 已改为 SID 精确选择：`xb-suricata-web-sqli` 使用 1,395 个 active SQLi SID，
   `xb-suricata-recon` 使用 41 个自研侦察 SID，不再使用 `signature_contains:"SQL"`；
 - `xb-zeek-appid-scanner` 用事件 `XbitsAlert::alert` + `alert_kind=scanner`；
 - 引擎的 `require_context` 只检查同一 5-tuple 是否已有 Zeek HTTP context；
@@ -128,7 +135,7 @@
 
 | 规则 | 风险 |
 |---|---|
-| `xb-suricata-web-sqli` | 已收窄到 1,768 个 active SQLi SID，不再是 1,185 条含 SQL 的宽匹配；但 SID 数量仍大，`require_context` 只要求任意 HTTP context，`benign_uri_contains` 只有 3 个路径，仍需实网负样本验证 |
+| `xb-suricata-web-sqli` | 已收窄到 1,395 个 active SQLi SID，不再是 1,185 条含 SQL 的宽匹配；但 SID 数量仍大，`require_context` 只要求任意 HTTP context，`benign_uri_contains` 只有 3 个路径，仍需实网负样本验证 |
 | `xb-suricata-recon` | 41 个自研侦察 SID，范围明确，但仍依赖后续上下文置信度 |
 | `xb-zeek-appid-scanner` | 所有 app-id scanner 告警直接转发，没有上下文/阈值/误报抑制 |
 | `default.json` 的 `xb-zeek-http-request` | 对每个 HTTP request 命中；即使 threshold 已生效，score=5、threshold=5，每个 request 仍会输出，属于 legacy/测试配置，不能生产使用 |
@@ -152,12 +159,13 @@
 1. SID `13169997` 已加入 `docs/false-positive-sids.txt` 并从 active 规则剔除；
 2. weak tier 已拆分为独立加载配置：`docker/probe-rules-weak.yaml`；
    生产默认配置 `docker/probe-rules-production.yaml` 不加载 weak；
-3. `xbits/rules/analysis.json` 已改为 SID 精确选择，并接入 `threshold` 判断。
+3. `xbits/rules/analysis.json` 已改为 SID 精确选择，并接入 `threshold` 判断；
+4. 7,024 条转换规则已挂载 Lua 上下文增强脚本；自研 33 个 Lua/41 条规则保留。
 
 后续：
 
-- 复核 488 条中风险单内容规则，按类别补字段/第二特征或降级；
-- 821 组同 pattern、2,003 组同 msg 规则按 SID 族合并/引用化；
-- Zeek `web_exploit_chain.zeek`、`backdoor_c2_score.zeek` 不再重新做内容签名，
-  改为消费 Suricata alert 或只做聚合；
+- 复核 55 条中风险单内容规则，按类别补字段/第二特征或降级；
+- 742 组同 pattern、1,647 组同 msg 规则按 SID 族合并/引用化；
+- Zeek 已移除 `web_exploit_chain.zeek` 的内容签名，`backdoor_c2_score.zeek` 已改为纯行为；
+  后续新增 Zeek 逻辑只允许统计/频率/时序类；
 - xbits 增加窗口/冷却、`success_rules`、`tier=weak` 和 `community_id + SID` 去重。

@@ -94,32 +94,18 @@ python3 测试用例/generate_recon_pcaps.py --out 测试用例/recon_pcap
 | `recon_nuclei_403_html.pcap` | Nuclei + `/.env` + HTML 403 登录页 | 9101005/9101101/9101107 |
 | `recon_body_201.pcap` | sqlmap + `/.git/config` + 201 + `[core]` | 9101004/9101101/9101102/9101108 |
 
-断言文件为 `recon_cases.json`，当前共 29 个 PCAP；检测规则/Lua 在 `规则检测/侦察与攻击工具指纹/`。
+断言文件为 `recon_cases.json`，当前保留 13 个可用签名用例；行为统计由 Zeek 负责。
 
 ## 4. Web 漏洞利用场景
 
-生成命令：
+自研 Web Lua 评分脚本已移除；Suricata 只保留一条原生 SQLi 签名（9103001）。
+其余 Web 漏洞利用签名由 `规则检测/suricata/Web攻击/` 的转换规则覆盖。
+`测试用例/web_pcap/` 仍保留给 xbits hook / Zeek 薄插件测试使用。
 
 ```bash
 python3 -m pip install scapy==2.6.1
 python3 测试用例/generate_web_pcaps.py --out 测试用例/web_pcap
 ```
-
-| PCAP 组 | 场景 | 期望 |
-|---|---|---|
-| `web_sqli_*` | URI/Body 的 UNION、时间、布尔、元数据、报错注入 | 9103001 |
-| `web_traversal_*` / `web_lfi_wrapper` | 路径穿越、编码穿越、Body 穿越、PHP 包装器 | 9103008 |
-| `web_log4shell_*` | Header、嵌套 Header、Body 的 JNDI | 9103013 |
-| `web_cmdi_*` | URI/Body 的命令注入 | 9103015 |
-| `web_deser_*` | Fastjson、OGNL、ThinkPHP、Java 序列化 | 9103018 |
-| `web_ssrf_metadata` | 云元数据 SSRF | 9103101 |
-| `web_xxe` | XML 外部实体 | 9103102 |
-| `web_ssti` | 模板危险对象访问 | 9103103 |
-| `web_upload_webshell` | 脚本扩展名 + PHP 代码 | 9103104 |
-| `web_*_negative` | 正常 SQL 元数据词、相对路径、`${env:}`、`&id=2`、安全 `@type`、外链 URL、普通 XML、`{{name}}`、PDF 上传 | 不命中对应规则 |
-
-断言文件为 `web_cases.json`，共 34 个 PCAP；检测规则/Lua 在 `规则检测/Web漏洞利用/`。
-正例同时 forbid 其他类别 SID，避免跨类别误报；反例 forbid 全部 9 个 SID。
 
 ## 5. 后门通信 / C2 信标场景
 
@@ -158,10 +144,11 @@ python3 测试用例/generate_backdoor_pcaps.py --out 测试用例/backdoor_pcap
 
 | 场景 | Zeek 脚本 | 关联日志 |
 |---|---|---|
-| DNS | `规则检测/DNS隧道与带外检测/zeek/dns_tunnel_score.zeek` | `dns_correlation.log` |
-| 侦察 | `规则检测/侦察与攻击工具指纹/zeek/recon_score.zeek` | `recon_correlation.log` |
-| Web | `规则检测/Web漏洞利用/zeek/web_exploit_chain.zeek` | `web_correlation.log` |
-| 后门/C2 | `规则检测/后门通信/zeek/backdoor_c2_score.zeek` | `backdoor_correlation.log` |
+| DNS | `规则检测/zeek/DNS隧道与带外检测/dns_tunnel_score.zeek` | `dns_correlation.log` |
+| 侦察 | `规则检测/zeek/侦察与攻击工具指纹/recon_score.zeek` | `recon_correlation.log` |
+| 后门/C2 | `规则检测/zeek/后门通信/backdoor_c2_score.zeek` | `backdoor_correlation.log` |
+
+Web 场景不再有 Zeek 内容签名脚本；Web 签名由 Suricata 的 `Web攻击/` 规则覆盖。
 
 联动机制：
 
@@ -194,7 +181,7 @@ python 测试用例/assert_zeek.py \
 
 - `cases.json`：DNS 场景每个 PCAP 的 `require` / `forbid` SID。
 - `recon_cases.json`：侦察场景每个 PCAP 的 `require` / `forbid` SID。
-- `web_cases.json`：Web 漏洞利用场景每个 PCAP 的 `require` / `forbid` SID。
+- `web_cases.json`：Web 场景历史断言，当前仅保留 SQLi 相关用例；不再有独立 Web Lua workflow。
 - `backdoor_cases.json`：规则检测/后门通信/C2 信标场景每个 PCAP 的 `require` / `forbid` SID。
 - `assert_zeek.py`：断言 Zeek `*_correlation.log`，并校验 Suricata EVE `community_id` 交集。
 - `assert_suricata.py`：解析 `eve.json`，断言 `alert.signature_id`。
@@ -242,11 +229,10 @@ python3 测试用例/assert_suricata.py --eve-root 测试用例/out/suricata --c
 
 **最终验证只认 GitHub Actions**：
 
-- `.github/workflows/suricata-dns-tunnel.yml`：DNS 场景规则/Lua/dataset/测试断言变更时运行。
-- `.github/workflows/suricata-recon-tools.yml`：侦察场景规则/Lua/测试断言变更时运行。
-- `.github/workflows/suricata-web-exploit.yml`：Web 漏洞利用场景规则/Lua/测试断言变更时运行。
-- `.github/workflows/suricata-backdoor-c2.yml`：规则检测/后门通信/C2 信标场景规则/Lua/测试断言变更时运行。
-- 上述四个 Suricata workflow 内均包含 Zeek 关联与 community-id 断言；
+- `.github/workflows/suricata-dns-tunnel.yml`：DNS 场景签名/数据集/测试断言变更时运行。
+- `.github/workflows/suricata-recon-tools.yml`：侦察场景签名/测试断言变更时运行。
+- `.github/workflows/suricata-backdoor-c2.yml`：后门/C2 场景签名/测试断言变更时运行。
+- 上述三个 Suricata workflow 内均包含 Zeek 关联与 community-id 断言；
   没有独立根级 Zeek CI。
 - 后续场景若使用 Suricata，新增该场景的 Suricata workflow；若使用 Zeek，
   在该场景目录加入 `.zeek` 并新增该场景的 Zeek workflow；两种都用就都跑。

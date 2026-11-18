@@ -34,6 +34,8 @@ pub struct EngineAlert {
     pub severity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -250,6 +252,7 @@ impl Engine {
             alert_name: ev.alert_name.clone().or_else(|| ev.signature.clone()),
             severity: ev.severity.clone(),
             uid: ev.uid.clone(),
+            context: ctx.and_then(|c| serde_json::to_value(c).ok()),
         })
     }
 
@@ -261,6 +264,9 @@ impl Engine {
     }
 
     pub fn process(&mut self, ev: &HookEvent) -> Vec<EngineAlert> {
+        if ev.kind.eq_ignore_ascii_case("match_context") {
+            return Vec::new();
+        }
         self.prune();
         if let (Some(cid), Some(uid)) = (&ev.community_id, &ev.uid) {
             if !cid.is_empty() && !uid.is_empty() {

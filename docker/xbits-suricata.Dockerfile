@@ -18,6 +18,10 @@ RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules
 
 # 由 CI/本地预先编译好的 Suricata 薄 hook 插件
 COPY xbits/suricata-plugin/xbits-suricata-hook.so /opt/xbits/plugins/
+# 使用打了 xbits match-context 补丁的 Suricata 8.0.8 二进制
+COPY docker/stage/bin/suricata /usr/bin/suricata
+COPY docker/stage/lib/ /usr/local/lib/
+RUN ldconfig
 
 # 规则检测：suricata/ 为 Suricata 规则+Lua，xbits/ 为中央引擎分析规则与元数据
 COPY 规则检测/suricata/ /opt/xbits/rules/suricata/

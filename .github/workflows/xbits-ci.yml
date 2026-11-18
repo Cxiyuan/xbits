@@ -191,6 +191,34 @@ jobs:
           path: 测试用例/zeek_out/xbits-stdin
           if-no-files-found: ignore
 
+  match-context:
+    name: xbits match_context + suppression QA
+    needs: rust
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Download xbits binary
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: xbits-binary
+          path: xbits/target/release
+
+      - name: Make xbits executable
+        run: chmod +x xbits/target/release/xbits
+
+      - name: Verify match_context + suppression behavior
+        run: |
+          set -euo pipefail
+          python xbits/test/qa_xbits_match_context.py \
+            --xbits xbits/target/release/xbits \
+            --validator 'python3 xbits/test/stub_validator.py' \
+            --rules xbits/testdata/match_context_rules.json \
+            --match-buffers xbits/testdata/match_buffers.json
+
   suricata-live:
     name: Suricata 8.0.8 -> xbits -> Zeek 9.0.1 live linkage
     needs: rust
@@ -241,6 +269,7 @@ jobs:
             -o /tmp/suricata-8.0.8.tar.gz
           mkdir -p /tmp/suricata-8.0.8
           tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp/suricata-8.0.8 --strip-components=1
+          python3 "$GITHUB_WORKSPACE/xbits/suricata-plugin/apply_match_context_patch.py" /tmp/suricata-8.0.8
           cd /tmp/suricata-8.0.8
           ./autogen.sh
           ./configure --prefix=/usr/local

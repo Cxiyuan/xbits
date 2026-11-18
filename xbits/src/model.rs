@@ -57,6 +57,30 @@ pub struct HookEvent {
     pub flow_id: Option<String>,
     #[serde(default)]
     pub tx_id: Option<u64>,
+    #[serde(default)]
+    pub payload: Option<String>,
+    #[serde(default)]
+    pub payload_printable: Option<String>,
+    #[serde(default)]
+    pub request_body: Option<String>,
+    #[serde(default)]
+    pub response_body: Option<String>,
+    #[serde(default)]
+    pub dns_query: Option<String>,
+    #[serde(default)]
+    pub sni: Option<String>,
+    #[serde(default)]
+    pub direction: Option<String>,
+    #[serde(default, alias = "buffer")]
+    pub match_context_buffer: Option<String>,
+    #[serde(default, alias = "buffer_b64")]
+    pub match_context_value: Option<String>,
+    #[serde(default)]
+    pub action: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub app_proto: Option<String>,
 
     #[serde(flatten)]
     pub extra: serde_json::Map<String, Value>,

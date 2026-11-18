@@ -74,6 +74,7 @@ jobs:
             -o /tmp/suricata-8.0.8.tar.gz
           mkdir -p /tmp/suricata-8.0.8
           tar -xzf /tmp/suricata-8.0.8.tar.gz -C /tmp/suricata-8.0.8 --strip-components=1
+          python3 "$GITHUB_WORKSPACE/xbits/suricata-plugin/apply_match_context_patch.py" /tmp/suricata-8.0.8
           cd /tmp/suricata-8.0.8
           ./autogen.sh
           ./configure --prefix=/usr/local
@@ -114,6 +115,11 @@ jobs:
 
       - name: Build official-image based xbits-suricata
         run: |
+          set -euo pipefail
+          mkdir -p docker/stage/bin docker/stage/lib
+          cp /usr/local/bin/suricata docker/stage/bin/suricata
+          find /usr/local/lib -maxdepth 1 -name 'libsuricata*' -exec cp -a {} docker/stage/lib/ \;
+          touch docker/stage/lib/.keep
           docker build --pull \
             -t xbits-suricata \
             -f docker/xbits-suricata.Dockerfile \
@@ -141,7 +147,9 @@ jobs:
           set -euo pipefail
           docker run --rm -v "$PWD:/work" -w /tmp --entrypoint zeek xbits-zeek \
             -b -Cr /work/测试用例/web_pcap/web_sqli_uri_union.pcap \
-            /opt/xbits/zeek-rules/Web行为/crawler_whitelist.zeek \
+            /opt/xbits/zeek-rules/DNS隧道与带外检测/dns_tunnel_score.zeek \
+            /opt/xbits/zeek-rules/侦察与攻击工具指纹/recon_score.zeek \
+            /opt/xbits/zeek-rules/后门通信/backdoor_c2_score.zeek \
             /opt/xbits/zeek-rules/威胁情报/white_domains.zeek \
             /opt/xbits/zeek-rules/威胁情报/public_dns_servers.zeek \
             /opt/xbits/zeek-rules/威胁情报/botnet_apps.zeek \

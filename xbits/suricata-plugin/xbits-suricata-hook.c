@@ -251,6 +251,88 @@ static void XbitsEveDeinit(void *init_data)
     (void)init_data;
 }
 
+static size_t XbitsBase64Len(uint32_t len)
+{
+    return (((size_t)len + 2) / 3) * 4;
+}
+
+static void XbitsBase64(const uint8_t *in, uint32_t len, char *out)
+{
+    static const char table[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    size_t o = 0;
+    for (uint32_t i = 0; i < len; i += 3) {
+        uint32_t b0 = in[i];
+        uint32_t b1 = (i + 1 < len) ? in[i + 1] : 0;
+        uint32_t b2 = (i + 2 < len) ? in[i + 2] : 0;
+        uint32_t n = (b0 << 16) | (b1 << 8) | b2;
+        out[o++] = table[(n >> 18) & 63];
+        out[o++] = table[(n >> 12) & 63];
+        out[o++] = (i + 1 < len) ? table[(n >> 6) & 63] : '=';
+        out[o++] = (i + 2 < len) ? table[n & 63] : '=';
+    }
+    out[o] = '\0';
+}
+
+static void XbitsMatchContextExport(uint32_t sid, const Packet *p, uint64_t tx_id,
+        const char *buffer, const uint8_t *data, uint32_t data_len, void *user)
+{
+    (void)user;
+    if (p == NULL || buffer == NULL || data == NULL || data_len == 0)
+        return;
+
+    char src[46] = {0};
+    char dst[46] = {0};
+    if (PacketIsIPv4(p)) {
+        PrintInet(AF_INET, (const void *)&(p->src.addr_data32[0]), src, sizeof(src));
+        PrintInet(AF_INET, (const void *)&(p->dst.addr_data32[0]), dst, sizeof(dst));
+    } else if (PacketIsIPv6(p)) {
+        PrintInet(AF_INET6, (const void *)&(p->src.address), src, sizeof(src));
+        PrintInet(AF_INET6, (const void *)&(p->dst.address), dst, sizeof(dst));
+    } else {
+        return;
+    }
+
+    char buf_name[128] = {0};
+    XbitsJsonEscape(buffer, buf_name, sizeof(buf_name));
+    size_t b64_len = XbitsBase64Len(data_len);
+    char *b64 = (char *)malloc(b64_len + 1);
+    if (b64 == NULL)
+        return;
+    XbitsBase64(data, data_len, b64);
+
+    int prefix_len = snprintf(NULL, 0,
+            "{\"source\":\"suricata\",\"kind\":\"match_context\","
+            "\"sid\":%u,\"src\":\"%s\",\"dst\":\"%s\",\"sport\":%u,\"dport\":%u,"
+            "\"proto\":\"%s\",\"tx_id\":%llu,\"buffer\":\"%s\",\"buffer_len\":%u,"
+            "\"buffer_b64\":\"",
+            (unsigned)sid, src, dst, (unsigned)p->sp, (unsigned)p->dp,
+            XbitsProtoName(p->proto), (unsigned long long)tx_id, buf_name,
+            (unsigned)data_len);
+    if (prefix_len < 0) {
+        free(b64);
+        return;
+    }
+    size_t total = (size_t)prefix_len + b64_len + 2;
+    char *line = (char *)malloc(total);
+    if (line == NULL) {
+        free(b64);
+        return;
+    }
+    int written = snprintf(line, total,
+            "{\"source\":\"suricata\",\"kind\":\"match_context\","
+            "\"sid\":%u,\"src\":\"%s\",\"dst\":\"%s\",\"sport\":%u,\"dport\":%u,"
+            "\"proto\":\"%s\",\"tx_id\":%llu,\"buffer\":\"%s\",\"buffer_len\":%u,"
+            "\"buffer_b64\":\"%s\"}\n",
+            (unsigned)sid, src, dst, (unsigned)p->sp, (unsigned)p->dp,
+            XbitsProtoName(p->proto), (unsigned long long)tx_id, buf_name,
+            (unsigned)data_len, b64);
+    if (written > 0 && (size_t)written < total)
+        XbitsSendBuf(line, (size_t)written);
+    free(line);
+    free(b64);
+}
+
 static SCEveFileType XbitsEveFileType = {
     .name = "xbits-hook",
     .Init = XbitsEveInit,
@@ -268,6 +350,7 @@ static void XbitsPluginInit(void)
      * paths makes every alert arrive twice in a normal EVE configuration.
      */
     SCRegisterEveFileType(&XbitsEveFileType);
+    XbitsRegisterMatchContextExporter(XbitsMatchContextExport, NULL);
 }
 
 const SCPlugin XbitsPlugin = {

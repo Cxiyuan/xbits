@@ -1,5 +1,5 @@
 # Converted from Sangfor export: etc_fw/sf_snort/rules/trojan.rules
-# rules=1708 skipped=35 dup_sid=0
+# rules=1706 skipped=37 dup_sid=0
 alert tcp any any -> any $HTTP_PORTS (msg:"Trojan Athena Communication"; flow:to_server,established; content:"gate|2E|php"; nocase; content:"a|3d|"; nocase; pcre:"/a\x3D([\w\x2B\x2F\x3d\x25]+)\x26b\x3d([\w\x2b\x2f\x3d\x25]+)\x26c\x3d/i"; sid:10041571;)
 alert tcp any any -> any any (msg:"Trojan HAKOPS RAT v2 Communication"; flow:to_client,established; content:"|5b|BilgileriVer|5d 7c 3d|HAKOPS|3d 7c|"; nocase; sid:10041573;)
 alert tcp any any -> any any (msg:"Mining XMR STAK Communication"; flow:to_server,established; content:"|22|method|22 3A 22|submit|22 2C 22|params|22 3A 7B 22|id|22 3A 22|"; nocase; pcre:"/id\S+job\x5fid\S+cryptonight\x5fgpu/i"; sid:10041574;)
@@ -1669,8 +1669,6 @@ alert udp any any -> any 53 (msg:"Trojan WannaCry Domain Checkin"; flow:to_serve
 alert tcp any any -> any any (msg:"PingPull Trojan Communication"; flow:to_server,established; content:"PROJECT|5F|"; offset:4; depth:8; pcre:"/\x00...PROJECT\x5F(\w)*\x5F[\w\x2D]*\x5F/i"; sid:10041583; rev:1;)
 alert tcp any any -> any [1:65535,$HTTP_PORTS] (msg:"Mining Protocol Detected"; flow:to_client,established; content:"|22 6A 73 6F 6E 72 70 63 22 3A|"; content:"|22 69 64 22 3A|"; content:"|22 6A 6F 62 5F 69 64 22 3A|"; content:"|22 74 61 72 67 65 74 22 3A|"; content:"|22 73 74 61 74 75 73 22 3A|"; content:"|22 65 72 72 6F 72 22 3A|"; content:"|22 6A 6F 62 22 3A|"; content:"|22 72 65 73 75 6C 74 22 3A|"; pcre:"/\"error\"\:\s?null/i"; pcre:"/\"job\"\:\s?\{\s?\"blob\"\:/i"; sid:10041513; rev:1;)
 alert tcp any any -> any [1:65535,$HTTP_PORTS] (msg:"Mining Protocol Detected"; flow:to_client,established; content:"|22 6A 73 6F 6E 72 70 63 22 3A|"; content:"|22 6D 65 74 68 6F 64 22 3A|"; content:"|22 70 61 72 61 6D 73 22 3A|"; content:"|22 6A 6F 62 5F 69 64 22 3A|"; content:"|22 74 61 72 67 65 74 22 3A|"; pcre:"/\"method\"\:\s?\"job\"/"; pcre:"/\"params\"\:\s?\{\"blob\"\:\"/"; sid:10041514; rev:1;)
-alert tcp any any -> any any (msg:"Gafgyt Botnet Traffic Detected"; flow:to_server,established; content:"BUILD|20|420BLAZEITFGT|00|"; depth:20; nocase; flowbits:set,gafgyt_10041569; flowbits:noalert; sid:10041569;)
-alert tcp any any -> any any (msg:"Gafgyt Botnet Traffic Detected"; flow:to_client,established; flowbits:isset,gafgyt_10041569; content:"TELNET|20|ON"; depth:12; nocase; sid:10041570;)
 alert udp any any -> any 53 (msg:"Bot Torpig Phone Home DNS request"; flow:to_server; content:"torpig|2d|sinkhole"; sid:10041594; rev:1;)
 alert udp any any -> any 53 (msg:"Messenger.Gen Command and Control Traffic Detection"; flow:to_server; content:"|24 65 3d 27 48 34 73 49 41 41 41 41 41 41 41 45 41 4d 30 63 2f|"; sid:10041595; rev:1;)
 alert udp any any -> any 53 (msg:"Anchor DNS Command and Control Traffic Detection"; flow:to_server; content:"96D8D7DAD1D6CBE6D5D0D7CCC"; sid:10041596; rev:1;)
