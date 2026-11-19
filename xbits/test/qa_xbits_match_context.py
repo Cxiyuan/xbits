@@ -343,11 +343,11 @@ def main() -> int:
         ),
         (
             "reverse-order-alert-before-context",
-            [MATCH_CTX_URI],
-            [dict(BASE_ALERT), dict(BASE_ALERT)],
+            [MATCH_CTX_HEADER],
+            [ALERT_HEADER, ALERT_HEADER],
             1,
             1,
-            0.25,  # 先发告警，0.25s 后补 match_context
+            0.25,  # 先发告警，0.25s 后补 match_context（context-only buffer 才走 defer）
         ),
     ]
 
