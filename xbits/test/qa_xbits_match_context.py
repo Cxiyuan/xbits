@@ -208,7 +208,7 @@ MATCH_CTX_LOW_FP = {
 
 
 def run_case(xbits, validator, rules, match_buffers, name, match_contexts, alerts,
-             want_suppressed, want_emitted):
+             want_suppressed, want_emitted, defer_contexts=0.0):
     work = Path(tempfile.mkdtemp(prefix="xbits-match-context-"))
     out = work / "out.jsonl"
     engine = None
@@ -220,13 +220,20 @@ def run_case(xbits, validator, rules, match_buffers, name, match_contexts, alert
              "--match-buffers", str(match_buffers),
              "--validator-cmd", str(validator),
              "--suppression-ttl-sec", "300",
+             "--pending-context-ms", "800",
              "--analysis-file", str(out)],
             cwd=str(ROOT),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         wait_socket(work / "xbits.sock")
-        send_events(work / "xbits.sock", match_contexts + alerts)
+        if defer_contexts > 0:
+            # 顺序问题回归：先发告警，再发 match_context（模拟 socket 乱序）。
+            send_events(work / "xbits.sock", alerts)
+            time.sleep(defer_contexts)
+            send_events(work / "xbits.sock", match_contexts)
+        else:
+            send_events(work / "xbits.sock", match_contexts + alerts)
         time.sleep(1.2)
         engine.terminate()
         engine.wait(timeout=5)
@@ -334,13 +341,24 @@ def main() -> int:
             0,
             0,
         ),
+        (
+            "reverse-order-alert-before-context",
+            [MATCH_CTX_URI],
+            [dict(BASE_ALERT), dict(BASE_ALERT)],
+            1,
+            1,
+            0.25,  # 先发告警，0.25s 后补 match_context
+        ),
     ]
 
     failures = []
-    for name, ctxs, alerts, want_sup, want_emit in cases:
+    for case in cases:
+        name, ctxs, alerts, want_sup, want_emit = case[:5]
+        defer = case[5] if len(case) > 5 else 0.0
         ok, detail = run_case(
             Path(args.xbits), Path(args.validator), Path(args.rules),
             Path(args.match_buffers), name, ctxs, alerts, want_sup, want_emit,
+            defer_contexts=defer,
         )
         print(("OK " if ok else "FAIL ") + detail)
         if not ok:

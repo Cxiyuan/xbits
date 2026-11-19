@@ -154,6 +154,21 @@ def canonical_buffer(name: str) -> str | None:
     return None
 
 
+def lua_script_exports(script_name: str) -> bool:
+    """被引用的 Lua 脚本是否已支持精确导出（含 xbits_export_match 调用）。
+
+    脚本自身声明它实际检查并命中的 buffer，由核心补丁注册的
+    xbits_export_match() 上报给 xbits。只有这样 app-tx Lua 规则才可抑制。
+    """
+    for path in SUR.rglob(script_name):
+        try:
+            if "xbits_export_match" in path.read_text(encoding="utf-8", errors="replace"):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def classify(rule: str) -> dict:
     body = rule[rule.find("(") + 1 : rule.rfind(")")]
     tokens = split_options(body)
@@ -169,7 +184,8 @@ def classify(rule: str) -> dict:
 
     if not buffers and has_match:
         buffers.append("payload")
-    if not buffers and re.search(r"\blua\s*:", body, re.I):
+    lua_refs = re.findall(r"\blua\s*:\s*([^\s;]+)", body, re.I)
+    if not buffers and lua_refs:
         buffers.append("lua")
 
     # 稳定性：按名称排序；primary 选择最具体的应用层 buffer
@@ -178,13 +194,14 @@ def classify(rule: str) -> dict:
     # 当规则同时声明了具体 sticky buffer 时，只用这些可导出的 buffer 做精确 key；
     # 保留裸 "lua" 会迫使 xbits 用 p->payload 等近似值，属于兜底，禁止。
     concrete = [b for b in buffers if b != "lua"]
-    # 纯 app-tx Lua 规则（除 lua 外没有任何具体 buffer）：无精确导出，
-    # 显式标记 app_tx_lua=true，xbits 对其不做抑制（判定仍走 validator）。
+    # 纯 app-tx Lua 规则：能否抑制取决于被引用脚本是否显式导出命中值。
+    # 脚本已改造（含 xbits_export_match）=> 可抑制；否则标记 app_tx_lua=true
+    # 表示没有精确 buffer 可导出，xbits 对其明确不做抑制（判定仍走 validator）。
     app_tx_lua = False
     if concrete:
         buffers = concrete
     elif buffers == ["lua"]:
-        app_tx_lua = True
+        app_tx_lua = not any(lua_script_exports(name) for name in lua_refs)
     primary = next((b for b in buffers if b not in {"payload", "stream", "lua"}), None)
     if primary is None and buffers:
         primary = buffers[0]

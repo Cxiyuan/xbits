@@ -27,6 +27,8 @@ pub struct AnalysisConfig {
     pub suppression_ttl: Duration,
     pub fp_confidence: u64,
     pub max_payload: usize,
+    /// 等 match_context 到达的最长时间；超时按 fail-closed 判定。
+    pub pending_context_timeout: Duration,
 }
 
 impl Default for AnalysisConfig {
@@ -44,6 +46,7 @@ impl Default for AnalysisConfig {
             suppression_ttl: Duration::from_secs(300),
             fp_confidence: 90,
             max_payload: 16384,
+            pending_context_timeout: Duration::from_millis(500),
         }
     }
 }
@@ -74,8 +77,11 @@ struct RuleMeta {
 struct MatchBufferMeta {
     #[serde(default)]
     buffers: Vec<String>,
+    /// 该 SID 的主 buffer（最具体的应用层 buffer），用于诊断与证据标注。
     #[serde(default)]
     primary: Option<String>,
+    /// 该 SID 是否以 payload/stream/file.data/lua 作为匹配信号之一。
+    /// 用于精确诊断：payload 类 buffer 取不到值时提示 EVE payload 日志可能未开。
     #[serde(default)]
     has_payload: bool,
     #[serde(default)]
@@ -408,6 +414,13 @@ fn post_http_json(url: &str, body: &str, auth: Option<&str>) -> io::Result<()> {
     Ok(())
 }
 
+/// 等待 match_context 到达的挂起告警（顺序问题根治用）。
+struct PendingAlert {
+    event: HookEvent,
+    alert: EngineAlert,
+    at: Instant,
+}
+
 struct Analyzer {
     config: AnalysisConfig,
     sid_library: HashMap<String, RuleMeta>,
@@ -417,6 +430,8 @@ struct Analyzer {
     whitelist: SuppressionStore,
     /// 已记录过 app_tx_lua 提示的 SID，避免每告警刷日志。
     app_tx_lua_logged: HashSet<u64>,
+    /// 等待 match_context 的挂起告警（顺序问题根治）。
+    pending: Vec<PendingAlert>,
 }
 
 impl Analyzer {
@@ -433,6 +448,7 @@ impl Analyzer {
             match_contexts: HashMap::new(),
             whitelist,
             app_tx_lua_logged: HashSet::new(),
+            pending: Vec::new(),
         }
     }
 
@@ -453,6 +469,8 @@ impl Analyzer {
                 },
             );
         }
+        // context 到达后立即判定所有已具备条件的挂起告警（顺序问题根治）。
+        self.flush_ready_pending();
     }
 
     fn decide(&self, event: &HookEvent, alert: &EngineAlert) -> Decision {
@@ -546,6 +564,113 @@ impl Analyzer {
     }
 
     fn process(&mut self, event: HookEvent, alert: EngineAlert) {
+        // 顺序根治：match_context 与 alert 走不同 socket 连接，到达顺序无保证。
+        // 若该 SID 声明的 context-only buffer 只是"还没到"，短暂挂起，
+        // 等匹配的 match_context 到达后立刻判定；超时则按 fail-closed 处理
+        // （不建 key、不抑制），绝不丢弃事件。
+        if self.should_defer_for_context(&event, &alert) {
+            self.pending.push(PendingAlert {
+                event,
+                alert,
+                at: Instant::now(),
+            });
+            return;
+        }
+        self.process_now(event, alert);
+    }
+
+    /// 是否值得等 match_context：只在该 SID 的缺口全是 context-only buffer、
+    /// 且其余 buffer 已可立即解析时才等待（否则等待注定无意义）。
+    fn should_defer_for_context(&self, event: &HookEvent, alert: &EngineAlert) -> bool {
+        let Some(meta) = self.match_buffers.get(&alert.signature_id.to_string()) else {
+            return false;
+        };
+        if meta.app_tx_lua {
+            return false;
+        }
+        if self.missing_context_only(event, alert, meta).is_empty() {
+            return false;
+        }
+        meta.buffers
+            .iter()
+            .map(|b| canonical_buffer_name(b))
+            .filter(|b| !is_context_only(b))
+            .all(|b| buffer_value(event, alert, b).is_some())
+    }
+
+    /// 返回该 SID 声明但当前缓存缺失的 context-only buffer 列表。
+    fn missing_context_only(
+        &self,
+        event: &HookEvent,
+        alert: &EngineAlert,
+        meta: &MatchBufferMeta,
+    ) -> Vec<String> {
+        meta.buffers
+            .iter()
+            .map(|b| canonical_buffer_name(b))
+            .filter(|b| is_context_only(b))
+            .filter(|b| {
+                let context_key = format!(
+                    "{}|{}|{}|{}|{}|{}|{}|{}",
+                    event.source,
+                    alert.signature_id,
+                    alert.src,
+                    alert.sport,
+                    alert.dst,
+                    alert.dport,
+                    alert.proto,
+                    b
+                );
+                !self.match_contexts.contains_key(&context_key)
+            })
+            .map(str::to_string)
+            .collect()
+    }
+
+    /// context 到达后，立即判定所有已具备条件的挂起告警。
+    fn flush_ready_pending(&mut self) {
+        let mut ready = Vec::new();
+        let mut remaining = Vec::new();
+        for pending in self.pending.drain(..) {
+            let meta = self
+                .match_buffers
+                .get(&pending.alert.signature_id.to_string());
+            let complete = match meta {
+                Some(meta) => self.missing_context_only(&pending.event, &pending.alert, meta).is_empty(),
+                None => true,
+            };
+            if complete {
+                ready.push(pending);
+            } else {
+                remaining.push(pending);
+            }
+        }
+        self.pending = remaining;
+        for pending in ready {
+            self.process_now(pending.event, pending.alert);
+        }
+    }
+
+    /// 超过等待窗口仍未拿到 context：按 fail-closed 直接判定（不抑制）。
+    fn flush_expired_pending(&mut self) {
+        let now = Instant::now();
+        let timeout = self.config.pending_context_timeout;
+        let mut expired = Vec::new();
+        let mut remaining = Vec::new();
+        for pending in self.pending.drain(..) {
+            if now.duration_since(pending.at) >= timeout {
+                expired.push(pending);
+            } else {
+                remaining.push(pending);
+            }
+        }
+        self.pending = remaining;
+        for pending in expired {
+            self.process_now(pending.event, pending.alert);
+        }
+    }
+
+    fn process_now(&mut self, event: HookEvent, alert: EngineAlert) {
         let meta = self.match_buffers.get(&alert.signature_id.to_string());
         if meta.map(|m| m.app_tx_lua).unwrap_or(false) {
             // app-tx 挂载的 Lua 规则没有单一精确 buffer 可导出（补丁层明确不近似），
@@ -568,33 +693,21 @@ impl Analyzer {
         if key.is_none() {
             if let Some(meta) = meta {
                 if !meta.app_tx_lua {
-                    // 精确报告缺的是哪个声明 buffer（context-only 且无导出值），
-                    // 不再用“全局缓存是否为空”这种既误报又漏报的猜测。
-                    let missing: Vec<&str> = meta
-                        .buffers
-                        .iter()
-                        .map(|b| canonical_buffer_name(b))
-                        .filter(|b| is_context_only(b))
-                        .filter(|b| {
-                            let context_key = format!(
-                                "{}|{}|{}|{}|{}|{}|{}|{}",
-                                event.source,
-                                alert.signature_id,
-                                alert.src,
-                                alert.sport,
-                                alert.dst,
-                                alert.dport,
-                                alert.proto,
-                                b
-                            );
-                            !self.match_contexts.contains_key(&context_key)
-                        })
-                        .collect();
+                    // 精确报告缺的是哪个声明 buffer（context-only 且无导出值）。
+                    let missing = self.missing_context_only(&event, &alert, meta);
                     if !missing.is_empty() {
+                        let primary = meta.primary.as_deref().unwrap_or("?");
                         eprintln!(
-                            "xbits: sid {} suppression skipped: missing exact match_context for buffers [{}]",
+                            "xbits: sid {} suppression skipped: primary buffer {primary}, missing exact match_context for [{}]",
                             alert.signature_id,
                             missing.join(", ")
+                        );
+                    } else if meta.has_payload && event.payload.is_none() {
+                        // has_payload 规则但告警无 EVE payload：提示 payload 日志未开启，
+                        // 否则 payload/stream buffer 取不到值会静默无法建立抑制 key。
+                        eprintln!(
+                            "xbits: sid {} has_payload=true but EVE payload missing; enable eve-log alert payload to allow suppression",
+                            alert.signature_id
                         );
                     }
                 }
@@ -784,10 +897,13 @@ impl AnalysisPipeline {
             .name("xbits-analysis".into())
             .spawn(move || {
                 let mut analyzer = Analyzer::new(config);
-                while let Ok(job) = rx.recv() {
-                    match job {
-                        Job::Event(event) => analyzer.observe(event),
-                        Job::Alert(event, alert) => analyzer.process(event, alert),
+                let tick = analyzer.config.pending_context_timeout;
+                loop {
+                    match rx.recv_timeout(tick) {
+                        Ok(Job::Event(event)) => analyzer.observe(event),
+                        Ok(Job::Alert(event, alert)) => analyzer.process(event, alert),
+                        Err(mpsc::RecvTimeoutError::Timeout) => analyzer.flush_expired_pending(),
+                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     }
                 }
             })?;
@@ -987,6 +1103,57 @@ mod tests {
         assert!(!may_whitelist(&d, 90));
         d.verdict = "true_positive".into();
         assert!(!may_whitelist(&d, 90));
+    }
+
+    #[test]
+    fn defers_alert_until_match_context_arrives() {
+        // 顺序问题根治：context-only buffer 未到时，告警挂起；context 到达后立即判定。
+        let mut analyzer = Analyzer::new(AnalysisConfig::default());
+        analyzer
+            .match_buffers
+            .insert("9103001".to_string(), meta(&["http.header"]));
+        let alert = alert();
+        let ev = event();
+        // 无 context：应当挂起，不立即判定
+        assert!(analyzer.should_defer_for_context(&ev, &alert));
+        analyzer.process(ev.clone(), alert.clone());
+        assert_eq!(analyzer.pending.len(), 1);
+        // 补齐精确 context（导出名 http_header 归一为 http.header）后应能建 key
+        context("http_header", "dXNlcg==", &mut analyzer.match_contexts);
+        analyzer.flush_ready_pending();
+        assert_eq!(analyzer.pending.len(), 0);
+        let key = suppression_key(
+            &ev,
+            &alert,
+            analyzer.match_buffers.get("9103001"),
+            &analyzer.match_contexts,
+        );
+        assert!(key.unwrap().contains("http.header=dXNlcg=="));
+    }
+
+    #[test]
+    fn expired_pending_fails_closed() {
+        // 超时仍无 context：flush 后清空挂起，且不建立抑制 key。
+        let mut analyzer = Analyzer::new(AnalysisConfig {
+            pending_context_timeout: Duration::from_millis(0),
+            ..Default::default()
+        });
+        analyzer
+            .match_buffers
+            .insert("9103001".to_string(), meta(&["http.header"]));
+        let alert = alert();
+        let ev = event();
+        analyzer.process(ev.clone(), alert.clone());
+        assert_eq!(analyzer.pending.len(), 1);
+        analyzer.flush_expired_pending();
+        assert_eq!(analyzer.pending.len(), 0);
+        assert!(suppression_key(
+            &ev,
+            &alert,
+            analyzer.match_buffers.get("9103001"),
+            &analyzer.match_contexts
+        )
+        .is_none());
     }
 
     #[test]

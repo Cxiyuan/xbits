@@ -8,6 +8,14 @@
 
 local http = require("suricata.http")
 
+-- xbits: 显式导出实际命中的精确 buffer（未打补丁的 Suricata 上为 nil，自动跳过）
+local function xbits_export(value)
+    if xbits_export_match ~= nil and type(value) == "string" and #value > 0 then
+        xbits_export_match("lua", value)
+    end
+end
+
+
 local TOKENS = {
     "acunetix", "netsparker", "appscan", "webinspect", "nstalker",
     "nmap", "nikto", "sqlmap", "nuclei", "wpscan", "joomscan",
@@ -39,6 +47,7 @@ function match(args)
 
     local ua = tx:request_header("User-Agent")
     if type(ua) == "string" and contains_token(ua) then
+        xbits_export(ua)
         return 1
     end
 
@@ -47,16 +56,19 @@ function match(args)
         uri = tx:request_uri_normalized()
     end
     if type(uri) == "string" and contains_token(uri) then
+        xbits_export(uri)
         return 1
     end
 
     local raw = tx:request_headers_raw()
     if type(raw) == "string" and contains_token(raw) then
+        xbits_export(raw)
         return 1
     end
 
     local cookie = tx:request_header("Cookie")
     if type(cookie) == "string" and contains_token(cookie) then
+        xbits_export(cookie)
         return 1
     end
 

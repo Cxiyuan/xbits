@@ -51,6 +51,7 @@ fn main() -> io::Result<()> {
     let mut suppression_ttl_sec: u64 = 300;
     let mut fp_confidence: u64 = 90;
     let mut max_payload: usize = 16384;
+    let mut pending_context_ms: u64 = 500;
 
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -127,6 +128,9 @@ fn main() -> io::Result<()> {
             "--max-payload" => {
                 max_payload = parse_u64(args.next(), "--max-payload")? as usize;
             }
+            "--pending-context-ms" => {
+                pending_context_ms = parse_u64(args.next(), "--pending-context-ms")?;
+            }
             "--once" => once = true,
             "--stdin" => stdin_mode = true,
             "--help" | "-h" => {
@@ -141,7 +145,7 @@ fn main() -> io::Result<()> {
                        --sid-library FILE --rules-meta FILE\n\
                        --es-url http://host:9200/index/_doc | --es-command CMD\n\
                        --es-auth HEADER --analysis-file FILE --match-buffers FILE\n\
-                       --suppression-ttl-sec N --fp-confidence N --max-payload N"
+                       --suppression-ttl-sec N --fp-confidence N --max-payload N --pending-context-ms N"
                 );
                 return Ok(());
             }
@@ -182,6 +186,7 @@ fn main() -> io::Result<()> {
                 suppression_ttl: Duration::from_secs(suppression_ttl_sec.max(1)),
                 fp_confidence: fp_confidence.min(100),
                 max_payload: max_payload.max(64),
+                pending_context_timeout: Duration::from_millis(pending_context_ms.max(1)),
             };
             Some(AnalysisPipeline::start(config)?)
         } else {

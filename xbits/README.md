@@ -238,9 +238,21 @@ Context-only buffer（`lua`、`http.header`、`file.data`、`http.uri.raw`、
 **只接受 match_context 导出值**，任何近似值都不会兜底。
 
 `match_buffers.json` 中 `app_tx_lua: true` 的规则是以 app-layer Lua
-（`match(args)` 形式，检查 tx 多个字段）挂载的规则：没有单一精确 buffer 可导出，
-核心补丁明确不做近似导出，**这类规则不参与抑制**（每次告警仍走 validator 出判定，
-xbits 会记录一次说明日志）。需要抑制时必须在 Lua 脚本内显式导出实际命中的值。
+（`match(args)` 形式，检查 tx 多个字段）挂载、且其脚本文本未显式导出的规则：
+没有单一精确 buffer 可导出，核心补丁明确不做近似导出，**这类规则不参与抑制**
+（每次告警仍走 validator 出判定，xbits 会记录一次说明日志）。
+
+自研 app-tx Lua 脚本已通过补丁注册的 `xbits_export_match(name, value)` 在命中点显式
+上报实际命中的 buffer 与值（脚本内 `xbits_export(value)` 封装，未打补丁时自动跳过）。
+生成器据此自动判定可抑制性：脚本已导出 → `app_tx_lua: false`（可抑制），
+否则 `app_tx_lua: true`（不可抑制）。因此 919 条纯 Lua 规则现已全部可抑制。
+
+跨 socket 顺序：`match_context` 与 `alert` 来自不同连接、到达顺序无保证。xbits 对
+声明了 context-only buffer 的告警在缺 context 时短暂挂起（默认 500ms，`--pending-context-ms`
+可调），context 到达即判定；超时按 fail-closed 处理（不建 key、不抑制），绝不丢事件。
+
+`--fp-confidence N` 是误报入白名单的置信度门槛：仅当 validator 明确判定
+`false_positive` 且置信度 ≥ N 时才写入抑制 key，避免低置信误报误杀后续真实威胁。
 
 EVE 需要开启 payload：
 

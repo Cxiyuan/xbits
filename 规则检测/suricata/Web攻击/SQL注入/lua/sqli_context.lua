@@ -7,6 +7,14 @@
 -- ============================================================================
 
 local http = require("suricata.http")
+
+-- xbits: 显式导出实际命中的精确 buffer（未打补丁的 Suricata 上为 nil，自动跳过）
+local function xbits_export(value)
+    if xbits_export_match ~= nil and type(value) == "string" and #value > 0 then
+        xbits_export_match("lua", value)
+    end
+end
+
 local MAX_BODY = 16384
 
 local function decode(s, rounds)
@@ -182,6 +190,7 @@ function match(args)
 
     for _, source in ipairs(sources(tx)) do
         if detect(sql_normalize(source)) then
+            xbits_export(source)
             return 1
         end
     end

@@ -929,7 +929,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.rules"
   },
   "14010203": {
@@ -3386,7 +3386,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020171": {
@@ -3395,7 +3395,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020172": {
@@ -3404,7 +3404,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020173": {
@@ -3413,7 +3413,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020174": {
@@ -3422,7 +3422,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020175": {
@@ -3431,7 +3431,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020176": {
@@ -3440,7 +3440,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020177": {
@@ -3449,7 +3449,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020178": {
@@ -3458,7 +3458,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020179": {
@@ -3467,7 +3467,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020180": {
@@ -3476,7 +3476,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020181": {
@@ -3485,7 +3485,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020182": {
@@ -3494,7 +3494,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020183": {
@@ -3503,7 +3503,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020184": {
@@ -3512,7 +3512,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020185": {
@@ -3521,7 +3521,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020186": {
@@ -3530,7 +3530,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020187": {
@@ -3539,7 +3539,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020188": {
@@ -3548,7 +3548,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020189": {
@@ -3557,7 +3557,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020190": {
@@ -3566,7 +3566,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020191": {
@@ -3575,7 +3575,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020192": {
@@ -3584,7 +3584,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020193": {
@@ -3593,7 +3593,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020194": {
@@ -3602,7 +3602,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020195": {
@@ -3611,7 +3611,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020196": {
@@ -3620,7 +3620,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020197": {
@@ -3629,7 +3629,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020198": {
@@ -3638,7 +3638,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020199": {
@@ -3647,7 +3647,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020200": {
@@ -3656,7 +3656,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020201": {
@@ -3665,7 +3665,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020202": {
@@ -3674,7 +3674,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020203": {
@@ -3701,7 +3701,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020209": {
@@ -4997,7 +4997,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080002": {
@@ -5006,7 +5006,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080003": {
@@ -5015,7 +5015,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080004": {
@@ -5024,7 +5024,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080005": {
@@ -5033,7 +5033,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080006": {
@@ -5042,7 +5042,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080007": {
@@ -5051,7 +5051,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080008": {
@@ -5060,7 +5060,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080009": {
@@ -5069,7 +5069,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080010": {
@@ -5078,7 +5078,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080011": {
@@ -5087,7 +5087,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080012": {
@@ -5096,7 +5096,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080013": {
@@ -5105,7 +5105,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080014": {
@@ -5114,7 +5114,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080015": {
@@ -5123,7 +5123,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080016": {
@@ -5132,7 +5132,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080017": {
@@ -5141,7 +5141,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080018": {
@@ -5150,7 +5150,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080019": {
@@ -5159,7 +5159,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080020": {
@@ -5168,7 +5168,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080021": {
@@ -5177,7 +5177,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080022": {
@@ -5186,7 +5186,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080023": {
@@ -5195,7 +5195,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080024": {
@@ -5204,7 +5204,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080025": {
@@ -5213,7 +5213,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080026": {
@@ -5222,7 +5222,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080027": {
@@ -5231,7 +5231,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080028": {
@@ -5240,7 +5240,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080029": {
@@ -5249,7 +5249,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080030": {
@@ -5258,7 +5258,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080031": {
@@ -5267,7 +5267,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080032": {
@@ -5276,7 +5276,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080033": {
@@ -5285,7 +5285,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080034": {
@@ -5294,7 +5294,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080035": {
@@ -5303,7 +5303,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080036": {
@@ -5312,7 +5312,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080037": {
@@ -5321,7 +5321,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080038": {
@@ -5330,7 +5330,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080039": {
@@ -5339,7 +5339,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080041": {
@@ -5348,7 +5348,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080042": {
@@ -5357,7 +5357,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080043": {
@@ -5366,7 +5366,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080044": {
@@ -5375,7 +5375,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080045": {
@@ -5384,7 +5384,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080046": {
@@ -5393,7 +5393,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080047": {
@@ -5402,7 +5402,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080048": {
@@ -5411,7 +5411,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080049": {
@@ -5420,7 +5420,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080050": {
@@ -5429,7 +5429,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080051": {
@@ -5438,7 +5438,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080052": {
@@ -5447,7 +5447,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080053": {
@@ -5456,7 +5456,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080054": {
@@ -5465,7 +5465,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080055": {
@@ -5474,7 +5474,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080056": {
@@ -5483,7 +5483,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080057": {
@@ -5492,7 +5492,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080058": {
@@ -5501,7 +5501,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080059": {
@@ -5510,7 +5510,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080060": {
@@ -5519,7 +5519,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080061": {
@@ -5528,7 +5528,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080062": {
@@ -5537,7 +5537,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080063": {
@@ -5546,7 +5546,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080064": {
@@ -5555,7 +5555,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080065": {
@@ -5564,7 +5564,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080066": {
@@ -5573,7 +5573,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080067": {
@@ -5582,7 +5582,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080068": {
@@ -5591,7 +5591,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080069": {
@@ -5600,7 +5600,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080070": {
@@ -5609,7 +5609,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080071": {
@@ -5618,7 +5618,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080072": {
@@ -5627,7 +5627,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080074": {
@@ -5636,7 +5636,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080075": {
@@ -5645,7 +5645,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080076": {
@@ -5654,7 +5654,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080077": {
@@ -5663,7 +5663,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080078": {
@@ -5672,7 +5672,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080079": {
@@ -5681,7 +5681,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080080": {
@@ -5690,7 +5690,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080081": {
@@ -5699,7 +5699,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080083": {
@@ -5708,7 +5708,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080084": {
@@ -5717,7 +5717,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080085": {
@@ -5726,7 +5726,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080087": {
@@ -5735,7 +5735,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080088": {
@@ -5744,7 +5744,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080089": {
@@ -5753,7 +5753,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080091": {
@@ -5762,7 +5762,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080092": {
@@ -5771,7 +5771,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080093": {
@@ -5780,7 +5780,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080095": {
@@ -5789,7 +5789,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080096": {
@@ -5798,7 +5798,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080097": {
@@ -5807,7 +5807,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080098": {
@@ -5816,7 +5816,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080100": {
@@ -5825,7 +5825,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080101": {
@@ -5834,7 +5834,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080102": {
@@ -5843,7 +5843,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080103": {
@@ -5852,7 +5852,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080104": {
@@ -5861,7 +5861,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080105": {
@@ -5870,7 +5870,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080106": {
@@ -5879,7 +5879,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080107": {
@@ -5888,7 +5888,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080108": {
@@ -5897,7 +5897,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080109": {
@@ -5906,7 +5906,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080110": {
@@ -5915,7 +5915,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080111": {
@@ -5924,7 +5924,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080112": {
@@ -5933,7 +5933,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080113": {
@@ -5942,7 +5942,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080114": {
@@ -5951,7 +5951,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080115": {
@@ -5960,7 +5960,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080116": {
@@ -5969,7 +5969,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080117": {
@@ -5978,7 +5978,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080118": {
@@ -5987,7 +5987,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080119": {
@@ -5996,7 +5996,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080120": {
@@ -6005,7 +6005,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080121": {
@@ -6014,7 +6014,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080122": {
@@ -6023,7 +6023,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080123": {
@@ -6032,7 +6032,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080124": {
@@ -6041,7 +6041,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080125": {
@@ -6050,7 +6050,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080126": {
@@ -6059,7 +6059,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080127": {
@@ -6068,7 +6068,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080128": {
@@ -6077,7 +6077,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080129": {
@@ -6086,7 +6086,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080130": {
@@ -6095,7 +6095,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080131": {
@@ -6104,7 +6104,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080132": {
@@ -6113,7 +6113,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080133": {
@@ -6122,7 +6122,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080134": {
@@ -6131,7 +6131,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080135": {
@@ -6140,7 +6140,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080136": {
@@ -6149,7 +6149,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080138": {
@@ -6158,7 +6158,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080139": {
@@ -6167,7 +6167,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080140": {
@@ -6176,7 +6176,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080141": {
@@ -6185,7 +6185,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080142": {
@@ -6194,7 +6194,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080143": {
@@ -6203,7 +6203,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080144": {
@@ -6212,7 +6212,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080145": {
@@ -6221,7 +6221,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080146": {
@@ -6230,7 +6230,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080147": {
@@ -6239,7 +6239,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080148": {
@@ -6248,7 +6248,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080149": {
@@ -6257,7 +6257,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\pvs-webshell.rules"
   },
   "14080150": {
@@ -7229,7 +7229,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080090": {
@@ -7301,7 +7301,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080100": {
@@ -7337,7 +7337,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080104": {
@@ -7346,7 +7346,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080105": {
@@ -7355,7 +7355,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080106": {
@@ -7364,7 +7364,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080107": {
@@ -7382,7 +7382,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080109": {
@@ -7778,7 +7778,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080157": {
@@ -7877,7 +7877,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080339": {
@@ -7886,7 +7886,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080340": {
@@ -7895,7 +7895,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080341": {
@@ -7904,7 +7904,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080342": {
@@ -7940,7 +7940,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080346": {
@@ -7976,7 +7976,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080350": {
@@ -8030,7 +8030,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080161": {
@@ -8039,7 +8039,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080162": {
@@ -8048,7 +8048,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080163": {
@@ -8057,7 +8057,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080164": {
@@ -8066,7 +8066,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080165": {
@@ -8075,7 +8075,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080166": {
@@ -8084,7 +8084,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080167": {
@@ -8093,7 +8093,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080168": {
@@ -8102,7 +8102,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080169": {
@@ -8111,7 +8111,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080170": {
@@ -8120,7 +8120,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080172": {
@@ -8129,7 +8129,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080173": {
@@ -8138,7 +8138,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080174": {
@@ -8147,7 +8147,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080175": {
@@ -8156,7 +8156,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080176": {
@@ -8165,7 +8165,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080584": {
@@ -8174,7 +8174,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080177": {
@@ -8183,7 +8183,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080178": {
@@ -8192,7 +8192,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080179": {
@@ -8201,7 +8201,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080180": {
@@ -8210,7 +8210,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080181": {
@@ -8219,7 +8219,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080182": {
@@ -8228,7 +8228,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080183": {
@@ -8237,7 +8237,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080184": {
@@ -8246,7 +8246,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080185": {
@@ -8255,7 +8255,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080186": {
@@ -8264,7 +8264,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080187": {
@@ -8273,7 +8273,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080188": {
@@ -8282,7 +8282,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080189": {
@@ -8291,7 +8291,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080190": {
@@ -8300,7 +8300,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080191": {
@@ -8309,7 +8309,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080192": {
@@ -8318,7 +8318,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080193": {
@@ -8327,7 +8327,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080194": {
@@ -8336,7 +8336,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080195": {
@@ -8345,7 +8345,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080196": {
@@ -8354,7 +8354,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080197": {
@@ -8363,7 +8363,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080198": {
@@ -8372,7 +8372,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080199": {
@@ -8381,7 +8381,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080200": {
@@ -8390,7 +8390,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080355": {
@@ -8399,7 +8399,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080356": {
@@ -8408,7 +8408,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080357": {
@@ -8417,7 +8417,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080358": {
@@ -8426,7 +8426,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080359": {
@@ -8435,7 +8435,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080360": {
@@ -8444,7 +8444,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080361": {
@@ -8453,7 +8453,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080362": {
@@ -8462,7 +8462,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080363": {
@@ -8471,7 +8471,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080364": {
@@ -8480,7 +8480,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080365": {
@@ -8489,7 +8489,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080366": {
@@ -8498,7 +8498,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080367": {
@@ -8507,7 +8507,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080368": {
@@ -8516,7 +8516,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080369": {
@@ -8525,7 +8525,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080371": {
@@ -8534,7 +8534,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080506": {
@@ -8543,7 +8543,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080507": {
@@ -8552,7 +8552,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080508": {
@@ -8561,7 +8561,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080509": {
@@ -8570,7 +8570,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080510": {
@@ -8579,7 +8579,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080511": {
@@ -8588,7 +8588,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080512": {
@@ -8597,7 +8597,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080513": {
@@ -8606,7 +8606,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080514": {
@@ -8615,7 +8615,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080515": {
@@ -8624,7 +8624,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080516": {
@@ -8633,7 +8633,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080517": {
@@ -8642,7 +8642,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080518": {
@@ -8651,7 +8651,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080519": {
@@ -8660,7 +8660,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080520": {
@@ -8669,7 +8669,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080521": {
@@ -8678,7 +8678,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080522": {
@@ -8687,7 +8687,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080523": {
@@ -8696,7 +8696,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080524": {
@@ -8705,7 +8705,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080527": {
@@ -8714,7 +8714,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080528": {
@@ -8723,7 +8723,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080529": {
@@ -8732,7 +8732,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080530": {
@@ -8741,7 +8741,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080531": {
@@ -8750,7 +8750,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080532": {
@@ -8759,7 +8759,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080533": {
@@ -8768,7 +8768,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080534": {
@@ -8777,7 +8777,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080535": {
@@ -8786,7 +8786,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080536": {
@@ -8795,7 +8795,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080537": {
@@ -8804,7 +8804,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080539": {
@@ -8813,7 +8813,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080540": {
@@ -8822,7 +8822,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080542": {
@@ -8831,7 +8831,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080543": {
@@ -8840,7 +8840,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080544": {
@@ -8849,7 +8849,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080545": {
@@ -8858,7 +8858,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080546": {
@@ -8867,7 +8867,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080547": {
@@ -8876,7 +8876,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080548": {
@@ -8885,7 +8885,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080549": {
@@ -8894,7 +8894,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080550": {
@@ -8903,7 +8903,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080551": {
@@ -8912,7 +8912,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080552": {
@@ -8921,7 +8921,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080553": {
@@ -8930,7 +8930,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080554": {
@@ -8939,7 +8939,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080555": {
@@ -8948,7 +8948,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080556": {
@@ -8957,7 +8957,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080557": {
@@ -8966,7 +8966,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080558": {
@@ -8975,7 +8975,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080559": {
@@ -8984,7 +8984,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080562": {
@@ -8993,7 +8993,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080563": {
@@ -9002,7 +9002,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080564": {
@@ -9011,7 +9011,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080565": {
@@ -9020,7 +9020,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080566": {
@@ -9029,7 +9029,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080567": {
@@ -9038,7 +9038,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080201": {
@@ -9461,7 +9461,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080223": {
@@ -9470,7 +9470,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080498": {
@@ -9479,7 +9479,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080224": {
@@ -9497,7 +9497,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080226": {
@@ -9506,7 +9506,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080227": {
@@ -9515,7 +9515,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080228": {
@@ -9533,7 +9533,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080230": {
@@ -9542,7 +9542,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080231": {
@@ -9560,7 +9560,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080233": {
@@ -9578,7 +9578,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080235": {
@@ -9596,7 +9596,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080237": {
@@ -9614,7 +9614,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080399": {
@@ -9632,7 +9632,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080401": {
@@ -9650,7 +9650,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080403": {
@@ -9668,7 +9668,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080405": {
@@ -9686,7 +9686,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080407": {
@@ -9704,7 +9704,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080409": {
@@ -9722,7 +9722,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080411": {
@@ -9740,7 +9740,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080413": {
@@ -9794,7 +9794,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080419": {
@@ -9812,7 +9812,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080421": {
@@ -9839,7 +9839,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080670": {
@@ -9848,7 +9848,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080239": {
@@ -9857,7 +9857,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080240": {
@@ -9866,7 +9866,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080241": {
@@ -9875,7 +9875,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080242": {
@@ -9884,7 +9884,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080243": {
@@ -9893,7 +9893,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080244": {
@@ -9902,7 +9902,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080245": {
@@ -9911,7 +9911,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080246": {
@@ -9920,7 +9920,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080247": {
@@ -9938,7 +9938,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080424": {
@@ -9947,7 +9947,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080425": {
@@ -9956,7 +9956,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080426": {
@@ -9965,7 +9965,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080427": {
@@ -9974,7 +9974,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080428": {
@@ -9983,7 +9983,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080429": {
@@ -9992,7 +9992,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080430": {
@@ -10001,7 +10001,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080431": {
@@ -10010,7 +10010,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080432": {
@@ -10019,7 +10019,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080433": {
@@ -10028,7 +10028,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080434": {
@@ -10037,7 +10037,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080435": {
@@ -10046,7 +10046,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080436": {
@@ -10055,7 +10055,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080437": {
@@ -10064,7 +10064,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080525": {
@@ -10073,7 +10073,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080526": {
@@ -10082,7 +10082,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080541": {
@@ -10091,7 +10091,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080538": {
@@ -10100,7 +10100,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080570": {
@@ -10109,7 +10109,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080571": {
@@ -10118,7 +10118,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080572": {
@@ -10127,7 +10127,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080573": {
@@ -10136,7 +10136,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080574": {
@@ -10145,7 +10145,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080575": {
@@ -10154,7 +10154,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080576": {
@@ -10163,7 +10163,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080249": {
@@ -10442,7 +10442,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080267": {
@@ -10451,7 +10451,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080268": {
@@ -10460,7 +10460,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080269": {
@@ -10469,7 +10469,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080270": {
@@ -10478,7 +10478,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080271": {
@@ -10487,7 +10487,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080272": {
@@ -10496,7 +10496,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080273": {
@@ -10505,7 +10505,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080274": {
@@ -10514,7 +10514,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080275": {
@@ -10523,7 +10523,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080276": {
@@ -10532,7 +10532,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080277": {
@@ -10541,7 +10541,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080278": {
@@ -10550,7 +10550,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080279": {
@@ -10559,7 +10559,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080280": {
@@ -10568,7 +10568,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080451": {
@@ -10577,7 +10577,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080452": {
@@ -10586,7 +10586,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080453": {
@@ -10595,7 +10595,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080454": {
@@ -10604,7 +10604,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080455": {
@@ -10613,7 +10613,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080456": {
@@ -10622,7 +10622,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080457": {
@@ -10631,7 +10631,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080458": {
@@ -10640,7 +10640,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080459": {
@@ -10649,7 +10649,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080460": {
@@ -10658,7 +10658,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080461": {
@@ -10667,7 +10667,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080462": {
@@ -10676,7 +10676,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080463": {
@@ -10685,7 +10685,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080500": {
@@ -10712,7 +10712,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080503": {
@@ -10739,7 +10739,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080281": {
@@ -10748,7 +10748,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080282": {
@@ -10757,7 +10757,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080283": {
@@ -10766,7 +10766,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080284": {
@@ -10775,7 +10775,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080285": {
@@ -10784,7 +10784,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080464": {
@@ -10793,7 +10793,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080465": {
@@ -10802,7 +10802,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080466": {
@@ -10811,7 +10811,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080467": {
@@ -10820,7 +10820,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080286": {
@@ -10955,7 +10955,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080293": {
@@ -10964,7 +10964,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080294": {
@@ -10973,7 +10973,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080295": {
@@ -10982,7 +10982,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080296": {
@@ -10991,7 +10991,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080297": {
@@ -11000,7 +11000,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080476": {
@@ -11009,7 +11009,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080477": {
@@ -11018,7 +11018,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080478": {
@@ -11027,7 +11027,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080479": {
@@ -11036,7 +11036,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080480": {
@@ -11045,7 +11045,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080481": {
@@ -11054,7 +11054,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080482": {
@@ -11063,7 +11063,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080483": {
@@ -11072,7 +11072,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080594": {
@@ -11081,7 +11081,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080618": {
@@ -11090,7 +11090,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080672": {
@@ -11099,7 +11099,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080298": {
@@ -11108,7 +11108,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080299": {
@@ -11117,7 +11117,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080300": {
@@ -11126,7 +11126,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080301": {
@@ -11135,7 +11135,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080302": {
@@ -11144,7 +11144,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080568": {
@@ -11153,7 +11153,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080569": {
@@ -11162,7 +11162,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080585": {
@@ -11171,7 +11171,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080586": {
@@ -11180,7 +11180,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080580": {
@@ -11189,7 +11189,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080304": {
@@ -11225,7 +11225,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080484": {
@@ -11243,7 +11243,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080486": {
@@ -11252,7 +11252,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080487": {
@@ -11261,7 +11261,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080488": {
@@ -11270,7 +11270,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080489": {
@@ -11279,7 +11279,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080490": {
@@ -11288,7 +11288,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080491": {
@@ -11297,7 +11297,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080492": {
@@ -11306,7 +11306,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080493": {
@@ -11315,7 +11315,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080494": {
@@ -11324,7 +11324,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080495": {
@@ -11333,7 +11333,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080496": {
@@ -11342,7 +11342,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080577": {
@@ -11351,7 +11351,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080578": {
@@ -11360,7 +11360,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080579": {
@@ -11369,7 +11369,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080627": {
@@ -11387,7 +11387,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080589": {
@@ -11423,7 +11423,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080593": {
@@ -11432,7 +11432,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080595": {
@@ -11441,7 +11441,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080596": {
@@ -11450,7 +11450,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080597": {
@@ -11459,7 +11459,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080598": {
@@ -11468,7 +11468,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080600": {
@@ -11504,7 +11504,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080605": {
@@ -11513,7 +11513,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080606": {
@@ -11522,7 +11522,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080607": {
@@ -11531,7 +11531,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080608": {
@@ -11549,7 +11549,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080611": {
@@ -11576,7 +11576,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080614": {
@@ -11585,7 +11585,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080615": {
@@ -11603,7 +11603,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080617": {
@@ -11612,7 +11612,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080619": {
@@ -11621,7 +11621,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080620": {
@@ -11630,7 +11630,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080623": {
@@ -11639,7 +11639,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080624": {
@@ -11648,7 +11648,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080625": {
@@ -11657,7 +11657,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080626": {
@@ -11666,7 +11666,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080628": {
@@ -11675,7 +11675,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080630": {
@@ -11693,7 +11693,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080588": {
@@ -11720,7 +11720,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080634": {
@@ -11729,7 +11729,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080153": {
@@ -11738,7 +11738,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080635": {
@@ -11747,7 +11747,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080636": {
@@ -11756,7 +11756,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080637": {
@@ -11765,7 +11765,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080638": {
@@ -11810,7 +11810,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080643": {
@@ -11819,7 +11819,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080629": {
@@ -11828,7 +11828,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080645": {
@@ -11837,7 +11837,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080646": {
@@ -11846,7 +11846,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080001": {
@@ -11873,7 +11873,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080303": {
@@ -11882,7 +11882,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082009": {
@@ -11891,7 +11891,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082010": {
@@ -11900,7 +11900,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080221": {
@@ -11909,7 +11909,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082000": {
@@ -11918,7 +11918,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082001": {
@@ -11927,7 +11927,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082011": {
@@ -11936,7 +11936,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082012": {
@@ -11945,7 +11945,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082013": {
@@ -11954,7 +11954,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080687": {
@@ -11972,7 +11972,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080692": {
@@ -11999,7 +11999,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080701": {
@@ -12008,7 +12008,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080705": {
@@ -12017,7 +12017,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082036": {
@@ -12026,7 +12026,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082053": {
@@ -12116,7 +12116,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082063": {
@@ -12125,7 +12125,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082064": {
@@ -12134,7 +12134,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082065": {
@@ -12143,7 +12143,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082066": {
@@ -12152,7 +12152,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082067": {
@@ -12161,7 +12161,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082068": {
@@ -12170,7 +12170,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082069": {
@@ -12179,7 +12179,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082070": {
@@ -12188,7 +12188,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082071": {
@@ -12197,7 +12197,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082072": {
@@ -12206,7 +12206,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082073": {
@@ -12215,7 +12215,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082074": {
@@ -12224,7 +12224,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082075": {
@@ -12233,7 +12233,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082076": {
@@ -12242,7 +12242,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082077": {
@@ -12251,7 +12251,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082078": {
@@ -12260,7 +12260,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082079": {
@@ -12269,7 +12269,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082080": {
@@ -12278,7 +12278,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082081": {
@@ -12287,7 +12287,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082082": {
@@ -12296,7 +12296,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082083": {
@@ -12305,7 +12305,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082084": {
@@ -12314,7 +12314,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082085": {
@@ -12323,7 +12323,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082086": {
@@ -12332,7 +12332,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082087": {
@@ -12341,7 +12341,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082088": {
@@ -12350,7 +12350,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082089": {
@@ -12359,7 +12359,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082090": {
@@ -12368,7 +12368,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082095": {
@@ -12377,7 +12377,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080695": {
@@ -12422,7 +12422,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082100": {
@@ -12431,7 +12431,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082101": {
@@ -12440,7 +12440,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082102": {
@@ -12449,7 +12449,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082104": {
@@ -12458,7 +12458,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082105": {
@@ -12467,7 +12467,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082107": {
@@ -12476,7 +12476,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082108": {
@@ -12485,7 +12485,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13082115": {
@@ -12494,7 +12494,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080706": {
@@ -12503,7 +12503,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080703": {
@@ -12512,7 +12512,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13169979": {
@@ -12521,7 +12521,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169978": {
@@ -12530,7 +12530,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169977": {
@@ -12539,7 +12539,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169976": {
@@ -12548,7 +12548,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169975": {
@@ -12557,7 +12557,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169974": {
@@ -12566,7 +12566,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169973": {
@@ -12575,7 +12575,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169972": {
@@ -12584,7 +12584,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169971": {
@@ -12593,7 +12593,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169970": {
@@ -12602,7 +12602,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.request.rules"
   },
   "13169969": {
@@ -35516,7 +35516,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\WebShell\\webshell_detect.rules"
   },
   "13169899": {
@@ -59244,7 +59244,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030149": {
@@ -59271,7 +59271,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030159": {
@@ -59289,7 +59289,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030152": {
@@ -59298,7 +59298,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030153": {
@@ -59460,7 +59460,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030213": {
@@ -59541,7 +59541,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030227": {
@@ -59685,7 +59685,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030246": {
@@ -59694,7 +59694,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13030249": {
@@ -59739,7 +59739,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032004": {
@@ -59766,7 +59766,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032008": {
@@ -59775,7 +59775,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032010": {
@@ -59784,7 +59784,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032011": {
@@ -59838,7 +59838,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032017": {
@@ -59847,7 +59847,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032018": {
@@ -59856,7 +59856,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032019": {
@@ -59865,7 +59865,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032020": {
@@ -59874,7 +59874,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032021": {
@@ -59883,7 +59883,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032022": {
@@ -59892,7 +59892,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032023": {
@@ -59901,7 +59901,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032024": {
@@ -59910,7 +59910,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032025": {
@@ -59919,7 +59919,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032026": {
@@ -59928,7 +59928,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032027": {
@@ -59937,7 +59937,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032028": {
@@ -59946,7 +59946,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032029": {
@@ -59955,7 +59955,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032030": {
@@ -59964,7 +59964,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032031": {
@@ -59973,7 +59973,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032032": {
@@ -59982,7 +59982,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032033": {
@@ -59991,7 +59991,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032034": {
@@ -60000,7 +60000,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032035": {
@@ -60009,7 +60009,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032036": {
@@ -60018,7 +60018,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032037": {
@@ -60027,7 +60027,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032038": {
@@ -60036,7 +60036,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032039": {
@@ -60045,7 +60045,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032040": {
@@ -60054,7 +60054,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032041": {
@@ -60063,7 +60063,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032042": {
@@ -60072,7 +60072,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032043": {
@@ -60081,7 +60081,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032044": {
@@ -60090,7 +60090,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032045": {
@@ -60099,7 +60099,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032046": {
@@ -60108,7 +60108,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032047": {
@@ -60117,7 +60117,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032048": {
@@ -60126,7 +60126,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032049": {
@@ -60135,7 +60135,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032050": {
@@ -60144,7 +60144,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032051": {
@@ -60153,7 +60153,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032052": {
@@ -60162,7 +60162,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032053": {
@@ -60171,7 +60171,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032054": {
@@ -60180,7 +60180,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032055": {
@@ -60189,7 +60189,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032056": {
@@ -60198,7 +60198,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032057": {
@@ -60207,7 +60207,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032058": {
@@ -60216,7 +60216,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032059": {
@@ -60225,7 +60225,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032060": {
@@ -60234,7 +60234,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032061": {
@@ -60243,7 +60243,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032062": {
@@ -60252,7 +60252,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13032063": {
@@ -60504,7 +60504,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\XSS\\xss.rules"
   },
   "13070007": {
@@ -60630,7 +60630,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070126": {
@@ -60999,7 +60999,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070316": {
@@ -61008,7 +61008,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070317": {
@@ -61026,7 +61026,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070477": {
@@ -61206,7 +61206,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070354": {
@@ -61260,7 +61260,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070042": {
@@ -61269,7 +61269,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070043": {
@@ -61278,7 +61278,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070044": {
@@ -61287,7 +61287,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070045": {
@@ -61296,7 +61296,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070158": {
@@ -61305,7 +61305,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070234": {
@@ -61314,7 +61314,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070235": {
@@ -61323,7 +61323,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070266": {
@@ -61332,7 +61332,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070267": {
@@ -61341,7 +61341,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070063": {
@@ -61350,7 +61350,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070498": {
@@ -61359,7 +61359,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070001": {
@@ -61368,7 +61368,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070168": {
@@ -61377,7 +61377,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070499": {
@@ -61386,7 +61386,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070574": {
@@ -61395,7 +61395,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070544": {
@@ -61404,7 +61404,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070545": {
@@ -61413,7 +61413,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070546": {
@@ -61422,7 +61422,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070046": {
@@ -61431,7 +61431,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070047": {
@@ -61440,7 +61440,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070055": {
@@ -61458,7 +61458,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070016": {
@@ -61467,7 +61467,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070017": {
@@ -61476,7 +61476,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070025": {
@@ -61485,7 +61485,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070026": {
@@ -61503,7 +61503,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070467": {
@@ -61512,7 +61512,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070469": {
@@ -61521,7 +61521,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070470": {
@@ -61530,7 +61530,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070471": {
@@ -61539,7 +61539,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070027": {
@@ -61548,7 +61548,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070028": {
@@ -61557,7 +61557,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070029": {
@@ -61566,7 +61566,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070018": {
@@ -61782,7 +61782,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070137": {
@@ -61953,7 +61953,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070360": {
@@ -61962,7 +61962,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070573": {
@@ -61980,7 +61980,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070037": {
@@ -61989,7 +61989,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070038": {
@@ -61998,7 +61998,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070251": {
@@ -62232,7 +62232,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070410": {
@@ -62241,7 +62241,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070493": {
@@ -62295,7 +62295,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070557": {
@@ -62412,7 +62412,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070412": {
@@ -62673,7 +62673,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070333": {
@@ -62682,7 +62682,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070334": {
@@ -62691,7 +62691,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070335": {
@@ -62700,7 +62700,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070489": {
@@ -63114,7 +63114,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070515": {
@@ -63429,7 +63429,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070311": {
@@ -63447,7 +63447,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070361": {
@@ -63996,7 +63996,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070482": {
@@ -64257,7 +64257,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070577": {
@@ -64266,7 +64266,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070578": {
@@ -64275,7 +64275,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070579": {
@@ -64284,7 +64284,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070580": {
@@ -64293,7 +64293,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070581": {
@@ -64302,7 +64302,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070582": {
@@ -64311,7 +64311,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070583": {
@@ -64320,7 +64320,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070584": {
@@ -64329,7 +64329,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070585": {
@@ -64338,7 +64338,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070586": {
@@ -64347,7 +64347,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070587": {
@@ -64356,7 +64356,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070588": {
@@ -64365,7 +64365,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070589": {
@@ -64374,7 +64374,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070590": {
@@ -64383,7 +64383,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070591": {
@@ -64392,7 +64392,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070592": {
@@ -64401,7 +64401,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070593": {
@@ -64410,7 +64410,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070594": {
@@ -64419,7 +64419,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070595": {
@@ -64428,7 +64428,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070596": {
@@ -64437,7 +64437,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070597": {
@@ -64446,7 +64446,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070598": {
@@ -64455,7 +64455,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070599": {
@@ -64464,7 +64464,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070600": {
@@ -64473,7 +64473,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070601": {
@@ -64482,7 +64482,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070602": {
@@ -64491,7 +64491,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070604": {
@@ -64500,7 +64500,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070605": {
@@ -64509,7 +64509,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070606": {
@@ -64518,7 +64518,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070610": {
@@ -64527,7 +64527,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070611": {
@@ -64536,7 +64536,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070612": {
@@ -64545,7 +64545,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070613": {
@@ -64554,7 +64554,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070614": {
@@ -64563,7 +64563,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070619": {
@@ -64572,7 +64572,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070620": {
@@ -64581,7 +64581,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070621": {
@@ -64590,7 +64590,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070607": {
@@ -64599,7 +64599,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070608": {
@@ -64608,7 +64608,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070609": {
@@ -64617,7 +64617,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070615": {
@@ -64626,7 +64626,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070616": {
@@ -64635,7 +64635,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070617": {
@@ -64644,7 +64644,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070618": {
@@ -64653,7 +64653,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070622": {
@@ -64707,7 +64707,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070700": {
@@ -64716,7 +64716,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070702": {
@@ -64725,7 +64725,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070703": {
@@ -64734,7 +64734,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070704": {
@@ -64743,7 +64743,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070705": {
@@ -64752,7 +64752,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070706": {
@@ -64761,7 +64761,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070707": {
@@ -64770,7 +64770,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070708": {
@@ -64779,7 +64779,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070709": {
@@ -64788,7 +64788,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070710": {
@@ -64797,7 +64797,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070711": {
@@ -64806,7 +64806,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070716": {
@@ -64851,7 +64851,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070812": {
@@ -64860,7 +64860,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070799": {
@@ -65625,7 +65625,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\cmd.rules"
   },
   "13010001": {
@@ -66273,7 +66273,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010019": {
@@ -66282,7 +66282,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010020": {
@@ -66516,7 +66516,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010028": {
@@ -66651,7 +66651,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010050": {
@@ -66669,7 +66669,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010053": {
@@ -66687,7 +66687,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010054": {
@@ -66813,7 +66813,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010079": {
@@ -66822,7 +66822,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010080": {
@@ -66831,7 +66831,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010081": {
@@ -67371,7 +67371,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010232": {
@@ -67380,7 +67380,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010233": {
@@ -67398,7 +67398,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010237": {
@@ -67407,7 +67407,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010248": {
@@ -67416,7 +67416,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010249": {
@@ -67425,7 +67425,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010250": {
@@ -67434,7 +67434,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010251": {
@@ -67443,7 +67443,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010252": {
@@ -67452,7 +67452,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010253": {
@@ -67461,7 +67461,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010255": {
@@ -67470,7 +67470,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010261": {
@@ -67479,7 +67479,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010265": {
@@ -67497,7 +67497,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010269": {
@@ -67515,7 +67515,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010271": {
@@ -67533,7 +67533,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010196": {
@@ -67641,7 +67641,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13010508": {
@@ -67770,7 +67770,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012199": {
@@ -67779,7 +67779,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012201": {
@@ -67869,7 +67869,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012222": {
@@ -67878,7 +67878,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012224": {
@@ -67932,7 +67932,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012244": {
@@ -67941,7 +67941,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012245": {
@@ -67959,7 +67959,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012251": {
@@ -67977,7 +67977,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012254": {
@@ -67986,7 +67986,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012260": {
@@ -67995,7 +67995,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012262": {
@@ -68040,7 +68040,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012272": {
@@ -68049,7 +68049,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012273": {
@@ -68058,7 +68058,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012274": {
@@ -68067,7 +68067,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012275": {
@@ -68076,7 +68076,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012276": {
@@ -68085,7 +68085,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012277": {
@@ -68094,7 +68094,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012278": {
@@ -68103,7 +68103,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012284": {
@@ -68112,7 +68112,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012287": {
@@ -68139,7 +68139,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012290": {
@@ -68148,7 +68148,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012291": {
@@ -68157,7 +68157,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012292": {
@@ -68166,7 +68166,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012293": {
@@ -68175,7 +68175,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012295": {
@@ -68184,7 +68184,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012285": {
@@ -68211,7 +68211,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\命令注入\\oscmd.rules"
   },
   "13012306": {
@@ -72576,7 +72576,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100002": {
@@ -72585,7 +72585,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100003": {
@@ -72594,7 +72594,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100004": {
@@ -72603,7 +72603,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100006": {
@@ -72612,7 +72612,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100020": {
@@ -72621,7 +72621,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100511": {
@@ -72630,7 +72630,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100512": {
@@ -72639,7 +72639,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100516": {
@@ -72747,7 +72747,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100100": {
@@ -72756,7 +72756,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100101": {
@@ -72765,7 +72765,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100072": {
@@ -72819,7 +72819,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100105": {
@@ -72828,7 +72828,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100063": {
@@ -72855,7 +72855,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100069": {
@@ -72864,7 +72864,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100094": {
@@ -72873,7 +72873,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100109": {
@@ -72882,7 +72882,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100122": {
@@ -72900,7 +72900,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100125": {
@@ -72909,7 +72909,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100126": {
@@ -72918,7 +72918,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100127": {
@@ -72927,7 +72927,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100128": {
@@ -72936,7 +72936,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100129": {
@@ -72945,7 +72945,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100173": {
@@ -72954,7 +72954,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100174": {
@@ -72963,7 +72963,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100175": {
@@ -72972,7 +72972,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100229": {
@@ -72981,7 +72981,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100230": {
@@ -72999,7 +72999,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100282": {
@@ -73098,7 +73098,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100227": {
@@ -73116,7 +73116,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100161": {
@@ -73404,7 +73404,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100154": {
@@ -73440,7 +73440,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100159": {
@@ -73593,7 +73593,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100241": {
@@ -73647,7 +73647,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100176": {
@@ -73674,7 +73674,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100204": {
@@ -73683,7 +73683,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100205": {
@@ -73692,7 +73692,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100208": {
@@ -73701,7 +73701,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100209": {
@@ -73710,7 +73710,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100210": {
@@ -73719,7 +73719,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100216": {
@@ -73809,7 +73809,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100252": {
@@ -73818,7 +73818,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100253": {
@@ -73908,7 +73908,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100213": {
@@ -74169,7 +74169,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100313": {
@@ -74565,7 +74565,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100357": {
@@ -74583,7 +74583,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100359": {
@@ -75897,7 +75897,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108001": {
@@ -75906,7 +75906,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108002": {
@@ -75915,7 +75915,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108003": {
@@ -75924,7 +75924,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108004": {
@@ -75933,7 +75933,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108005": {
@@ -75942,7 +75942,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108006": {
@@ -75951,7 +75951,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108007": {
@@ -75960,7 +75960,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108008": {
@@ -75969,7 +75969,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108009": {
@@ -75978,7 +75978,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108010": {
@@ -75987,7 +75987,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13108011": {
@@ -75996,7 +75996,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13109000": {
@@ -76086,7 +76086,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13109010": {
@@ -76095,7 +76095,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13109011": {
@@ -77175,7 +77175,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100520": {
@@ -77328,7 +77328,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100537": {
@@ -77400,7 +77400,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100545": {
@@ -77427,7 +77427,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100548": {
@@ -77436,7 +77436,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100277": {
@@ -77463,7 +77463,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100550": {
@@ -77472,7 +77472,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100549": {
@@ -77481,7 +77481,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100553": {
@@ -77499,7 +77499,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100556": {
@@ -77526,7 +77526,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100583": {
@@ -77553,7 +77553,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100587": {
@@ -77751,7 +77751,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100576": {
@@ -77769,7 +77769,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
   "13100578": {
@@ -91206,7 +91206,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\文件上传\\file_upload.rules"
   },
   "14040003": {
@@ -91215,7 +91215,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\文件上传\\file_upload.rules"
   },
   "14040005": {
@@ -91458,7 +91458,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\文件上传\\file_upload.rules"
   },
   "14040059": {
@@ -98556,7 +98556,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050004": {
@@ -98565,7 +98565,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050005": {
@@ -98574,7 +98574,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050006": {
@@ -98583,7 +98583,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050007": {
@@ -98592,7 +98592,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050008": {
@@ -98601,7 +98601,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050009": {
@@ -98610,7 +98610,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050010": {
@@ -98619,7 +98619,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050011": {
@@ -98628,7 +98628,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050012": {
@@ -98637,7 +98637,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050013": {
@@ -98646,7 +98646,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050016": {
@@ -98655,7 +98655,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050017": {
@@ -98664,7 +98664,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050018": {
@@ -98754,7 +98754,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050028": {
@@ -98781,7 +98781,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050031": {
@@ -98790,7 +98790,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050032": {
@@ -98799,7 +98799,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050033": {
@@ -98808,7 +98808,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050034": {
@@ -98817,7 +98817,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050035": {
@@ -98826,7 +98826,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050037": {
@@ -98907,7 +98907,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050050": {
@@ -98916,7 +98916,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "13050051": {
@@ -98925,7 +98925,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
   "14060001": {
@@ -120941,7 +120941,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000001": {
@@ -120950,7 +120950,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000002": {
@@ -120968,7 +120968,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000004": {
@@ -120977,7 +120977,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000005": {
@@ -120986,7 +120986,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000006": {
@@ -120995,7 +120995,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000007": {
@@ -121004,7 +121004,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000008": {
@@ -121013,7 +121013,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000009": {
@@ -121031,7 +121031,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000011": {
@@ -121040,7 +121040,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000012": {
@@ -121049,7 +121049,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000013": {
@@ -121058,7 +121058,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000014": {
@@ -121067,7 +121067,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000015": {
@@ -121076,7 +121076,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000016": {
@@ -121085,7 +121085,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000017": {
@@ -121094,7 +121094,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000018": {
@@ -121103,7 +121103,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000019": {
@@ -121112,7 +121112,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000020": {
@@ -121121,7 +121121,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000021": {
@@ -121130,7 +121130,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000022": {
@@ -121139,7 +121139,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000023": {
@@ -121148,7 +121148,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000024": {
@@ -121157,7 +121157,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000025": {
@@ -121166,7 +121166,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000026": {
@@ -121175,7 +121175,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000027": {
@@ -121184,7 +121184,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000028": {
@@ -121193,7 +121193,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000029": {
@@ -121202,7 +121202,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000030": {
@@ -121211,7 +121211,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000031": {
@@ -121220,7 +121220,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000032": {
@@ -121229,7 +121229,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000033": {
@@ -121238,7 +121238,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000034": {
@@ -121247,7 +121247,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000035": {
@@ -121256,7 +121256,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000036": {
@@ -121265,7 +121265,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000037": {
@@ -121283,7 +121283,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000039": {
@@ -121292,7 +121292,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000040": {
@@ -121301,7 +121301,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000041": {
@@ -121310,7 +121310,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000042": {
@@ -121319,7 +121319,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000043": {
@@ -121328,7 +121328,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000044": {
@@ -121337,7 +121337,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000045": {
@@ -121346,7 +121346,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000046": {
@@ -121355,7 +121355,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000047": {
@@ -121364,7 +121364,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000048": {
@@ -121373,7 +121373,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000049": {
@@ -121382,7 +121382,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000050": {
@@ -121391,7 +121391,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "16000051": {
@@ -121400,7 +121400,7 @@
     ],
     "primary": "lua",
     "has_payload": true,
-    "app_tx_lua": true,
+    "app_tx_lua": false,
     "source": "suricata\\恶意URL\\malice_url_report.rules"
   },
   "10060001": {

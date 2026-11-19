@@ -7,6 +7,14 @@
 -- ============================================================================
 
 local http = require("suricata.http")
+
+-- xbits: 显式导出实际命中的精确 buffer（未打补丁的 Suricata 上为 nil，自动跳过）
+local function xbits_export(value)
+    if xbits_export_match ~= nil and type(value) == "string" and #value > 0 then
+        xbits_export_match("lua", value)
+    end
+end
+
 local MAX_BODY = 16384
 
 local MARKERS = {
@@ -71,6 +79,7 @@ function match(args)
     end
     for _, marker in ipairs(MARKERS) do
         if body:find(marker, 1, true) then
+            xbits_export(body)
             return 1
         end
     end
