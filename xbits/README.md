@@ -237,15 +237,19 @@ Context-only buffer（`lua`、`http.header`、`file.data`、`http.uri.raw`、
 `dns.rrtype`、`tls.alpn`、`http.cookie` 等）在 EVE/Zeek 中没有精确等价字段，
 **只接受 match_context 导出值**，任何近似值都不会兜底。
 
-`match_buffers.json` 中 `app_tx_lua: true` 的规则是以 app-layer Lua
-（`match(args)` 形式，检查 tx 多个字段）挂载、且其脚本文本未显式导出的规则：
-没有单一精确 buffer 可导出，核心补丁明确不做近似导出，**这类规则不参与抑制**
-（每次告警仍走 validator 出判定，xbits 会记录一次说明日志）。
+`match_buffers.json` 由 `规则检测/build_match_buffers.py` 生成。`lua:` 是脚本挂载点，
+**不是数据 buffer**，绝不参与 key：生成器先剥离 `lua`，再按规则实际匹配的数据面归类——
+有具体 sticky buffer（`http.uri`/`file.data`/`http.header`…）用该 buffer；只有
+`content`/`pcre` 而无声明的落到 `payload`（报文精确字节）。因此带 `lua:` 的规则
+同样是**可精确抑制**的 `payload`/sticky buffer 规则，而不是"无 buffer 可导出"。
 
-自研 app-tx Lua 脚本已通过补丁注册的 `xbits_export_match(name, value)` 在命中点显式
-上报实际命中的 buffer 与值（脚本内 `xbits_export(value)` 封装，未打补丁时自动跳过）。
-生成器据此自动判定可抑制性：脚本已导出 → `app_tx_lua: false`（可抑制），
-否则 `app_tx_lua: true`（不可抑制）。因此 919 条纯 Lua 规则现已全部可抑制。
+只有当规则既无具体 buffer、也无 `content`/`pcre`、仅挂 `lua` 时，才标记
+`app_tx_lua: true`：这类真·纯 Lua 规则在 C 层没有单一精确 buffer 可导出，
+**不参与抑制**（每次告警仍走 validator；xbits 记录一次说明日志）。当前规则库
+不存在此类规则（全部 17477 条都有可精确获取的具体 buffer）。
+
+> 早期版本曾把 `lua` 当成 buffer 抢先占位、丢掉 `content` 匹配的 `payload`，
+> 导致 919 条规则被误标为 `app_tx_lua` 而无法抑制。现已按上述逻辑根治。
 
 跨 socket 顺序：`match_context` 与 `alert` 来自不同连接、到达顺序无保证。xbits 对
 声明了 context-only buffer 的告警在缺 context 时短暂挂起（默认 500ms，`--pending-context-ms`

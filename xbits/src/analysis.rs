@@ -986,7 +986,7 @@ mod tests {
         MatchBufferMeta {
             buffers: vec!["lua".to_string()],
             primary: Some("lua".to_string()),
-            has_payload: true,
+            has_payload: false,
             source: None,
             app_tx_lua: true,
         }

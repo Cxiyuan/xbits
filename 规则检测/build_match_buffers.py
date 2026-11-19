@@ -75,7 +75,7 @@ PREFIXES = (
 
 MATCH_KEYWORDS = {
     "content", "pcre", "byte_test", "byte_jump", "byte_extract", "byte_math",
-    "isdataat", "dsize", "urilen", "filemagic", "filename", "fileext", "lua",
+    "isdataat", "dsize", "urilen", "filemagic", "filename", "fileext",
 }
 
 
@@ -154,59 +154,47 @@ def canonical_buffer(name: str) -> str | None:
     return None
 
 
-def lua_script_exports(script_name: str) -> bool:
-    """被引用的 Lua 脚本是否已支持精确导出（含 xbits_export_match 调用）。
-
-    脚本自身声明它实际检查并命中的 buffer，由核心补丁注册的
-    xbits_export_match() 上报给 xbits。只有这样 app-tx Lua 规则才可抑制。
-    """
-    for path in SUR.rglob(script_name):
-        try:
-            if "xbits_export_match" in path.read_text(encoding="utf-8", errors="replace"):
-                return True
-        except OSError:
-            continue
-    return False
-
-
 def classify(rule: str) -> dict:
     body = rule[rule.find("(") + 1 : rule.rfind(")")]
     tokens = split_options(body)
     buffers: list[str] = []
-    has_match = False
+    has_content_match = False
     for token in tokens:
         head = token.split(":", 1)[0].strip().lower()
+        # lua 不是数据 buffer：它是脚本挂载点，绝不能当作匹配 buffer 参与 key。
+        # 关键：若不跳过 lua，它会在下面先占位 buffers，导致同一规则里
+        # content/pcre 默认匹配的 payload 被丢弃，规则被误判为纯 lua。
+        if head == "lua":
+            continue
         if head in MATCH_KEYWORDS:
-            has_match = True
+            has_content_match = True
         b = canonical_buffer(token if ":" not in token else head)
-        if b and b not in buffers:
+        if b and b != "lua" and b not in buffers:
             buffers.append(b)
 
-    if not buffers and has_match:
+    # 有 content/pcre 等、但没有具体 sticky buffer => 匹配的是报文 payload。
+    if not buffers and has_content_match:
         buffers.append("payload")
     lua_refs = re.findall(r"\blua\s*:\s*([^\s;]+)", body, re.I)
-    if not buffers and lua_refs:
-        buffers.append("lua")
 
-    # 稳定性：按名称排序；primary 选择最具体的应用层 buffer
     buffers = sorted(set(buffers))
-    # Lua app-tx 脚本可能通过 API 检查多个 buffer，C 层没有单一精确 buffer 可导出。
-    # 当规则同时声明了具体 sticky buffer 时，只用这些可导出的 buffer 做精确 key；
-    # 保留裸 "lua" 会迫使 xbits 用 p->payload 等近似值，属于兜底，禁止。
     concrete = [b for b in buffers if b != "lua"]
-    # 纯 app-tx Lua 规则：能否抑制取决于被引用脚本是否显式导出命中值。
-    # 脚本已改造（含 xbits_export_match）=> 可抑制；否则标记 app_tx_lua=true
-    # 表示没有精确 buffer 可导出，xbits 对其明确不做抑制（判定仍走 validator）。
+    # 仅当规则既无具体 buffer、也无 content/pcre、只挂了 lua 时，才是真正的
+    # 纯 app-tx Lua 规则：C 层没有单一精确 buffer 可导出，xbits 对其明确不做
+    # 抑制（app_tx_lua=true，判定仍走 validator）。绝不近似。
     app_tx_lua = False
     if concrete:
         buffers = concrete
-    elif buffers == ["lua"]:
-        app_tx_lua = not any(lua_script_exports(name) for name in lua_refs)
+    elif not buffers and lua_refs:
+        buffers = ["lua"]
+        app_tx_lua = True
     primary = next((b for b in buffers if b not in {"payload", "stream", "lua"}), None)
     if primary is None and buffers:
         primary = buffers[0]
 
-    has_payload = any(b in {"payload", "stream", "file.data", "lua"} for b in buffers)
+    # has_payload 表示规则是否以 packet payload 为匹配信号（用于诊断 EVE
+    # payload 未开启导致无法建 key 的情况）；纯 lua 规则不算 payload。
+    has_payload = any(b in {"payload", "stream", "file.data"} for b in buffers)
     return {
         "buffers": buffers,
         "primary": primary,

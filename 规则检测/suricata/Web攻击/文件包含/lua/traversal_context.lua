@@ -7,14 +7,6 @@
 -- ============================================================================
 
 local http = require("suricata.http")
-
--- xbits: 显式导出实际命中的精确 buffer（未打补丁的 Suricata 上为 nil，自动跳过）
-local function xbits_export(value)
-    if xbits_export_match ~= nil and type(value) == "string" and #value > 0 then
-        xbits_export_match("lua", value)
-    end
-end
-
 local MAX_BODY = 16384
 
 local function decode(s, rounds)
@@ -159,23 +151,19 @@ function match(args)
 
             -- 单级 ../ 必须叠加敏感文件；两级以上本身已经足够可疑。
             if traversals > 0 and (sensitive or traversals >= 2) then
-                xbits_export(s)
                 return 1
             end
             -- file:// 等包装器在 XXE 的 <!ENTITY SYSTEM "file:///..."> 中也会出现；
             -- 这里要求 LFI 语义（文件参数/穿越），避免与 XXE 规则互相误报。
             if wrapper and (file_param or traversals > 0
                 or (source.kind == "uri" and sensitive)) then
-                xbits_export(s)
                 return 1
             end
             if sensitive and file_param then
-                xbits_export(s)
                 return 1
             end
             -- 直接访问 /etc/passwd 这类 URI 路径，不要求参数名。
             if source.kind == "uri" and sensitive and s:sub(1, 5) == "/etc/" then
-                xbits_export(s)
                 return 1
             end
         end

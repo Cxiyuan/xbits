@@ -8,14 +8,6 @@
 
 local http = require("suricata.http")
 
--- xbits: 显式导出实际命中的精确 buffer（未打补丁的 Suricata 上为 nil，自动跳过）
-local function xbits_export(value)
-    if xbits_export_match ~= nil and type(value) == "string" and #value > 0 then
-        xbits_export_match("lua", value)
-    end
-end
-
-
 local SENSITIVE_PREFIX = {
     "/.git/", "/.svn/", "/.hg/", "/.env", "/.htpasswd", "/.htaccess",
     "/server-status", "/server-info", "/phpinfo", "/.well-known/",
@@ -54,14 +46,12 @@ function match(args)
 
     for _, prefix in ipairs(SENSITIVE_PREFIX) do
         if path:find(prefix, 1, true) then
-            xbits_export(path)
             return 1
         end
     end
 
     local ext = path:match("%.([%w]+)$")
     if ext ~= nil and SENSITIVE_EXT[ext] then
-        xbits_export(path)
         return 1
     end
     return 0

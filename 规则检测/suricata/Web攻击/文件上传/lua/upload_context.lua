@@ -9,14 +9,6 @@
 -- ============================================================================
 
 local http = require("suricata.http")
-
--- xbits: 显式导出实际命中的精确 buffer（未打补丁的 Suricata 上为 nil，自动跳过）
-local function xbits_export(value)
-    if xbits_export_match ~= nil and type(value) == "string" and #value > 0 then
-        xbits_export_match("lua", value)
-    end
-end
-
 local MAX_BODY = 16384
 
 local SCRIPT_EXTS = {
@@ -128,7 +120,6 @@ function match(args)
 
     local body = read_body(tx)
     if detect(body, tx:request_header("Content-Type")) then
-        xbits_export(body)
         return 1
     end
     return 0

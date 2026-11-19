@@ -96,6 +96,18 @@ ALERT_OTHER_TUPLE = dict(
     uid="C111111111",
 )
 
+# SID 9103003: payload 规则（由 content/pcre 默认匹配 payload），
+# 精确 payload 直接来自 EVE payload 字段——不需要 context 导出即可抑制。
+PAYLOAD_BYTES = "R0VUIC9pbmRleC5waHA/Y21kPWNhdCUyMGV0Yy9wYXNzd2QgSFRUUC8xLjE="
+ALERT_PAYLOAD = dict(
+    BASE_ALERT,
+    src_port=40009,
+    flow_id=333333333,
+    uid="C333333333",
+    payload=PAYLOAD_BYTES,
+    alert={"signature_id": 9103003, "signature": "[Web漏洞利用] payload check"},
+)
+
 ALERT_HEADER = dict(
     BASE_ALERT,
     src_port=40003,
@@ -348,6 +360,15 @@ def main() -> int:
             1,
             1,
             0.25,  # 先发告警，0.25s 后补 match_context（context-only buffer 才走 defer）
+        ),
+        (
+            # 分类修复回归：payload 规则用 EVE payload 精确值即可抑制，
+            # 不再被误标为 app-tx lua 而不可抑制。
+            "payload-rule-fp-then-suppressed",
+            [],
+            [dict(ALERT_PAYLOAD), dict(ALERT_PAYLOAD)],
+            1,
+            1,
         ),
     ]
 
