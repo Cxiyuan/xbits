@@ -33,6 +33,17 @@
     "sid_in": [9103004]
   },
   {
+    "id": "xb-test-payload",
+    "name": "test payload",
+    "source": "suricata",
+    "kind": "alert",
+    "group_by": "src",
+    "score": 20,
+    "threshold": 20,
+    "reason": "test-payload",
+    "sid_in": [9103003]
+  },
+  {
     "id": "xb-test-uriraw",
     "name": "test http.uri.raw",
     "source": "suricata",
