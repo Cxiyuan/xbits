@@ -234,47 +234,6 @@ void XbitsEmitMatchContextNamed(DetectEngineThreadCtx *det_ctx, const Signature 
 """,
     )
 
-    # Lua 显式导出通道：register xbits_export_match(name, value) into the Lua state
-    # so app-tx scripts can report the exact buffer they matched.
-    replace_once(
-        lua_c,
-        "static int DetectLuaMatch (DetectEngineThreadCtx *det_ctx,\n",
-        """/* xbits: Lua 脚本显式导出实际命中 buffer。
- * 用法（脚本内）：xbits_export_match("http.request_body", matched_value)
- * 只在脚本判定命中、即将 return 1 前调用，导出值即规则实际命中的精确 buffer。 */
-int XbitsLuaExportMatch(lua_State *L)
-{
-    DetectEngineThreadCtx *det_ctx = LuaStateGetDetCtx(L);
-    const Signature *s = LuaStateGetSignature(L);
-    if (det_ctx == NULL || s == NULL) {
-        return 0;
-    }
-    const char *name = luaL_checkstring(L, 1);
-    size_t len = 0;
-    const char *value = luaL_checklstring(L, 2, &len);
-    if (name != NULL && value != NULL && len > 0) {
-        XbitsEmitMatchContextNamed(det_ctx, s, name, (const uint8_t *)value, (uint32_t)len);
-    }
-    return 0;
-}
-
-static int DetectLuaMatch (DetectEngineThreadCtx *det_ctx,
-""",
-    )
-
-    # 在每个线程的 Lua 状态里注册全局函数 xbits_export_match。
-    replace_once(
-        lua_c,
-        """    LuaStateSetDetectLuaData(t->luastate, lua);
-""",
-        """    LuaStateSetDetectLuaData(t->luastate, lua);
-
-    /* xbits: expose explicit match-context export to scripts */
-    lua_pushcfunction(t->luastate, XbitsLuaExportMatch);
-    lua_setglobal(t->luastate, "xbits_export_match");
-""",
-    )
-
     print("xbits match-context patch applied to", root)
     return 0
 
