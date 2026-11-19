@@ -629,14 +629,18 @@ impl Analyzer {
 
     /// context 到达后，立即判定所有已具备条件的挂起告警。
     fn flush_ready_pending(&mut self) {
+        // 先整体取走 pending，避免与 &self 的只读查询产生借用冲突。
+        let all = std::mem::take(&mut self.pending);
         let mut ready = Vec::new();
         let mut remaining = Vec::new();
-        for pending in self.pending.drain(..) {
-            let meta = self
+        for pending in all {
+            let complete = match self
                 .match_buffers
-                .get(&pending.alert.signature_id.to_string());
-            let complete = match meta {
-                Some(meta) => self.missing_context_only(&pending.event, &pending.alert, meta).is_empty(),
+                .get(&pending.alert.signature_id.to_string())
+            {
+                Some(meta) => self
+                    .missing_context_only(&pending.event, &pending.alert, meta)
+                    .is_empty(),
                 None => true,
             };
             if complete {
