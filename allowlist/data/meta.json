@@ -1,12 +1,48 @@
 {
-  "refreshed_utc": "2026-11-19 09:55:51Z",
+  "refreshed_utc": "2026-11-20 20:54:35Z",
   "counts": {
     "domain": 100,
-    "ip": 15,
+    "ip": 0,
     "public_dns": 15
   },
+  "source_map": [
+    {
+      "source": "probe-white-domains",
+      "from": "custom/white_domains.txt",
+      "to": "domain.txt",
+      "entries": 100,
+      "file_present": true
+    },
+    {
+      "source": "custom-domains",
+      "from": "custom/domain.txt",
+      "to": "domain.txt",
+      "entries": 0,
+      "file_present": true
+    },
+    {
+      "source": "custom-ips",
+      "from": "custom/ip.txt",
+      "to": "ip.txt",
+      "entries": 0,
+      "file_present": true
+    },
+    {
+      "source": "public-dns-servers",
+      "from": "custom/public_dns_servers.txt",
+      "to": "public_dns.txt",
+      "entries": 15,
+      "file_present": true
+    }
+  ],
+  "semantics": {
+    "domain.txt": "业务/通用白域名（小写后缀，支持子域名匹配）",
+    "ip.txt": "通用 IP 白名单（只来自 sources.json output=ip.txt 的源；不含公共 DNS）",
+    "public_dns.txt": "DNS 行为基线（单向派生自 custom/public_dns_servers.txt；不反向并入 ip.txt）"
+  },
   "layers": [
-    "custom/（手工，不覆盖）"
+    "custom/（手工，不覆盖）",
+    "sources.json（唯一真源）"
   ],
   "consumers": [
     "xbits（--allowlist-dir）",

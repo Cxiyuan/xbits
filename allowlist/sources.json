@@ -1,21 +1,49 @@
 {
-  "$comment": "allowlist 白名单源清单。带 refresh 类型源的条目可由 tools/refresh.py 在联网环境定期刷新；custom/ 下的手工白名单永不覆盖。",
+  "$comment": "allowlist 白名单源清单（唯一真源）。每条声明 type/enabled/path/output/kind/options；refresh.py 只读本文件构建 data/。type 限定 static-domain-list / static-ip-list；output 限定 domain.txt / ip.txt / public_dns.txt。语义约束：public_dns.txt 只允许来自 custom/public_dns_servers.txt，且禁止该文件反向并入 ip.txt；写出前断言 ip.txt 与 public_dns.txt 交集为空。custom/ 下的文件由 add.py 增删，refresh 永不覆盖。",
   "sources": [
     {
       "name": "probe-white-domains",
       "enabled": true,
-      "type": "refresh-static-ini-domains",
+      "type": "static-domain-list",
       "path": "custom/white_domains.txt",
+      "output": "domain.txt",
+      "kind": "domain",
+      "options": {},
       "license": "内部",
       "notes": "业务白域名（源自探针 top100_white_domain.ini 转译，后续可手工增删）。"
     },
     {
+      "name": "custom-domains",
+      "enabled": true,
+      "type": "static-domain-list",
+      "path": "custom/domain.txt",
+      "output": "domain.txt",
+      "kind": "domain",
+      "options": {},
+      "license": "内部",
+      "notes": "add.py add domain 写入的通用域名白名单（初始为空）。"
+    },
+    {
+      "name": "custom-ips",
+      "enabled": true,
+      "type": "static-ip-list",
+      "path": "custom/ip.txt",
+      "output": "ip.txt",
+      "kind": "ip",
+      "options": {},
+      "license": "内部",
+      "notes": "add.py add ip 写入的通用 IP 白名单（初始为空）。V-22：ip.txt 只来自这里，不再并入 public_dns。"
+    },
+    {
       "name": "public-dns-servers",
       "enabled": true,
-      "type": "refresh-static-ini-ips",
+      "type": "static-ip-list",
       "path": "custom/public_dns_servers.txt",
+      "output": "public_dns.txt",
+      "kind": "ip",
+      "options": {},
       "license": "公共知识",
-      "notes": "公共 DNS 服务器（源自探针 common_dns_server.ini 转译），作为 DNS 行为基线白名单。"
+      "notes": "公共 DNS 服务器（源自探针 common_dns_server.ini 转译），DNS 行为基线白名单；单向派生到 public_dns.txt，禁止反向并入 ip.txt。"
     }
   ]
 }

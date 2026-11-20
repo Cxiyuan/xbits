@@ -1036,3 +1036,76 @@
 **C5/C6 可关闭**：V-10（棘轮对称、baseline 全等、dangling 未换皮）、V-11/12/13（抗重生）、V-14（cid key + 发告警才登记 + 多 sid，且 CI 已双绿）、V-16/V-18 端口方向与 PCAP 18 文件回归均已 Verified；回归门禁全绿。**剩余为已知限制**：R5-4/5/6、R6-2/3/4、R8-4/5/6、R9-2/3/4/5、R11-1、R12-2/4/5/6/7，加上本轮 R13-1/2/3；其中 **R13-2、R13-3** 建议优先。
 
 **第十三轮复核边界**：未运行 `cargo test`/CI/docker；CI 双绿按依赖结果（commit `1374b4d`）采信；所有"PASS"均为本地 Python 门禁/自测输出或静态代码核对。
+
+---
+
+# 第十四轮：C10 复核（V-21~V-24，t52~t58）
+
+> 对抗式复核：不接受"文档改了就算修"。只读；跑 Python 单测/门禁与临时目录对抗；未跑 cargo/CI/docker。CI 实跑以 Actions 为准。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| V-21 采集原子化 | **Verified** | HTTP500 / 低阈值 → 非零退出、data/exports 逐字节未变、`collect_last_attempt.json` 记 failed 且 last_success 未推进；成功才原子替换，替换失败回滚（8 例真断言） |
+| V-22 allowlist 语义分离 | **Verified** | ip.txt=0 / public_dns=15 / 交集=0；sources.json 唯一真源且未知 type 报错；`--check` 当前真实数据 **PASS**，漂移负例 FAIL；DNS 基线不再被通用白名单遮蔽 |
+| V-23 IP 规范化 | **Verified（Rust 静态，CI cargo 待）** | `IpSet{parsed:IpAddr, invalid_text}` + `parse::<IpAddr>()` 值比较、`canonical_ip_text()` 对齐 Python；4 条新单测在；跨语言 12 组模拟 0 mismatch |
+| V-24 文档断言 / zeek 残留 | **Verified** | `convert_probe_zeek.py` 无写盘路径；zeek 文件集合守卫三类破坏实测全 FAIL；README 已无"全部 N 条"硬断言；CI 步骤与 paths 已接 |
+| 回归 | **Verified** | `qa_workflow_paths` PASS；coverage/hook matrix/semantics/gaps/zeek/triage/allowlist/threat-intel 全绿；既有断言未放宽 |
+| 已知限制记录 | **Verified** | README §11 已扩到第五～十三轮并含 R13-1/2/3 状态；QA_REPORT V-21~24 标 Verified 且注"CI 实跑以 Actions 为准" |
+| 新发现 | **R14-1/R14-2 low** | 仓库残留未跟踪的模拟校验脚本；Rust IpSet 的 12 组交叉验证是 Python 模拟而非 cargo 实跑 |
+
+## 逐项证据
+
+### V-21 —— **Verified**
+
+- `threat-intel/tools/collect.py:84-101` `SourceResult{ok,fetched,http_code,error,last_success_utc}` + `to_meta()`；`:59-70` 阈值（`circl=1000`、`feodo=10`、默认 100）与 sources.json `options.min_fetched` 覆盖；`:327 validate_snapshot()`、`:375 atomic_write_snapshot()` 同盘暂存→校验→备份→逐文件 `os.replace`→失败回滚；`:550-573` 失败/写阶段分别非零退出。
+- 单测（实跑 **Ran 8 tests OK**）直接构造失败源：
+  - `test_collect.py:92-111` mock `FetchError("HTTP 500")` → rc≠0、快照逐字节不变、`status=failed`、`failed_sources=["feodo-tracker"]`、`http_code=500`、`last_success_utc` 仍为 `OLD_TIME`（attempt 与 meta 均未推进）；
+  - `:114-123` 产出 3 < 阈值 10 → 失败且快照不变、error 点明阈值；
+  - `:126-143` 全源达标 → rc=0、`ip.txt` 12 行、meta.last_success/collected 更新、exports 同步；
+  - `:146-167` 注入一次 `os.replace` 失败 → rc=2、快照回滚、note 含"回滚"。
+- t52 负控（把失败判定改 `ok=True`）曾使 4 例 FAIL（依赖结果），证明断言拴住原缺陷。
+
+### V-22 —— **Verified**
+
+- 当前真实数据：ip.txt **0** 行、public_dns.txt **15** 行、交集 **0**；自定义源 `custom/ip.txt` 已补齐（t58 报告的阻塞已消失）。
+- `allowlist/tools/refresh.py:41 SUPPORTED_TYPES`、`:80-95 load_sources()` 未知 type / kind-type 不一致直接抛错、`:118-146 build_outputs()` 按 sources.json `output` 分桶并写 `source_map`、`:154-190 check_snapshot()` 逐文件 custom↔data + meta.counts/source_map 校验；单一真源无硬编码 FILES/跨类型合并。
+- 实跑 `python allowlist/tools/refresh.py --check` → **exit 0**：`[OK] custom 与 data 一致：domain=100 ip=0 public_dns=15`。
+- 单测 **Ran 15 tests OK**（t54 的 14 例 + 源文件缺失例），含 `:147 public_dns_not_in_ip_txt`、`:173 check_detects_snapshot_drift`、`:189 unknown_source_type_rejected`、`:201 reverse_merge_blocked_by_config`、`:231/:245 缺失声明源失败`。负控重引入反向合并曾使 2 例 FAIL（依赖结果）。
+- DNS 基线信号：ip 与 public_dns 在 Python 工具链和 Rust `intel.rs` 中分表（`ThreatIntel.ips/public_dns` 各自 `IpSet`）；通用白名单 ip.txt 已清空，不再有"加一条普通白名单把公共 DNS 白掉"的路径。
+
+### V-23 —— **Verified（Rust 静态；cargo 由 CI）**
+
+- `xbits/src/intel.rs:55-58 IpSet{parsed: HashSet<IpAddr>, invalid_text: HashSet<String>}`；`:65-77 contains()` 合法输入按 `IpAddr` 值比较、非法输入仅与同样小写原文相等（不前缀/包含猜测）；`:80-87 canonical_addr()` 拒绝空串与 `%`（zone id）。
+- `:89-128 python_ipv6_string()` 实现最长零段压缩与 IPv4-mapped 点分尾；`:131-137 canonical_ip_text()` 用于标注/文档；`:266-300` 加载时非法文本保留并计入 `SetLoad.invalid_ip_warnings`，`:454-458` 启动报告可见。
+- 新单测在册：`:892 ipv6_forms_hit_threat_allowlist_and_public_dns`、`:935 ipv4_mapped_annotation_uses_python_canonical_text`、`:954 canonical_ip_text_matches_python_compression`、`:971 invalid_ip_text_is_kept_and_warned_not_dropped`；旧 7 例未删。
+- Python 侧 `allowlist/tools/ipnorm.py:21-27` `str(ipaddress.ip_address(v)).lower()` 且 `%` 拒绝；运行 `规则检测/t53_canon_crosscheck.py`（模拟 Rust 字符串逻辑）12 组 → `mismatches: []`。
+- **边界（R14-2）**：该 12 组是 Python 模拟而非 `cargo test` 实跑（本任务禁 cargo）；Rust 单测的真实执行仍需 CI。
+
+### V-24 —— **Verified**
+
+- `规则检测/convert_probe_zeek.py` 现仅 41 行：grep `OUT = ROOT/"zeek"`/`mkdir`/`write_text`/`open(...,'w')`/`return 2` 仅命中 docstring 的说明文字（`:13`），无实际写盘路径；`--src` 变兼容参数、缺失目录也 return 0。
+- `xbits/test/qa_zeek_file_set.py:31-45` 精确列名集合 + 写盘痕迹正则、`:58-104` 三层守卫。**对抗实测**（临时副本，不触仓库）：
+  - clean → rc 0；多放一个 `extra.zeek` → rc 1；在转换器副本注入 `OUT = ROOT / "zeek"` → rc 1；QA JSON 注入 `zeek/ghost.zeek` → rc 1。三类破坏均被点名。
+- CI：`xbits-images.yml:23,28,65,70` paths 覆盖守卫与 `qa_rule_quality.py`，`:211/:216` 两个步骤；`xbits-ci.yml:312-318` 接 threat-intel/allowlist 单测与 `refresh.py --check`，`set -euo pipefail` 保证红线。
+- 文档：grep `xbits/README.md`/`规则检测/README.md`/`threat-intel/README.md` 的"全部 N 条"式硬断言 = **0**；`xbits/README.md:276-282` 改为"以生成物为准"并点名 `qa_converter_semantics.py` 与 `qa_xbits_match_context.py --production-meta`；QA JSON `zeek_scripts` 3 键与实际 3 个 `.zeek` 一致。
+
+### 回归与记录 —— **Verified**
+
+- 实跑全绿：`qa_workflow_paths.py`（新增测试文件均在 paths 内）、`qa_rule_coverage.py`（74/19447）、hook matrix 12/12、converter semantics 13/13、gaps 13/13、PCAP 13/13（含 R13-1 字节断言负例）、`--check-rule-bytes` PASS（18 组）、zeek file set PASS、triage 32（OK，skipped=1）、threat-intel 8、allowlist 15。
+- R13-1/R13-2 已在本轮前修复且经核对：`qa_converter_pcap_regression.py:896-920` 在 generate 后与 EVE 断言前调用 `run_rule_byte_check()`，`:671-819` 自测含"改坏 PCAP 字节""改坏规则原文 content"两类负例；`engine.rs:829-858` `emits_alert` 已纳入 benign 与 min_confidence 上界，测试 `correlation_wait_not_registered_for_benign_or_below_min_confidence`（`:1654`）。
+- `xbits/README.md:504-588` §11 已扩为第五～十三轮清单，逐项标"尚未修复/已修复（本轮）"；`qa/QA_REPORT.md:338-341` V-21~24 标 Verified 且注明"CI 实跑以 Actions 为准"、V-21 注"工作区未单独 commit"——如实。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R14-1 | low | `规则检测/t53_canon_crosscheck.py`（未跟踪） | t53 留下的临时模拟脚本仍在仓库根目录级目录，非测试套件、非 CI；其"0 mismatch"只是 Python 模拟 Rust 逻辑，容易被误读为 Rust 实跑通过 | 删除或移至 `规则检测/tests/` 并在文档标明"模拟而非 cargo 实跑" |
+| R14-2 | low/info | `xbits/src/intel.rs:892-995`、`allowlist/tools/ipnorm.py:21-27` | V-23 的 Rust 侧单测本轮未执行（禁 cargo）；且非法 IP 策略不同：Python 丢弃/跳过，Rust 保留小写原文并 warn（两者都不模糊匹配，但语义不完全一致） | CI `cargo test` 验证；在 README 明确"合法 IP 同语义、非法 IP 两侧均不命中但保留策略不同" |
+
+## 收口结论
+
+**C10 可关闭**：V-21/V-22/V-23/V-24 均有真实代码、可跑门禁与负例证据，不是文档改名；README §11 与 QA_REPORT 状态如实。剩余仅为 R14-1/R14-2 两个 low 项，以及 §11 已列明的其它遗留（R5-4/5/6、R6-2/3/4、R8-4/5/6、R9-2/3/4/5、R11-1、R12-2/4/6/7 等）。
+
+**第十四轮复核边界**：未运行 `cargo test`/CI/docker；V-23 的 Rust 语义为静态代码核对 + Python 模拟；其余结论来自本地 Python 单测/门禁与临时目录对抗。

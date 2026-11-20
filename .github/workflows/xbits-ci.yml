@@ -307,6 +307,16 @@ jobs:
             --match-buffers xbits/testdata/match_buffers.json \
             --production-meta '规则检测/xbits/规则库元数据/match_buffers.json'
 
+      - name: Threat-intel collect + allowlist unit tests
+        run: |
+          set -euo pipefail
+          # C10-F：这两个目录的 paths 早已进 workflow，但此前 CI 从不执行它们的单测
+          # （t52 test_collect.py 8 例 / t54 test_allowlist.py 扩展例）。
+          python3 -m unittest discover -s threat-intel/tests -v
+          python3 -m unittest discover -s allowlist/tests -v
+          # --check 应 PASS；custom/ 有非法条目必须非零退出（set -e 拦截）
+          python3 allowlist/tools/refresh.py --check
+
       - name: Static triage unit tests (triage/, stdlib path)
         run: |
           set -euo pipefail

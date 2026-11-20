@@ -18,8 +18,13 @@
     `success_rules.json` 已由 `xbits --success-rules FILE` 真实消费——请求侧命中登记等待、
     响应侧同 community_id 命中配对成功后带 `correlated=<请求侧 SID>` 与 confidence+15
     （见 `xbits/README.md` success_rules 章节；CI 断言 `qa_xbits_success_rules.py`）。
-- `zeek/`：**只做行为分析**（`.zeek`）：DNS 突发、侦察 404/unique URI、C2 重复 URI；
-  `威胁情报/` 为白域名、公共 DNS、僵尸网络元数据。不再包含 content/UA 签名匹配。
+- `zeek/`：**只做行为分析**，且只有 3 个脚本——
+  `DNS隧道与带外检测/dns_tunnel_score.zeek`（DNS 突发）、
+  `侦察与攻击工具指纹/recon_score.zeek`（404/unique URI 突发）、
+  `后门通信/backdoor_c2_score.zeek`（C2 重复 URI）。
+  **不持有任何名单或情报**：白名单/基线由根目录 `allowlist/` 子模块提供，
+  威胁情报由 `threat-intel/` 子模块提供，均由 xbits 在 hook 到的事件上查询。
+  不再包含 content/UA 签名匹配；文件集合由 `xbits/test/qa_zeek_file_set.py` 守卫生效。
 - `xbits/规则库元数据/`：xbits 中央分析引擎消费的数据（由转换器生成，勿手改）：
   - `rules_meta.json`：每条规则元数据（depend/scope/holetype/tier/category）；
   - `success_rules.json`：PVS 成功确认依赖（996 条响应→请求映射；active 规则未消费，
@@ -41,17 +46,19 @@
   - `docker/probe-rules-production.yaml`：生产强规则加载集（不含 weak）；
   - `docker/probe-rules-weak.yaml`：weak 规则单独加载集；
   - `docker/probe-rules-validate.yaml`：全量加载验证集；
-- `convert_probe_zeek.py`：外部探针 Zeek 行为/情报转换器；
-  两者输入均为桌面 `流量检测规则` 目录。
+- `convert_probe_zeek.py`：**历史明文导出解析工具**（保留 `parse_sections` 供人工
+  核对），当前 Zeek 只做行为分析，该脚本**不产出任何文件**——3 个 `.zeek` 行为脚本
+  是手工维护的，不得由转换器重建。文件集合由 `qa_zeek_file_set.py` 守住。
+  仅 Suricata 转换器消费桌面 `流量检测规则` 目录。
 
 详见 [docs/规则归档与转换方案.md](docs/规则归档与转换方案.md)、
 [docs/转换规则清理报告.md](docs/转换规则清理报告.md)、
 [docs/规则质量QA报告.md](docs/规则质量QA报告.md)、
 [docs/Lua强化方案.md](docs/Lua强化方案.md)。
 
-重新生成转换规则：
+重新生成 Suricata 转换规则（Zeek 行为脚本手工维护，不随此命令重建）：
 
 ```bash
 python 规则检测/convert_probe_rules.py --src "C:/Users/sona/Desktop/流量检测规则"
-python 规则检测/convert_probe_zeek.py   --src "C:/Users/sona/Desktop/流量检测规则"
+python 规则检测/qa_rule_quality.py   # 刷新 docs/规则质量QA数据.json（CI 校验产物一致性）
 ```

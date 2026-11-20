@@ -1,47 +1,49 @@
 {
  "summary": {
-  "total_rules": 17477,
-  "converted_rules": 17403,
+  "total_rules": 19447,
+  "converted_rules": 19373,
   "scenario_rules": 74,
-  "weak_tier": 2668,
+  "weak_tier": 2676,
   "risk_levels": {
-   "low": 17422,
-   "medium": 55
+   "low": 19390,
+   "medium": 55,
+   "high": 2
   },
   "flag_counts": {
-   "weak-tier": 2668,
-   "generic-single-content": 55
+   "weak-tier": 2676,
+   "generic-single-content": 57,
+   "short-single-content": 2
   },
-  "duplicate_pattern_groups": 742,
-  "duplicate_pattern_rules": 1564,
-  "duplicate_msg_groups": 1647
+  "duplicate_pattern_groups": 887,
+  "duplicate_pattern_rules": 1862,
+  "duplicate_msg_groups": 1831
  },
  "per_category": {
-  "Web攻击/WebShell": {
-   "count": 3393,
-   "weak": 0,
-   "critical": 0,
-   "high": 0,
-   "medium": 0,
-   "low": 3393,
-   "state": 0
-  },
   "Web攻击/Web服务漏洞": {
-   "count": 1944,
+   "count": 3512,
    "weak": 0,
    "critical": 0,
-   "high": 0,
-   "medium": 6,
-   "low": 1938,
+   "high": 2,
+   "medium": 4,
+   "low": 3506,
    "state": 0
   },
-  "恶意软件/木马": {
-   "count": 1706,
+  "Web攻击/WebShell": {
+   "count": 3399,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 1,
-   "low": 1705,
+   "low": 3398,
+   "state": 0
+  },
+  "恶意软件/木马": {
+   "count": 1711,
+   "weak": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 1,
+   "low": 1710,
    "state": 0
   },
   "Web攻击/敏感关键词": {
@@ -54,30 +56,30 @@
    "state": 0
   },
   "应用软件漏洞": {
-   "count": 818,
+   "count": 833,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 2,
-   "low": 816,
+   "low": 831,
    "state": 0
   },
   "其他": {
-   "count": 781,
+   "count": 824,
    "weak": 0,
    "critical": 0,
    "high": 0,
-   "medium": 2,
-   "low": 779,
+   "medium": 3,
+   "low": 821,
    "state": 0
   },
   "主机系统漏洞": {
-   "count": 749,
+   "count": 771,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 15,
-   "low": 734,
+   "low": 756,
    "state": 0
   },
   "Web攻击/浏览器漏洞": {
@@ -107,22 +109,31 @@
    "low": 588,
    "state": 0
   },
+  "网络设备漏洞": {
+   "count": 566,
+   "weak": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 2,
+   "low": 564,
+   "state": 0
+  },
   "Web攻击/SQL注入": {
-   "count": 541,
+   "count": 543,
    "weak": 54,
    "critical": 0,
    "high": 0,
    "medium": 0,
-   "low": 541,
+   "low": 543,
    "state": 0
   },
   "Web攻击/信息泄露": {
-   "count": 486,
-   "weak": 486,
+   "count": 494,
+   "weak": 494,
    "critical": 0,
    "high": 0,
    "medium": 0,
-   "low": 486,
+   "low": 494,
    "state": 0
   },
   "Web攻击/客户端组件漏洞": {
@@ -134,58 +145,49 @@
    "low": 477,
    "state": 0
   },
-  "Web攻击/XSS": {
-   "count": 431,
-   "weak": 0,
-   "critical": 0,
-   "high": 0,
-   "medium": 0,
-   "low": 431,
-   "state": 0
-  },
-  "网络设备漏洞": {
-   "count": 423,
-   "weak": 0,
-   "critical": 0,
-   "high": 0,
-   "medium": 2,
-   "low": 421,
-   "state": 0
-  },
   "Web攻击/Web应用漏洞": {
-   "count": 387,
+   "count": 438,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 0,
-   "low": 387,
+   "low": 438,
+   "state": 0
+  },
+  "Web攻击/XSS": {
+   "count": 435,
+   "weak": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 435,
+   "state": 0
+  },
+  "Web攻击/命令注入": {
+   "count": 348,
+   "weak": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 348,
    "state": 0
   },
   "恶意软件/后门": {
-   "count": 322,
+   "count": 332,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 15,
-   "low": 307,
-   "state": 0
-  },
-  "Web攻击/命令注入": {
-   "count": 319,
-   "weak": 0,
-   "critical": 0,
-   "high": 0,
-   "medium": 0,
-   "low": 319,
+   "low": 317,
    "state": 0
   },
   "网络服务漏洞/数据库": {
-   "count": 274,
+   "count": 289,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 2,
-   "low": 272,
+   "low": 287,
    "state": 0
   },
   "恶意软件/Shellcode": {
@@ -198,12 +200,12 @@
    "state": 0
   },
   "网络服务漏洞/邮件": {
-   "count": 102,
+   "count": 142,
    "weak": 0,
    "critical": 0,
    "high": 0,
    "medium": 0,
-   "low": 102,
+   "low": 142,
    "state": 0
   },
   "配置与运维缺陷": {
@@ -305,6 +307,15 @@
    "low": 13,
    "state": 0
   },
+  "恶意软件/间谍软件": {
+   "count": 12,
+   "weak": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 12,
+   "state": 0
+  },
   "网络服务漏洞/Telnet": {
    "count": 12,
    "weak": 0,
@@ -350,15 +361,6 @@
    "low": 6,
    "state": 0
   },
-  "恶意软件/间谍软件": {
-   "count": 3,
-   "weak": 0,
-   "critical": 0,
-   "high": 0,
-   "medium": 0,
-   "low": 3,
-   "state": 0
-  },
   "恶意软件/蠕虫": {
    "count": 2,
    "weak": 0,
@@ -369,7 +371,34 @@
    "state": 0
   }
  },
- "top_risky_rules": [],
+ "top_risky_rules": [
+  {
+   "sid": 11020587,
+   "name": "Nginx URI Processing安全绕过漏洞(CVE-2013-4547)",
+   "msg": "Nginx URI Processing Security Bypass Vulnerability(CVE-2013-4547)",
+   "category": "Web攻击/Web服务漏洞",
+   "file": "suricata/Web攻击/Web服务漏洞/web.rules",
+   "risk_score": 6,
+   "risk_level": "high",
+   "flags": [
+    "short-single-content",
+    "generic-single-content"
+   ]
+  },
+  {
+   "sid": 11020588,
+   "name": "Nginx URI Processing安全绕过漏洞(CVE-2013-4547)",
+   "msg": "Nginx URI Processing Security Bypass Vulnerability(CVE-2013-4547)",
+   "category": "Web攻击/Web服务漏洞",
+   "file": "suricata/Web攻击/Web服务漏洞/web.rules",
+   "risk_score": 6,
+   "risk_level": "high",
+   "flags": [
+    "short-single-content",
+    "generic-single-content"
+   ]
+  }
+ ],
  "duplicate_patterns_top": [
   {
    "sids": [
@@ -414,6 +443,24 @@
     11070712
    ],
    "count": 5
+  },
+  {
+   "sids": [
+    13080215,
+    13080383,
+    13080236,
+    13080408
+   ],
+   "count": 4
+  },
+  {
+   "sids": [
+    11020533,
+    11020544,
+    13010231,
+    13010267
+   ],
+   "count": 4
   },
   {
    "sids": [
@@ -612,22 +659,6 @@
     13082069,
     12032621,
     12032521
-   ],
-   "count": 3
-  },
-  {
-   "sids": [
-    13082070,
-    12032622,
-    12032522
-   ],
-   "count": 3
-  },
-  {
-   "sids": [
-    13082071,
-    12032623,
-    12032523
    ],
    "count": 3
   }
@@ -2031,9 +2062,12 @@
     13030244,
     13030246,
     13030249,
-    13030250
+    13030250,
+    13030251,
+    13030229,
+    13030233
    ],
-   "count": 214
+   "count": 217
   },
   {
    "msg": "WebShell Detect 15.73512 V1559101329",
@@ -2570,6 +2604,7 @@
     13080174,
     13080175,
     13080176,
+    13080582,
     13080584,
     13080179,
     13080180,
@@ -2662,7 +2697,7 @@
     13080650,
     13080671
    ],
-   "count": 103
+   "count": 104
   },
   {
    "msg": "Trojan-Ransom.CryptoWall Traffic Detected",
@@ -3473,6 +3508,66 @@
    "count": 55
   },
   {
+   "msg": "Dotnet Webshell Injection Vulnerability(General)",
+   "sids": [
+    11025841,
+    11025842,
+    11025843,
+    11025844,
+    11025845,
+    11025846,
+    11025847,
+    11025848,
+    11025850,
+    11025852,
+    11025853,
+    11025854,
+    11025855,
+    11025856,
+    11025857,
+    11025858,
+    11025859,
+    11025860,
+    11025862,
+    11025863,
+    11025866,
+    11025867,
+    11025868,
+    11025869,
+    11025870,
+    11025871,
+    11025872,
+    11025874,
+    11025875,
+    11025876,
+    11025877,
+    11025878,
+    11025880,
+    11025881,
+    11025882,
+    11025883,
+    11025884,
+    11025886,
+    11025887,
+    11025888,
+    11025889,
+    11025893,
+    11025894,
+    11025895,
+    11025897,
+    11025898,
+    11025899,
+    11026604,
+    11026605,
+    11026606,
+    11026608,
+    11026609,
+    11026611,
+    11026612
+   ],
+   "count": 54
+  },
+  {
    "msg": "WebShell Detect 18.13301 V1559101329",
    "sids": [
     13162412,
@@ -4055,45 +4150,6 @@
     13100531
    ],
    "count": 33
-  },
-  {
-   "msg": "FireEye Backdoor Toolset",
-   "sids": [
-    10020210,
-    10020211,
-    10020212,
-    10020213,
-    10020214,
-    10020215,
-    10020216,
-    10020217,
-    10020218,
-    10020219,
-    10020220,
-    10020221,
-    10020222,
-    10020223,
-    10020225,
-    10020226,
-    10020227,
-    10020228,
-    10020229,
-    10020230,
-    10020231,
-    10020232,
-    10020233,
-    10020234,
-    10020235,
-    10020236,
-    10020237,
-    10020238,
-    10020239,
-    10020240,
-    10020241,
-    10020242,
-    10020243
-   ],
-   "count": 33
   }
  ],
  "scenario_suricata": {
@@ -4224,27 +4280,6 @@
    ],
    "uses_content_inspect": false,
    "uses_http_events": true,
-   "uses_dns_events": false
-  },
-  "zeek/威胁情报/botnet_apps.zeek": {
-   "related_sids": [],
-   "reasons": [],
-   "uses_content_inspect": false,
-   "uses_http_events": false,
-   "uses_dns_events": false
-  },
-  "zeek/威胁情报/public_dns_servers.zeek": {
-   "related_sids": [],
-   "reasons": [],
-   "uses_content_inspect": false,
-   "uses_http_events": false,
-   "uses_dns_events": false
-  },
-  "zeek/威胁情报/white_domains.zeek": {
-   "related_sids": [],
-   "reasons": [],
-   "uses_content_inspect": false,
-   "uses_http_events": false,
    "uses_dns_events": false
   }
  },

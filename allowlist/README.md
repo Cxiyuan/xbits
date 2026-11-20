@@ -9,16 +9,17 @@
 ## 结构
 ```
 allowlist/
-├─ sources.json           # 源声明（当前为静态转译源；后续可加远端公共白名单源）
+├─ sources.json           # 唯一真源（type/enabled/path/output/kind/options；未知 type 直接失败）
 ├─ custom/                # 自定义白名单（add.py 增删；refresh 永不覆盖）
 │  ├─ white_domains.txt      业务白域名（~100，探针 top100_white_domain.ini 转译）
 │  ├─ public_dns_servers.txt 公共 DNS 基线（15，探针 common_dns_server.ini 转译）
 │  ├─ domain.txt / ip.txt     通用白名单（初始为空，按需添加）
 ├─ data/                  # 快照（生成物；消费方只读这里）
 │  ├─ domain.txt / ip.txt / public_dns.txt / meta.json
+│  │  meta.json 含 counts + source_map（来源文件→输出文件）+ semantics（语义说明）
 └─ tools/
    ├─ add.py              # 自定义添加/删除（add/remove/list）
-   ├─ refresh.py          # 校验+归一化+重建 data/（--check 仅校验）
+   ├─ refresh.py          # 按 sources.json 校验+归一化+重建 data/（--check 真比对，漂移非零）
    └─ query.py            # 统一查询 CLI（--domain 含子域名匹配 / --ip / --stats）
 ```
 
@@ -59,8 +60,21 @@ xbits 启动参数 `--allowlist-dir allowlist/data`（见 xbits README）：
 
 ## 更新 SOP
 - 日常：`add.py` 增删 → `refresh.py` 重建 → 重启/重载 xbits。
-- 定期：`refresh.py --check` 校验 custom 完整性；CI 不自动刷新（自定义数据以 git 管理为准）。
-- 后续接远端公共白名单源（CDN/公共后缀等）：sources.json 加条目 + refresh.py 实现 fetch/parse。
+- 定期：`refresh.py --check` 计算 `custom/` 归一化结果并与 `data/` 逐项比对，漂移即非零退出并打印
+  缺/多条目（CI 不自动刷新；自定义数据以 git 管理为准）。
+- 新增条目/源：`sources.json` 加条目（type 限定 `static-domain-list` / `static-ip-list`，声明
+  `path` / `output` / `kind`），并在 `refresh.py` 的 `SUPPORTED_TYPES` 注册；未知 type 报错。
+  **声明为 enabled 的源其 `path` 文件必须存在**（可为空文件，如 `custom/ip.txt`）：缺失即配置不完整，
+  `refresh.py` 与 `--check` 都非零退出，不静默当空。
+
+## 语义隔离（V-22）
+- `ip.txt` **只来自** `sources.json` 中 `output=ip.txt` 的源（通常是 `custom/ip.txt`）；
+  `public_dns.txt` **只由** `custom/public_dns_servers.txt` 单向派生。
+- 禁止 `public_dns_servers.txt` 反向并入 `ip.txt`；`refresh.py` 写出前断言两集合交集为空，
+  非空即 FAIL。此前两文件逐行相同（各 15 行）的 bug 已修：当前 `data/ip.txt=0`、
+  `data/public_dns.txt=15`，DNS 基线不再被"加一条普通白名单"静默关闭。
+- `meta.json` 的 `source_map` 记录"来源文件→输出文件"映射，`semantics` 说明三份名单语义；
+  xbits 侧 `is_public_dns` 与 `allowlisted_ip` 仍查两份**正交**集合。
 
 ## 边界
 - Zeek 不再持有任何名单（`规则检测/zeek/威胁情报/` 已删除）：Zeek 只做纯行为分析，

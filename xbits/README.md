@@ -271,8 +271,15 @@ Context-only buffer（`lua`、`http.header`、`file.data`、`http.uri.raw`、
 
 只有当规则既无具体 buffer、也无 `content`/`pcre`、仅挂 `lua` 时，才标记
 `app_tx_lua: true`：这类真·纯 Lua 规则在 C 层没有单一精确 buffer 可导出，
-**不参与抑制**（每次告警仍走 validator；xbits 记录一次说明日志）。当前规则库
-不存在此类规则（全部 17477 条都有可精确获取的具体 buffer）。
+**不参与抑制**（每次告警仍走 validator；xbits 记录一次说明日志）。
+
+当前产物实数（**以生成物为准，非写死**；由 `规则检测/build_match_buffers.py` 生成）：
+活跃规则 **19,447** 条（`规则检测/xbits/规则库元数据/match_buffers.json` 条目数），
+其中 `app_tx_lua: true` **0** 条、挂 `lua:` 脚本的规则 **6,094** 条（均有具体 sticky buffer
+或 `payload`，因此都可精确抑制）。正确性由 CI 断言保证：
+`qa_converter_semantics.py`（buffer 语义/棘轮门禁）与
+`qa_xbits_match_context.py --production-meta`（生产元数据与 Rust 侧 context-only 契约一致）。
+规则重生后数字会变，请读产物而非沿用本段示例值。
 
 > 早期版本曾把 `lua` 当成 buffer 抢先占位、丢掉 `content` 匹配的 `payload`，
 > 导致 919 条规则被误标为 `app_tx_lua` 而无法抑制。现已按上述逻辑根治。
@@ -292,7 +299,10 @@ Context-only buffer（`lua`、`http.header`、`file.data`、`http.uri.raw`、
   evidence 写明"上下文始终没到"，随正常告警一起写 stdout 并进入分析流水线（`xbits.degraded`）。
   引擎侧计数为 `pending_expired`；**待处理队列满时**同样产出可见降级告警（`degraded=pending-overflow`）
   并计数 `pending_overflow`，不再只计数/打日志。
-  降级告警是"无法判定"的可见事实，**不套用规则的 `min_confidence`**（它始终带 `degraded` 标记）；
+  降级告警是"无法判定"的可见事实，**不套用规则的 `min_confidence`**（它始终带 `degraded` 标记）。
+- **边界（已知限制，见 §11）**：上述维护节拍与半行缓冲目前靠代码核对，缺 Unix socket 集成测试
+  （R6-2）；持续 connect/close 可饿死无连接侧 tick（R6-3）；`pending` 单行无长度上界（R6-4）。
+  因此这里只承诺"挂起有界、超时/溢出可见降级、计数可观察"，**不承诺"绝不丢事件"**。
 - **维护与事件到达解耦（R5-1）**：hook listener 用 `read_timeout(200ms)` 读取已连接 socket，
   并对 accept 做非阻塞轮询（空闲 20ms、按 200ms 节流维护）；因此即使流量停止，
   挂起告警也会按 TTL 触发降级输出与计数。读取使用**残留半行缓冲**，超时/分段读取都不会丢半行 JSON；
@@ -553,9 +563,9 @@ CI 断言：`xbits/test/qa_xbits_success_rules.py`（接 `xbits-ci.yml`）— �
 - **R12-4 关联计数未进 hook 故障消息**：`correlated_pairs/correlation_timeouts/correlation_overflow`
   未进 `ensure_pipeline_healthy` 消息；"只发响应无请求"的不配对路径无任何输出（TTL 超时有 eprintln）。
   *影响面*：关联能力的可见性弱于其它计数器。
-- **R12-5 `规则检测/README.md` 仍称 `zeek/威胁情报/` 存在**：该目录实际不存在，威胁情报由根目录
-  `allowlist/`、`threat-intel/` 承载。
-  *影响面*：文档误导读者以为 Zeek 侧仍持名单。
+- **R12-5 `规则检测/README.md` 仍称 `zeek/威胁情报/` 存在 —— 已修复（t55）**：zeek 段现列 3 个行为
+  脚本并指向 `allowlist/`、`threat-intel/`；`qa_zeek_file_set.py` 三层守卫接入 CI 锁住该集合。
+  *影响面（已消除）*：不再误导读者以为 Zeek 侧仍持名单。
 - **R12-6 success_rules 出现两处重复章节**：`xbits/README.md` §8.2（`:389-420`）与 §10（`:456-490`）
   重复描述同一能力。
   *影响面*：维护两处易漂移（CI 已双绿，仅文档重复）。
@@ -576,6 +586,12 @@ CI 断言：`xbits/test/qa_xbits_success_rules.py`（接 `xbits-ci.yml`）— �
   `engine.rs:829-844` 现与 `make_alert_full` 同口径纳入两个门槛，并补测试
   `correlation_wait_not_registered_for_benign_or_below_min_confidence`；不再给被过滤的请求事件登记等待。
   *影响面（已消除）*：此前可能为非发出的事件登记等待；本轮修复后该路径关闭。
+
+- **R14-2 非法 IP 文本双侧策略不完全一致（low，尚未修复）**：`allowlist/tools/ipnorm.py`
+  把非法 IP 视为无效并拒绝，`intel.rs` 的 `IpSet` 则保留小写原文并计入 `invalid_ip_warnings`
+  （查询时只与同样非法原文相等）。合法 IPv4/IPv6 两侧归一化已一致（12 组模拟 0 mismatch），
+  但非法输入的处置不同；若白名单/情报文件含脏数据，需要并读启动 report 的 warn 输出。
+  *影响面*：仅脏数据路径；合法地址命中不受影响。
 
 > 更新约定：新增未修项按 `R<轮>-<序号>` 编号追加到对应主题分组，并在 `qa/QA_REPORT.md` 的
 > "修复后状态"段落同步；修复后把条目移到"已修复"说明里，不要直接删除历史审计证据。

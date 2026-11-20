@@ -335,10 +335,10 @@
 | V-18 | **Verified** | t25 C8（`dcaae21`/`bb5e1c7`）弱断言替换；第八轮 | 5 处 sleep+grep 改 `assert_hook_output.py` 轮询+字段+exit/stderr；双空用例直接 FAIL。 |
 | V-19 | **Verified** | t25 C8-5 + t28/t29/t31/t33（YARA 三态·编译失败·stat 失败·缓存）；第八～十一轮 | PE/ELF 值断言、YARA 正负样本对、缺 yara 非零退出；`failed_files`/`unreadable_errors` 入 `engine_status`，stat 失败不崩、失败态不滞留缓存；triage 单测 32 例 OK。 |
 | V-20 | **Verified** | t26 C9（`dcaae21`）engines 三态 + 签名拆分；第八轮 | `engine_status{tool}={present,ok,error}` + `degraded/engine_errors`；`signed_present` 存在性探测 ≠ `signature_verified`（恒 False），伪证书不洗白。 |
-| V-21 | **尚未修复** | — | 采集失败仍 WARN+`return 0`，`write_outputs` 无条件以 `"w"` 覆盖 `data/` 与 `exports/`，无最小产出阈值/原子替换/旧快照保留。影响：断网即清空最后一份情报而运维看到绿。见 `qa/findings/python.md` PY-01。 |
-| V-22 | **尚未修复** | — | `refresh.py:85` `ips.extend(v for v in vals if v not in domains)` 跨类型死判断仍把 public_dns 并入通用 `ip.txt`；`sources.json` 仍无代码读取；`--check` 仍不比对 `data/`。DNS 基线可被一次普通白名单静默关闭。见 PY-09/PY-10。 |
-| V-23 | **Verified（Python 侧）** | t26 C9（`dcaae21`）`allowlist/tools/ipnorm.py` 单一 `canonical_ip()` + 8 例单测；第八轮 | add/refresh/query 三端共用、zone 拒绝、端到端 IPv6 命中。**残留**：`xbits/src/intel.rs` 加载时 IP 归一（Rust 侧）未在本批改动内，IPv6 事件在 xbits 侧命中仍需确认。 |
-| V-24 | **Partially（文档收口未完）** | V-14/V-15 相关表述已在 t39/t40 更新；R12-5/R12-6/R12-7 仍未修 | `规则检测/README.md:22` 仍称 `zeek/威胁情报/` 存在；`xbits/README.md` §8.2（`:389-420`）与 §10（`:456-490`）success_rules 两处重复；PCAP 每类 buffer 仅 1 对。 |
+| V-21 | **Verified** | t52 C10-A（工作区，未单独 commit；本地自测 + 负控）；t58 接入 CI | 采集器重写为 `SourceResult{ok,fetched,http_code,error,last_success_utc}` + 最小产出阈值 + 同盘临时目录校验后逐文件 `os.replace`（失败回滚）；任一源失败非零退出且旧 data/exports 不被触碰，`collect_last_attempt.json` 记录失败。8 例本地自测全过，负控（把失败判定改 `ok=True`）4 例 FAIL。CI 实跑以 Actions 为准。 |
+| V-22 | **Verified** | t54 C10-C（工作区）+ captain 转 t58 CI 阻塞修复（同一 attempt 追加证据） | `refresh.py` 改 sources.json 唯一真源（type/path/output/kind/options 全校验）；ip.txt 只来自 custom/ip.txt，public_dns.txt 单向派生自 public_dns_servers.txt，交集非空 FAIL；`--check` 逐项比对 custom↔data，漂移非零。真实快照 ip.txt 15→0、public_dns 15 不变，交集 0；`--check` rc=0。15 例自测全过（含声明源缺失非零）。 |
+| V-23 | **Verified** | t26 C9（`dcaae21`）Python 侧 `canonical_ip()` + t53 C10-B（工作区）Rust 侧 `IpSet{parsed:HashSet<IpAddr>, invalid_text}` / `canonical_addr()`；第八/十轮复核 | add/refresh/query 与 xbits `intel.rs` 现均按地址值归一比较（IPv6 压缩小写、zone 拒绝、非法文本计数不静默）；端到端 `add public_dns 2001:db8::1 → refresh → query` 命中，展开式/大写写法亦命中；原"Rust 侧残留"已消除。 |
+| V-24 | **Verified** | t55 C10-D（规则检测侧）+ t56 C10-E（文档收口，工作区） | 规则侧：`convert_probe_zeek.py` 删写盘逻辑变为纯解析工具，`qa_zeek_file_set.py` 三层守卫接入 CI，QA JSON 重生 3 个 zeek_scripts；文档侧：`xbits/README.md` 的 17,477 老数改为读产物的 19,447/6,094/app_tx_lua=0 并点名验证脚本，"绝不丢事件"改为 fail-closed+降级可见+§11 R6-2/3/4 边界；`threat-intel/README.md` xbits 行写明 V-14 `--success-rules` 与情报决策链已落地。R12-5 已随 t55 消除；R12-6（success_rules 章节重复）与 R12-7（PCAP 每类仅 1 对）为独立 low 项，仍列在下方索引。 |
 
 ### 尚未修复项索引（按 ID，来源：第五～十三轮 verifier 复核）
 
@@ -360,7 +360,7 @@
 | R11-1 | **尚未修复** | YARA 缓存键不覆盖跨目录 include（当前 triage/rules 未用，风险低） | 缓存 |
 | R12-2 | **尚未修复（已接受基线）** | 676 处 `content;buffer` 后置写法仍在转换规则库；已锁为棘轮基线 | 规则语义 |
 | R12-4 | **尚未修复** | 关联计数未进 hook 故障消息；响应无等待路径无输出 | 可观测 |
-| R12-5 | **尚未修复** | `规则检测/README.md:22` 仍称 `zeek/威胁情报/` 存在（实际不存在） | 文档 |
+| R12-5 | **已修复（t55 / 规则检测侧）** | `规则检测/README.md` zeek 段现列 3 个行为脚本并指向 `allowlist/`、`threat-intel/`；`qa_zeek_file_set.py` 三层守卫接入 CI，不再有 `zeek/威胁情报/` 陈旧提法 | 文档（已修） |
 | R12-6 | **尚未修复** | `xbits/README.md` success_rules 两处重复章节（§8.2/§10） | 文档 |
 | R12-7 | **尚未修复** | PCAP 每类 buffer 仅 1 对正负例（建议 2~3） | 测试覆盖 |
 | R13-1 | **已修复（t51 / tests-auditor）** | `check_rule_pcap_bytes()` 按 SID 读规则原文与 PCAP 载荷做运行时断言（buffer/flow/content hex/pcre/URI），pos 必含 neg 必缺；接在 `--generate`/`--eve-root` 前；负例（改坏 PCAP、改坏规则）均 FAIL 点名 SID | 测试真实性 |
@@ -369,6 +369,9 @@
 
 > 说明：R8-1/R8-2/R8-3/R9-1/R10-1/R12-1/R12-3 等已在对应轮次 Verified（见 `qa/FIX_REVIEW.md`
 > 第八～十一、十三轮），故不在本"尚未修复"索引内；上表只列第十三轮复核确认仍在的项。
+> **第十四轮（C10）更新**：R12-5 已随 t55 修复并改为"已修复"；V-21/V-22/V-23/V-24 已在上方状态表全部
+> 更新为 Verified（V-21 t52、V-22 t54、V-23 t26+t53、V-24 t55+t56），其对应 finding id（PY-01、
+> PY-09/PY-10、PY-11）不再计入未修项。R12-6/R12-7 仍为独立 low 遗留。
 
 ---
 

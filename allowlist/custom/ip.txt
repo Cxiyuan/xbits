@@ -1,0 +1,4 @@
+# 通用 IP 白名单（allowlist 类型: ip）
+# 用途：误报抑制——告警命中此清单的对端 IP 则降级（confidence -= 25）。初始为空，按需用 allowlist/tools/add.py add ip <IP> 增删。
+# 注意（V-22）：本清单只放"通用白名单 IP"；公共 DNS 基线单独维护在 custom/public_dns_servers.txt，
+# 由 sources.json 声明为 output=public_dns.txt，绝不再反向并入 ip.txt。

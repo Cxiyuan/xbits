@@ -20,8 +20,14 @@ on:
       - "xbits/test/qa_converter_pcap_regression.py"
       - "xbits/test/qa_converter_semantics.py"
       - "xbits/test/qa_semantic_gaps_gate.py"
+      - "xbits/test/qa_zeek_file_set.py"
       - "xbits/test/semantic_gaps_allowlist.json"
       - "xbits/test/converter_semantics_baseline.json"
+      # V-24/C10-D：Zeek 文件集合守卫与 QA 数据产物一致性
+      - "规则检测/convert_probe_zeek.py"
+      - "规则检测/qa_rule_quality.py"
+      - "规则检测/docs/规则质量QA数据.json"
+      - "规则检测/zeek/**"
       - "docker/suricata-converter-pcap.yaml"
       - "docker/xbits-suricata.Dockerfile"
       - "规则检测/xbits/规则库元数据/semantic_gaps.json"
@@ -56,8 +62,14 @@ on:
       - "xbits/test/qa_converter_pcap_regression.py"
       - "xbits/test/qa_converter_semantics.py"
       - "xbits/test/qa_semantic_gaps_gate.py"
+      - "xbits/test/qa_zeek_file_set.py"
       - "xbits/test/semantic_gaps_allowlist.json"
       - "xbits/test/converter_semantics_baseline.json"
+      # V-24/C10-D：Zeek 文件集合守卫与 QA 数据产物一致性
+      - "规则检测/convert_probe_zeek.py"
+      - "规则检测/qa_rule_quality.py"
+      - "规则检测/docs/规则质量QA数据.json"
+      - "规则检测/zeek/**"
       - "docker/suricata-converter-pcap.yaml"
       - "docker/xbits-suricata.Dockerfile"
       - "规则检测/xbits/规则库元数据/semantic_gaps.json"
@@ -194,13 +206,16 @@ jobs:
             -f docker/xbits-zeek.Dockerfile \
             .
 
-      - name: Convert probe rules to Zeek behavior data
+      # ---- V-24/C10-D：Zeek 文件集合守卫（3 行为脚本，多/少即 FAIL）+ 写盘路径静态检查 ----
+      - name: Zeek file-set guard (3 behavior scripts, no write path)
+        run: python xbits/test/qa_zeek_file_set.py
+
+      # ---- V-24/TS-12：规则质量 QA 数据产物一致性（重新生成后必须无 diff） ----
+      - name: Rule-quality QA data freshness (regenerate must be clean)
         run: |
-          if [ -d "$HOME/probe-rules" ]; then
-            python 规则检测/convert_probe_zeek.py --src "$HOME/probe-rules"
-          else
-            echo "Probe-rule export not available in CI; using committed Zeek conversion"
-          fi
+          python 规则检测/qa_rule_quality.py
+          git diff --exit-code -- 规则检测/docs/规则质量QA数据.json
+
       - name: Show images
         run: docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | head -30
 
