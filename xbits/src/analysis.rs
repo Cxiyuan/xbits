@@ -2908,7 +2908,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("xbits-corr-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("docs.jsonl");
-        let analyzer = Analyzer::new(AnalysisConfig {
+        let mut analyzer = Analyzer::new(AnalysisConfig {
             analysis_file: Some(out.clone()),
             success_rules_path: Some(PathBuf::from("/production/success_rules.json")),
             ..Default::default()
@@ -2953,7 +2953,7 @@ mod tests {
     #[test]
     fn pipeline_syncs_engine_correlation_counts() {
         // hook 维护循环的增量并入：engine 计数 3→5 时 PipelineHealth 只加增量 2。
-        let health = PipelineHealth::new();
+        let health = Arc::new(PipelineHealth::new());
         let docs = Arc::new(DocumentEmitter::new(
             &AnalysisConfig::default(),
             Arc::clone(&health),

@@ -222,8 +222,8 @@ fn main() -> io::Result<()> {
     let rules = load_rules(rules_file)?;
     // success_rules 关联表（V-14 方案①）：配置了就必须成功加载——读取/解析失败直接
     // 退出，绝不静默降级成"无关联继续跑"（否则"交 xbits"的关联承诺又一次变成空话）。
-    let success = match success_rules {
-        Some(path) => Some(xbits::analysis::load_success_rules(&path)?),
+    let success = match success_rules.as_ref() {
+        Some(path) => Some(xbits::analysis::load_success_rules(path)?),
         None => None,
     };
     let mut out: Box<dyn io::Write> = match alert_file {
@@ -240,7 +240,8 @@ fn main() -> io::Result<()> {
             || analysis_file.is_some()
             || match_buffers.is_some()
             || triage_command.is_some()
-            || file_spool_dir.is_some();
+            || file_spool_dir.is_some()
+            || success_rules.is_some();
         // 启用了分析但一个文档 sink 都没有 → 启动即失败：
         // 否则审计/ES 文档只能被丢弃（"报个日志就算完"不接受）。
         if analysis_enabled && analysis_file.is_none() && es_url.is_none() && es_command.is_none() {
