@@ -364,11 +364,19 @@ def match_atom_capacity(atom_buffer: str, atom_token: str) -> int | None:
     return None
 
 
+# V-16: 响应方向判定（to_client / from_server 均为服务端→客户端）
+FLOW_RESPONSE_RE = re.compile(r"flow\s*:\s*[^;]*\b(to_client|from_server)\b", re.I)
+
+
+def is_response_flow(text: str) -> bool:
+    return bool(FLOW_RESPONSE_RE.search(text))
+
+
 def semantic_skip_reason(line: str) -> str | None:
     """识别无法等价转换的语义；这些规则不进入 Suricata，避免降级使用。"""
     tokens = rule_option_tokens(line)
     flow_token = next((t for t in tokens if t.lower().startswith("flow:")), "")
-    to_client = "to_client" in flow_token.lower()
+    to_client = is_response_flow(flow_token)
 
     for t in tokens:
         tl = t.lower()
@@ -453,6 +461,69 @@ def rule_option_tokens(line: str) -> list[str]:
         return []
     body = line[line.find("(") + 1 : line.rfind(")")]
     return [t.strip() for t in split_options(body) if t.strip()]
+
+
+# V-16/V-18: 服务端口表达式（端口组变量 / 数字 / 列表 / 范围 / 混合），
+# 用于 to_client 方向翻转与静态断言。
+# 允许的例外：any、明确客户端端口范围（DHCP 客户端 68 等，翻转后落在目的侧）。
+PORT_GROUP_VAR_RE = re.compile(r"\$[A-Za-z_][A-Za-z_0-9]*")
+CLIENT_PORT_ALLOW = {"any", "68", "68,67", "67,68"}  # DHCP 客户端端口（响应目的侧）
+# 端口体：十进制数字（含范围 a:b、开口 a:）/ 逗号列表 / 方括号列表+范围 / $变量
+_PORT_TOKEN = r"(?:\$[A-Za-z_][A-Za-z_0-9]*|\d+(?::\d*)?)"
+SERVICE_PORT_RE = re.compile(
+    rf"^(?:\[(?:{_PORT_TOKEN})(?:,?:?(?:{_PORT_TOKEN}))*\]|"
+    rf"(?:{_PORT_TOKEN})(?:(?:,|:)(?:{_PORT_TOKEN}))*)$")
+
+
+def is_service_port_expr(port: str) -> bool:
+    """端口字段是否为服务端口表达（应出现在 to_client 规则的源侧）。
+
+    返回 False 仅当：any、空、或明确允许的客户端端口（翻转后落目的侧）。
+    """
+    p = port.strip().lower()
+    if p in CLIENT_PORT_ALLOW or not p:
+        return False
+    return bool(SERVICE_PORT_RE.match(p))
+
+
+# 断言捕获的 SID（to_client 且目的端口仍有服务端口表达且无法翻转）
+TO_CLIENT_PORT_ASSERT_SIDS: set[int] = set()
+
+
+def rule_header_parts(header: str) -> tuple[str, str, str, str, str, str, str] | None:
+    """拆分规则头 → (action, proto, src_net, src_port, direction, dst_net, dst_port)。"""
+    m = re.match(
+        r"^(alert|drop|pass|reject|log|sdrop)\s+(\S+)\s+(\S+)\s+(\S+)\s+(->|<>)\s+(\S+)\s+(\S+)\s*$",
+        header.strip(), re.I)
+    return m.groups() if m else None
+
+
+def normalize_direction_header(header: str, to_client: bool) -> tuple[str, bool]:
+    """按 flow 方向规整规则头部（V-16 / V-18）。
+
+    to_server（含 flow 缺省）：保持原样——服务端口已在目的端口。
+    to_client / from_server：若目的端口是服务端口表达（端口组变量、数字端口、
+    端口列表、范围或混合表达式——服务端端口写在目的侧），交换 src/dst 的
+    「网段+端口」对，输出 `any <service-port> -> any any`；
+    若源端口已是服务端口（已经是正确响应形态），不重复翻转。
+    允许 any 与明确客户端端口（DHCP 68 等）留在目的侧。
+    返回 (规整后的 header, 是否发生翻转)。
+    """
+    parts = rule_header_parts(header)
+    if parts is None:
+        return header, False
+    action, proto, snet, sport, direction, dnet, dport = parts
+    if not to_client or direction != "->":
+        return header, False
+    dst_service = is_service_port_expr(dport)
+    src_service = is_service_port_expr(sport)
+    if not dst_service or src_service:
+        # 目的端口无服务端口表达（any/客户端端口），或源端口已是服务端口
+        # （正确响应形态）→ 不翻转
+        return header, False
+    # 交换 net+port 对（倒序报文：服务端→客户端），保持 action/proto/箭头
+    new = f"{action} {proto} {dnet} {dport} -> {snet} {sport}"
+    return new, True
 
 
 BUFFER_CANON = {
@@ -690,7 +761,7 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     header = body[: head_end].strip() if head_end >= 0 else body
     opt_body = body[head_end + 1:] if head_end >= 0 else ""
     tokens = [t.strip() for t in split_options(opt_body) if t.strip()]
-    to_client = bool(re.search(r"flow:[^;]*to_client", body, re.I))
+    to_client = is_response_flow(body)
 
     # 头部/元数据 token 与检测 token 分离；非检测 token 原样保留
     tree_tokens: list[str] = []
@@ -792,6 +863,18 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     body_out = "; ".join(cleaned).rstrip()
     body_out = body_out.rstrip(";").rstrip()
     body_out = re.sub(r";\s*;", ";", body_out)
+
+    # V-16/V-18: 按 flow 方向规整头部端口/网段位置（to_client 响应端口在源侧）
+    header, flipped = normalize_direction_header(header, to_client)
+    # 静态断言（防回归）：to_client 规则的目的端口不得出现服务端口表达
+    # （变量/数字/列表/范围/混合）。翻转后若仍残留（例如 src/dst 同时带端口
+    # 表达），拒绝生成并记账；any 与明确客户端端口允许留在目的侧。
+    parts = rule_header_parts(header)
+    if to_client and parts is not None and is_service_port_expr(parts[6]):
+        sid_m = SID_RE.search(line)
+        if sid_m:
+            TO_CLIENT_PORT_ASSERT_SIDS.add(int(sid_m.group(1)))
+        return None
     return header + " (" + body_out + ";)"
 
 
@@ -1097,7 +1180,11 @@ def main() -> int:
                 flowbit_set = None
                 rule = convert_rule(line, flowbit_set, None)
                 if rule is None:
-                    meta["skip"] = "convert-rule-none"
+                    # V-16: 区分 to_client 端口方向静态断言拒绝（防回归计数）
+                    if sid in TO_CLIENT_PORT_ASSERT_SIDS:
+                        meta["skip"] = "to-client-port-direction"
+                    else:
+                        meta["skip"] = "convert-rule-none"
                     rules_meta[str(sid)] = meta
                     n_skip += 1
                     continue
@@ -1220,6 +1307,10 @@ def main() -> int:
                                      "note": "悬空 sticky buffer 无承接匹配（V-10 取代 dangling-http-uri 判定）"},
         "method-trailing-space":    {"owner": "dropped-document", "tested_by": None,
                                      "note": "http_method 段 content 尾随空格，Suricata detect-http-method 拒载"},
+        "to-client-port-direction": {"owner": "suricata-rule", "tested_by": "qa_converter_pcap_regression.py",
+                                     "note": "V-16/V-18 静态断言：to_client 目的端口残留服务端口表达"
+                                             "（变量/数字/列表/范围/混合）无法翻转→拒绝生成；"
+                                             "t47 补 to_client PCAP 命中断言）"},
         "method-unsupported":       {"owner": "dropped-document", "tested_by": None,
                                      "note": "Suricata 不支持的 method 语法"},
         "mixed-position":           {"owner": "dropped-document", "tested_by": None,
@@ -1410,6 +1501,38 @@ def main() -> int:
     print(f"cloud audit rules: {len(audit_rules)}")
     print(f"sid meta entries: {len(rules_meta)}; sid library entries: {len(sid_library)}")
     print(f"flowbit-gated request sids: {len(dep_refs)}")
+
+    # V-16 conversion report: to_client 方向翻转与静态断言计数
+    # 从实际落盘的规则统计 to_client 方向（源/目的端口形态）
+    to_client_flipped = 0
+    to_client_already_ok = 0
+    for category_dir in sorted(OUT_SURICATA.iterdir()):
+        if not category_dir.is_dir() or category_dir.name in SCENARIO_DIRS:
+            continue
+        for path in sorted(category_dir.rglob("*.rules")):
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                if not line.startswith("alert") or not is_response_flow(line):
+                    continue
+                parts = rule_header_parts(line[: line.find("(")])
+                if parts is None:
+                    continue
+                # 翻转后：源端口是服务端口表达，目的端口为 any/客户端端口
+                if is_service_port_expr(parts[3]) and not is_service_port_expr(parts[6]):
+                    to_client_flipped += 1
+                else:
+                    to_client_already_ok += 1
+    report = {
+        "to_client_total": to_client_flipped + to_client_already_ok + len(TO_CLIENT_PORT_ASSERT_SIDS),
+        "to_client_flipped": to_client_flipped,
+        "to_client_already_ok": to_client_already_ok,
+        "to_client_port_direction_assertions": len(TO_CLIENT_PORT_ASSERT_SIDS),
+        "to_client_port_direction_assertion_sids": sorted(TO_CLIENT_PORT_ASSERT_SIDS),
+    }
+    (OUT_XBITS / "conversion_report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"to_client rules flipped (service port now on src): {to_client_flipped}")
+    print(f"to_client rules already-correct/other: {to_client_already_ok}")
+    print(f"to_client port-direction assertions refused: {len(TO_CLIENT_PORT_ASSERT_SIDS)}")
     return 0
 
 

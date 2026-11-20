@@ -50,9 +50,19 @@ CASES = [
     ("raw_11020030", 11020030, "http.uri.raw", "Htdig %60 原始编码"),
     ("hdr_9101110", 9101110, "http.header", "Acunetix-Aspect 请求头"),
     ("method_9101113", 9101113, "http.method", "TRACE 方法"),
-    ("stat_13060038", 13060038, "http.stat_code", "200 + shebang body"),
+    ("stat_13060038", 13060038, "http.stat_code", "200 + shebang body（t46 后改回临时端口）"),
     ("payload_13020171", 13020171, "payload", "Havij UA"),
+    # --- to_client / from_server 响应方向命中回归（t46/t47） ---
+    ("jspspy_10020245", 10020245, "http.stat_code", "响应 200 + JspSpy 标题（端口组变量，t46 已翻）"),
+    ("pac_10010504", 10010504, "payload", "from_server PAC 文件 + import（端口组变量，t46 已翻）"),
+    # 数字服务端口 443 的 to_client 规则（t48 承接 t46 遗留）；夹具按翻转后形态构造：
+    # 服务端 443 → 客户端临时端口。t47 末轮已从重生规则核对 sid:11021334 头部为
+    # `alert tcp any 443 -> any any`（t48 已翻），故 pos 现在应当命中。
+    # 保留 t48 依赖标记以便回溯；若后续规则回退，本例会立刻暴露。
+    ("tlsreneg_11021334", 11021334, "payload", "TLS 重协商 magic（数字端口 443；t48 已翻，头部已核对）"),
 ]
+
+T48_DEPENDENT_CASES = {"tlsreneg_11021334"}
 
 CLIENT_IP = "203.0.113.9"
 SERVER_IP = "10.0.0.80"
@@ -80,23 +90,66 @@ def _http_exchange(packets, sport, method, path, headers, body, response, offset
     if body and not any(k.lower() == "content-length" for k in headers):
         lines.append(f"Content-Length: {len(body)}")
     lines.append("Connection: close")
-    req = cb / TCP(sport=sport, dport=80, flags="PA", seq=cseq + 1, ack=sseq + 1) / Raw(
-        load=("\r\n".join(lines) + "\r\n\r\n").encode("latin-1") + body
-    )
+    request_payload = ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1") + body
+    req = cb / TCP(sport=sport, dport=80, flags="PA", seq=cseq + 1, ack=sseq + 1) / Raw(load=request_payload)
     req.time = t0 + 0.003
-    s_ack = sb / TCP(sport=80, dport=sport, flags="A", seq=sseq + 1, ack=cseq + 1 + len(req.load) - 16)
+    # --- 严格的 seq/ack 记账 -------------------------------------------------
+    # 旧实现把 ack 写成 cseq+1+len(req.load)-16：`req.load` 是 Raw 层的整段请求字节
+    # （不存在要扣掉的 16 字节），所以客户端 ack 恒比真实值小 16 —— 对 Suricata 的
+    # 流重组来说，响应报文携带的 ack 落在已确认窗口"之后/之前"的边界，响应方向的
+    # HTTP 事务可能因此不被解析（stat_code 为空）。response 方向现在需要被断言，
+    # 因此这里按 ISN 逐段推进，不再做任何偏移。
+    c_next = cseq + 1 + len(request_payload)  # 客户端下一个序号
+    s_next = sseq + 1  # 服务端下一个序号
+    s_ack = sb / TCP(sport=80, dport=sport, flags="A", seq=s_next, ack=c_next)
     s_ack.time = t0 + 0.004
-    resp = sb / TCP(sport=80, dport=sport, flags="PA", seq=sseq + 1, ack=cseq + 1 + len(req.load) - 16) / Raw(
-        load=response
-    )
+    resp = sb / TCP(sport=80, dport=sport, flags="PA", seq=s_next, ack=c_next) / Raw(load=response)
     resp.time = t0 + 0.005
-    cack = cb / TCP(sport=sport, dport=80, flags="A", seq=cseq + 1 + len(req.load) - 16, ack=sseq + 1 + len(response))
+    s_next += len(response)
+    cack = cb / TCP(sport=sport, dport=80, flags="A", seq=c_next, ack=s_next)
     cack.time = t0 + 0.006
-    fin_c = cb / TCP(sport=sport, dport=80, flags="FA", seq=cseq + 1 + len(req.load) - 16, ack=sseq + 1 + len(response))
+    fin_c = cb / TCP(sport=sport, dport=80, flags="FA", seq=c_next, ack=s_next)
     fin_c.time = t0 + 0.007
-    fin_s = sb / TCP(sport=80, dport=sport, flags="FA", seq=sseq + 1 + len(response), ack=cseq + 2 + len(req.load) - 16)
+    fin_s = sb / TCP(sport=80, dport=sport, flags="FA", seq=s_next, ack=c_next + 1)
     fin_s.time = t0 + 0.008
     packets.extend([syn, synack, ack, req, s_ack, resp, cack, fin_c, fin_s])
+
+
+def _raw_exchange(packets, sport, dport, server_payload: bytes, offset: float = 0.0):
+    """最小 TCP 会话（无 HTTP 层）：用于非 HTTP 响应方向规则（如 TLS 443 magic）。
+
+    三次握手 + 服务端单段载荷 + 客户端确认 + FIN；seq/ack 按 ISN 严格推进。
+    """
+    from scapy.all import Ether, IP, TCP, Raw
+
+    cseq, sseq = 1000, 5000
+    t0 = 1750000100.0 + offset
+    cb = Ether(src=CLIENT_MAC, dst=SERVER_MAC) / IP(src=CLIENT_IP, dst=SERVER_IP)
+    sb = Ether(src=SERVER_MAC, dst=CLIENT_MAC) / IP(src=SERVER_IP, dst=CLIENT_IP)
+    syn = cb / TCP(sport=sport, dport=dport, flags="S", seq=cseq)
+    syn.time = t0
+    synack = sb / TCP(sport=dport, dport=sport, flags="SA", seq=sseq, ack=cseq + 1)
+    synack.time = t0 + 0.001
+    ack = cb / TCP(sport=sport, dport=dport, flags="A", seq=cseq + 1, ack=sseq + 1)
+    ack.time = t0 + 0.002
+    c_next = cseq + 1
+    s_next = sseq + 1
+    resp = sb / TCP(sport=dport, dport=sport, flags="PA", seq=s_next, ack=c_next) / Raw(load=server_payload)
+    resp.time = t0 + 0.003
+    s_next += len(server_payload)
+    cack = cb / TCP(sport=sport, dport=dport, flags="A", seq=c_next, ack=s_next)
+    cack.time = t0 + 0.004
+    fin_c = cb / TCP(sport=sport, dport=dport, flags="FA", seq=c_next, ack=s_next)
+    fin_c.time = t0 + 0.005
+    fin_s = sb / TCP(sport=dport, dport=sport, flags="FA", seq=s_next, ack=c_next + 1)
+    fin_s.time = t0 + 0.006
+    packets.extend([syn, synack, ack, resp, cack, fin_c, fin_s])
+
+
+def raw_packets(sport: int, dport: int, server_payload: bytes, offset: float = 0.0) -> list:
+    packets: list = []
+    _raw_exchange(packets, sport, dport, server_payload, offset)
+    return packets
 
 
 def _response(body: bytes, status: int = 200, ctype: str = "text/plain") -> bytes:
@@ -120,9 +173,20 @@ def build_pairs() -> dict[str, dict[str, list]]:
 
     pairs: dict[str, dict[str, list]] = {}
 
-    # 1. http.uri —— 14010049: http_uri; content:"/e/tool/gbook/?bid=1"
-    pos_uri = "/e/tool/gbook/?bid=1"
-    neg_uri = "/e/tool/gbook/?bid=2"
+    # 1. http.uri —— 14010049:
+    #    http.uri; content:"/e/tool/gbook/?bid=1"; nocase; flow:to_server,established; lua:sqli_context.lua
+    #    该规则除 content 外还挂了 lua:sqli_context.lua（SQL 注入上下文），lua 对 URI/body/Header
+    #    做 URL 解码后要求命中 union+select / 布尔式 / 报错函数等特征；只放 "/e/tool/gbook/?bid=1"
+    #    时 lua 返回 0，规则永不告警（CI run 44774234071 的 no-hit 正是这个原因）。
+    #    因此 URI = 规则要求的前缀 + 编码后的 SQL 注入载荷：
+    #      content 前缀 "/e/tool/gbook/?bid=1" 保持字面（http.uri 归一化后仍含它）；
+    #      追加 "%20union%20select%201%2C2" —— lua 自己解码（sqli_context.lua decode(2)）后命中
+    #      "union"+"select"，满足上下文。注意此处刻意验证 http.uri（归一化）而非 raw：
+    #      %20/%2C 解码后是空格/逗号，raw 里则是 %XX。
+    pos_uri = "/e/tool/gbook/?bid=1%20union%20select%201%2C2"
+    # 负例：同样带 SQL 注入上下文（lua 会判真），但 content 前缀是 bid=2 → 证明拦在 content 上，
+    # 而不是"lua 没命中所以没告警"的假阴性。
+    neg_uri = "/e/tool/gbook/?bid=2%20union%20select%201%2C2"
     pairs["uri_14010049"] = {
         "pos": wrap("", _response(b"ok"), 40001, "GET", pos_uri, {"User-Agent": UA_NORMAL}, b"", 0.0),
         "neg": wrap("", _response(b"ok"), 40002, "GET", neg_uri, {"User-Agent": UA_NORMAL}, b"", 0.1),
@@ -147,12 +211,29 @@ def build_pairs() -> dict[str, dict[str, list]]:
         "neg": wrap("", _response(b"ok"), 40008, "GET", "/", {"User-Agent": UA_NORMAL}, b"", 0.7),
     }
 
-    # 5. http.stat_code —— 13060038: 200 + pkt_data CRLF 后 |23 21 2f|bin|2f|bash
+    # 5. http.stat_code —— 13060038:
+    #    http.stat_code; content:"200"; pkt_data; content:"|0d 0a 0d 0a|";
+    #    content:"|23 21 2f|bin|2f|bash"; nocase; distance:0; within:11; flow:to_client,established
+    #    三个匹配段：①响应状态码 200；②pkt_data 里 CRLFCRLF（响应头结束）；③紧随其后的
+    #    "#!/bin/bash"（|23 21 2f| = "#!/"，|2f| = "/"，11 字节，正好 within:11 + distance:0
+    #    要求紧贴在 CRLFCRLF 之后）。
+    #
+    #    关键坑（CI run 44774234071 的 no-hit）：规则头是 `any any -> any $HTTP_PORTS`，
+    #    而 Suricata 的箭头只按报文实际 src/dst 取值比对端口（docs 8.1.5：-> 只评估同方向报文，
+    #    端口/地址按写法与报文 src/dst 对应）。响应报文是 server:80 -> client:<临时端口>，
+    #    其**目的端口**是客户端临时端口；只有客户端源端口落在 $HTTP_PORTS 里，规则的目的端口
+    #    $HTTP_PORTS 才可能命中。原夹具用 40009/40010 这类临时端口 → 目的端口不在
+    #    [80,8080,8000,443,8443] → 规则整条不会被评估 → no-hit。
+    #    t45 曾把客户端端口取 8080 绕开 to_client 端口缺陷；t46 已把规则头翻成
+    #    `any $HTTP_PORTS -> any any`（服务端 80 在源端口侧），故这里还原为普通临时端口，
+    #    证明规则在真实客户端端口下也能命中。
     shebang = b"#!/bin/bash\nuid=0\n"
-    no_shebang = b"# python helper\nprint('hello')\n"  # '#!' 后是 python 不是 /bin/bash
+    # 负例：同样是 200 + CRLFCRLF 后紧跟 11 字节 shebang，但解释器是 /bin/sh 不是 /bin/bash
+    # → 第三个 content 不命中（不是"没有 body"的弱负例）。
+    other_shebang = b"#!/bin/sh\nuid=0\n"
     pairs["stat_13060038"] = {
         "pos": wrap("", _response(shebang), 40009, "GET", "/dl/backup.sh", {"User-Agent": UA_NORMAL}, b"", 0.8),
-        "neg": wrap("", _response(no_shebang), 40010, "GET", "/dl/helper.py", {"User-Agent": UA_NORMAL}, b"", 0.9),
+        "neg": wrap("", _response(other_shebang), 40010, "GET", "/dl/backup.sh", {"User-Agent": UA_NORMAL}, b"", 0.9),
     }
 
     # 6. payload —— 13020171: content:"Havij"; pcre /\x0d\x0aUser-Agent:.+[+\s]Havij/i
@@ -160,6 +241,36 @@ def build_pairs() -> dict[str, dict[str, list]]:
     pairs["payload_13020171"] = {
         "pos": wrap("", _response(b"ok"), 40011, "GET", "/news.php?id=1", {"User-Agent": "sqlmap/1.0 Havij"}, b"", 1.0),
         "neg": wrap("", _response(b"ok"), 40012, "GET", "/news.php?id=1", {"User-Agent": UA_NORMAL}, b"", 1.1),
+    }
+
+    # 7. to_client —— 10020245（端口组变量，t46 已翻为 any $HTTP_PORTS -> any any）
+    #    http.stat_code; content:"200"; pkt_data; content:"|3c|html|3e 3c|head|3e 3c|title|3e|JspSpy"; nocase
+    #    关键字节：响应状态码 200 + pkt_data 里字面 `<html><head><title>JspSpy`
+    pair_body = b"<html><head><title>JspSpy Backdoor</title></head><body>ok</body></html>"
+    plain_body = b"<html><head><title>Normal Page</title></head><body>ok</body></html>"
+    pairs["jspspy_10020245"] = {
+        "pos": wrap("", _response(pair_body, ctype="text/html"), 40013, "GET", "/index.jsp", {"User-Agent": UA_NORMAL}, b"", 1.2),
+        "neg": wrap("", _response(plain_body, ctype="text/html"), 40014, "GET", "/index.jsp", {"User-Agent": UA_NORMAL}, b"", 1.3),
+    }
+
+    # 8. from_server —— 10010504（端口组变量，t46 已翻）
+    #    content:"FindProxyForURL"; content:"import";
+    #    pcre:"/^import\s+[a-zA-Z0-9\x2e_]+\x3b/im" —— 必须有一行以 import 开头 + token + ';'
+    pac_ok = b'function FindProxyForURL(url, host) {\nimport proxy.config;\nreturn "DIRECT";\n}\n'
+    pac_bad = b'function FindProxyForURL(url, host) {\n// no import here\nreturn "DIRECT";\n}\n'
+    pairs["pac_10010504"] = {
+        "pos": wrap("", _response(pac_ok), 40015, "GET", "/wpad.dat", {"User-Agent": UA_NORMAL}, b"", 1.4),
+        "neg": wrap("", _response(pac_bad), 40016, "GET", "/wpad.dat", {"User-Agent": UA_NORMAL}, b"", 1.5),
+    }
+
+    # 9. to_client 数字端口 —— 11021334（【依赖 t48】服务端 443 → 客户端临时端口）
+    #    content:"|7a 81 e7 87 6f ae 0d 7d 7f cf 4d e9 dd 46 27 4b|"; flow:to_client,established
+    #    t46 已把规则头翻成 `any 443 -> any any`（t47 末轮核对：已由 t48 完成），
+    #    服务端 443 为源端口，客户端 40017 临时端口即可命中。
+    magic = bytes.fromhex("7a81e7876fae0d7d7fcf4de9dd46274b")
+    pairs["tlsreneg_11021334"] = {
+        "pos": raw_packets(40017, 443, b"\x16\x03\x01\x00\x30" + magic + b"\x00\x10", 1.6),
+        "neg": raw_packets(40018, 443, b"\x16\x03\x01\x00\x30" + bytes(16) + b"\x00\x10", 1.7),
     }
 
     return pairs
@@ -462,6 +573,8 @@ def main() -> int:
     if args.list:
         print("用例清单（SID × buffer × 正/负）：")
         for case, sid, buffer, desc in CASES:
+            if case in T48_DEPENDENT_CASES:
+                print(f"  [t48 依赖已满足] {case} sid={sid}: 规则头 any 443 -> any any 已核对，pos 应命中")
             print(f"  {case:18s} sid={sid} buffer={buffer:14s} {desc}")
         return 0
 
@@ -476,6 +589,8 @@ def main() -> int:
         failures = []
         print("== PCAP 命中断言 ==")
         for case, sid, buffer, desc in CASES:
+            if case in T48_DEPENDENT_CASES:
+                print(f"  [t48 依赖已满足] {case} sid={sid}: 规则头 any 443 -> any any 已核对，pos 应命中")
             pos_path = root / f"{case}__pos" / "eve.json"
             neg_path = root / f"{case}__neg" / "eve.json"
             for label, path, expect in (("pos", pos_path, True), ("neg", neg_path, False)):

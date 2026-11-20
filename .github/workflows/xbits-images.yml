@@ -278,8 +278,10 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf /tmp/conv-reg && mkdir -p /tmp/conv-reg
-          # 负例旁必须有必中对照：全部 12 个 PCAP 在同一份配置（51 个规则文件）下依次跑，
-          # 任一 pos 不命中即失败（规则未加载会在第一个 pos 暴露）。
+          # 负例旁必须有必中对照：全部 18 个 PCAP（9 组正负，含 to_client 响应方向）
+          # 在同一份配置（51 个规则文件）下依次跑，任一 pos 不命中即失败
+          # （规则未加载会在第一个 pos 暴露）。
+          # tlsreneg_11021334 的数字端口 443 已由 t48 翻到源端口侧（规则头已核对）。
           python xbits/test/qa_converter_pcap_regression.py --list
           for pcap in 测试用例/converter_pcap/*.pcap; do
             name=$(basename "$pcap" .pcap)

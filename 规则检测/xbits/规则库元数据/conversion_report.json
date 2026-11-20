@@ -1,0 +1,7 @@
+{
+ "to_client_total": 6532,
+ "to_client_flipped": 6419,
+ "to_client_already_ok": 113,
+ "to_client_port_direction_assertions": 0,
+ "to_client_port_direction_assertion_sids": []
+}

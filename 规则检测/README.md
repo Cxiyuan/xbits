@@ -32,7 +32,8 @@
     flowbits 依赖接管见 `semantic_gaps.json ownership.flowbits-correlation`）；
   - `audit_rules.json`：云审计规则；
   - `sid_library.json`：SID → 名称/类别/危险等级映射；
-  - `exceptions.json`：例外/强 SID 列表。
+  - `exceptions.json`：例外/强 SID 列表；
+  - `conversion_report.json`：to_client 方向翻转与端口方向静态断言计数（V-16）。
 - `docs/`：各场景规则设计、误报分析与清理报告。
 - `convert_probe_rules.py`：外部探针 Suricata 规则转换器（语义树归约：
   Snort 的「content 在前、buffer 修饰其后」顺序统一转成 Suricata 前置

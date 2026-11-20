@@ -57,6 +57,47 @@ RESET_KEYWORDS = {"pkt_data", "raw_data"}
 SID_RE = re.compile(r"\bsid\s*:\s*(\d+)")
 CONTENT_LEAD_RE = re.compile(r"^(content|pcre|byte_test|byte_jump|byte_math|isdataat|lexorder|base64_data)\b", re.I)
 
+# D 响应方向守卫：to_client/from_server 规则的端口组变量不得留在目的端口侧。
+# 端口组变量（$HTTP_PORTS/$MAIL_PORTS/…）是服务端口，to_client 时必须位于源端口；
+# 留在目的端口时响应报文目的端口=客户端临时端口 → 规则永不命中（t45 finding）。
+PORT_GROUP_VAR_RE = re.compile(r"\$[A-Z][A-Z0-9_]*(?:PORTS|PORT)\b", re.I)
+RESPONSE_FLOW_RE = re.compile(r"\bflow\s*:[^;)]*\b(to_client|from_server)\b", re.I)
+
+
+def scan_response_port_direction(path: Path) -> list[dict]:
+    """规则 D：响应方向规则的目的端口含 port-group 变量 = 方向缺陷（必须为 0）。
+
+    只判定端口组变量（$HTTP_PORTS 等），数字端口（-> 443 等）属 t48 处理范围，本断言不覆盖。
+    规则头取 action…到第一个 '(' 之前；目的端口 = 箭头右侧第二个字段。
+    """
+    rows: list[dict] = []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for ln, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        if not s or s.startswith("#") or not s.lower().startswith("alert"):
+            continue
+        if not RESPONSE_FLOW_RE.search(s):
+            continue
+        head = s.split("(", 1)[0]
+        if "->" not in head:
+            continue
+        dst_fields = head.rsplit("->", 1)[1].strip().split()
+        if len(dst_fields) < 2:
+            continue
+        dst_port = dst_fields[1]
+        if PORT_GROUP_VAR_RE.search(dst_port):
+            m = SID_RE.search(s)
+            rows.append({"file": str(path), "line": ln, "sid": int(m.group(1)) if m else None, "dport": dst_port})
+    return rows
+
+
+def _rule_relpath(path: Path) -> str:
+    """仓库内用相对路径；self-test 的临时目录用绝对路径（都不影响门禁键比对）。"""
+    try:
+        return path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
 
 def split_options(rule_text: str) -> list[str]:
     i = rule_text.find("(")
@@ -108,7 +149,7 @@ def scan_content_then_buffer(path: Path) -> list[dict]:
             sid_m = SID_RE.search(s)
             rows.append(
                 {
-                    "file": path.resolve().relative_to(ROOT).as_posix(),
+                    "file": _rule_relpath(path),
                     "line": ln,
                     "sid": int(sid_m.group(1)) if sid_m else None,
                     "buffer": kw_of(opts[-1]) if False else "payload-content-then-buffer",
@@ -143,7 +184,7 @@ def scan_stat_code(path: Path) -> list[dict]:
                     sid_m = SID_RE.search(s)
                     rows.append(
                         {
-                            "file": path.resolve().relative_to(ROOT).as_posix(),
+                            "file": _rule_relpath(path),
                             "line": ln,
                             "sid": int(sid_m.group(1)) if sid_m else None,
                         }
@@ -167,7 +208,7 @@ def scan_lua_without_buffer(path: Path) -> list[dict]:
             sid_m = SID_RE.search(s)
             rows.append(
                 {
-                    "file": path.resolve().relative_to(ROOT).as_posix(),
+                    "file": _rule_relpath(path),
                     "line": ln,
                     "sid": int(sid_m.group(1)) if sid_m else None,
                 }
@@ -286,6 +327,28 @@ def self_test() -> int:
         tf.write_text(lua_ok, encoding="utf-8")
         checks.append(("C: lua 前有 buffer → 无违规", not scan_lua_without_buffer(tf)))
 
+        # D: 响应方向端口组守卫
+        d_bad = 'alert tcp any any -> any $HTTP_PORTS (content:"x"; flow:to_client,established; sid:9;)'
+        tf.write_text(d_bad, encoding="utf-8")
+        rows = scan_response_port_direction(tf)
+        checks.append(("D: to_client 目的端口留 $HTTP_PORTS → 违规点名 sid", len(rows) == 1 and rows[0]["sid"] == 9))
+
+        d_from_server = 'alert tcp any any -> any $HTTP_PORTS (content:"x"; flow:from_server,established; sid:10;)'
+        tf.write_text(d_from_server, encoding="utf-8")
+        checks.append(("D: from_server 目的端口留端口组 → 违规", len(scan_response_port_direction(tf)) == 1))
+
+        d_ok = 'alert tcp any $HTTP_PORTS -> any any (content:"x"; flow:to_client,established; sid:11;)'
+        tf.write_text(d_ok, encoding="utf-8")
+        checks.append(("D: 端口组已在源端口侧 → 无违规", not scan_response_port_direction(tf)))
+
+        d_toserver = 'alert tcp any any -> any $HTTP_PORTS (content:"x"; flow:to_server,established; sid:12;)'
+        tf.write_text(d_toserver, encoding="utf-8")
+        checks.append(("D: to_server 目的端口正常用端口组 → 无违规", not scan_response_port_direction(tf)))
+
+        d_numeric = 'alert tcp any any -> any 443 (content:"x"; flow:to_client,established; sid:13;)'
+        tf.write_text(d_numeric, encoding="utf-8")
+        checks.append(("D: 数字端口不在本断言范围（t48 负责）→ 无违规", not scan_response_port_direction(tf)))
+
     bad = sum(1 for _, ok in checks if not ok)
     for name, ok in checks:
         print(("PASS " if ok else "FAIL ") + name)
@@ -321,15 +384,18 @@ def main() -> int:
     a_rows: list[dict] = []
     b_rows: list[dict] = []
     c_rows: list[dict] = []
+    d_rows: list[dict] = []
     for p in files:
         a_rows.extend(scan_content_then_buffer(p))
         b_rows.extend(scan_stat_code(p))
         c_rows.extend(scan_lua_without_buffer(p))
+        d_rows.extend(scan_response_port_direction(p))
 
     print(f"== 转换语义门禁 ==  files={len(files)}")
     print(f"A content-then-buffer（回绑定残留）: {len(a_rows)}")
     print(f"B stat_code 段中毒:                {len(b_rows)}")
     print(f"C lua-without-buffer:              {len(c_rows)}")
+    print(f"D to_client 目的端口 port-group:    {len(d_rows)}")
 
     failures: list[str] = []
     if b_rows:
@@ -340,6 +406,13 @@ def main() -> int:
         failures.append(f"C lua: 之前无 buffer 关键词（V-13 契约要求计数==0）: {len(c_rows)} 处")
         for r in c_rows[:10]:
             failures.append(f"  C {r['file']}:{r['line']} sid={r['sid']}")
+    if d_rows:
+        failures.append(
+            f"D 响应方向（to_client/from_server）规则的目的端口仍含 port-group 变量: {len(d_rows)} 处"
+            "（t46 翻转契约要求计数==0）"
+        )
+        for r in d_rows[:10]:
+            failures.append(f"  D {r['file']}:{r['line']} sid={r['sid']} dport={r['dport']}")
 
     if args.no_ratchet:
         if a_rows:
@@ -393,7 +466,10 @@ def main() -> int:
             print(" -", item, file=sys.stderr)
         return 1
 
-    print("\nCONVERTER SEMANTICS: PASS (A==baseline ratchet, B==0, C==0, ledger closed)")
+    print(
+        "\nCONVERTER SEMANTICS: PASS (A==baseline ratchet, B==0, C==0, "
+        "D-response-port==0, ledger closed)"
+    )
     return 0
 
 
