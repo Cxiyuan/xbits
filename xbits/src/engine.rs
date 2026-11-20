@@ -180,7 +180,9 @@ impl SuccessRules {
 /// 请求→响应关联的等待条目：请求侧告警命中后登记，等待同 cid 的响应侧命中。
 #[derive(Debug, Clone)]
 struct CorrelationWait {
-    request_sid: u64,
+    /// 同一 key 上可有多个请求侧 SID（探测序列常连续命中多条规则）；
+    /// 只留第一个会让后续请求的响应关联丢失且无计数（R12-3）。
+    request_sids: Vec<u64>,
     at: Instant,
 }
 
@@ -341,8 +343,6 @@ impl Engine {
     }
 
     fn key_for(ev: &HookEvent) -> String {
-        // Use the 5-tuple first: Zeek does not export community_id, while
-        // Suricata alerts normally do.  Preferring cid would break correlation.
         if let (Some(src), Some(dst)) = (ev.src.as_deref(), ev.dst.as_deref()) {
             if !src.is_empty() && !dst.is_empty() {
                 let mut a = (src.to_string(), ev.sport.unwrap_or(0));
@@ -360,6 +360,17 @@ impl Engine {
             return format!("uid:{uid}");
         }
         "unknown".into()
+    }
+
+    /// 关联专用 key：community_id 是流身份，必须参与配对——只按 5 元组会让
+    /// 同一端点上不同会话（不同 cid）的请求/响应误配（CI correlation_requires_same_cid）。
+    /// Zeek 侧没有 cid 时退回 5 元组，保持跨引擎关联可用。
+    fn correlation_key(ev: &HookEvent) -> String {
+        let tuple = Self::key_for(ev);
+        match ev.community_id.as_deref().filter(|v| !v.is_empty()) {
+            Some(cid) => format!("cid:{cid}|{tuple}"),
+            None => tuple,
+        }
     }
 
     fn group_key(&self, ev: &HookEvent, rule: &Rule) -> String {
@@ -808,24 +819,38 @@ impl Engine {
             0
         };
 
-        // ---- V-14 方案①：请求→响应关联 ----
-        // success_rules 语义（schema 见 SuccessPair）：响应侧 sid 的 depends 列出请求侧 sid。
-        // - 请求侧命中（本事件 sid ∈ 任一 depends）→ 登记/刷新该 5 元组 key 的等待条目；
-        // - 响应侧命中（本事件 sid 是响应侧且等待表里同 key 的请求侧 ∈ 它的 depends）
-        //   → 消费配对，产出 correlated=<请求侧 sid> 的告警。
-        // 两条路径互斥：响应侧 sid 不会同时出现在 depends 里（转换器保证 depends/sid 分层）。
-        let ev_sid = ev.sid;
+        // V-14 方案①：关联只在"本事件确实产出了告警"之后登记/消费。
+        // 先判一次是否有规则达门槛，避免未达门槛的噪声事件污染等待表（R12-3）。
+        let correlation_key = Self::correlation_key(ev);
+        let emits_alert = self.rules.iter().any(|rule| {
+            if !rule.matches(ev) {
+                return false;
+            }
+            let key = self.group_key(ev, rule);
+            let now = Instant::now();
+            let accumulated = match self.scores.get(&key) {
+                Some(entry) if now.saturating_duration_since(entry.at) <= entry.window => entry.score,
+                _ => 0,
+            }
+            .saturating_add(rule.score.max(1).saturating_add(intel_score_bonus));
+            if accumulated < rule.threshold.max(1) {
+                return false;
+            }
+            !(ev.source.eq_ignore_ascii_case("suricata")
+                && rule.require_context
+                && context.is_none())
+        });
         let mut correlated_sid: Option<u64> = None;
-        match ev_sid {
-            Some(sid) if self.success_rules.requests_for(sid).is_some() => {
-                // 响应侧优先消费配对（同 key 等待且请求侧 ∈ depends）。
-                correlated_sid = self.consume_correlation(&key, sid);
+        if emits_alert {
+            match ev.sid {
+                Some(sid) if self.success_rules.requests_for(sid).is_some() => {
+                    correlated_sid = self.consume_correlation(&correlation_key, sid);
+                }
+                Some(sid) if self.success_rules.is_request_sid(sid) => {
+                    self.record_correlation_wait(&correlation_key, &[sid]);
+                }
+                _ => {}
             }
-            Some(sid) if self.success_rules.is_request_sid(sid) => {
-                // 请求侧命中 → 登记等待（不产出告警，只登记）。
-                self.record_correlation_wait(&key, &[sid]);
-            }
-            _ => {}
         }
 
         for rule in self.rules.clone() {
@@ -895,11 +920,17 @@ impl Engine {
     fn record_correlation_wait(&mut self, key: &str, request_sids: &[u64]) {
         let now = Instant::now();
         if let Some(wait) = self.correlations.get_mut(key) {
-            // 同一连接上多次请求命中：刷新时间并记第一个请求 sid（先到先配对）。
+            // 同一连接上多次请求命中：刷新时间并补全请求 sid 集合（R12-3：
+            // 只留第一个会让后续探测的响应关联丢失且无计数）。
             wait.at = now;
+            for sid in request_sids {
+                if !wait.request_sids.contains(sid) {
+                    wait.request_sids.push(*sid);
+                }
+            }
             return;
         }
-        let request_sid = request_sids.first().copied().unwrap_or(0);
+        let request_sids = request_sids.to_vec();
         // 容量保护：FIFO 挤掉最旧（HashMap 无序，改用最旧 at）。
         if self.correlations.len() >= MAX_CORRELATIONS {
             if let Some(oldest_key) = self
@@ -921,7 +952,7 @@ impl Engine {
         self.correlations.insert(
             key.to_string(),
             CorrelationWait {
-                request_sid,
+                request_sids,
                 at: now,
             },
         );
@@ -931,7 +962,10 @@ impl Engine {
     fn consume_correlation(&mut self, key: &str, response_sid: u64) -> Option<u64> {
         let deps = self.success_rules.requests_for(response_sid)?;
         let wait = self.correlations.get(key)?;
-        let matched = deps.iter().find(|d| **d == wait.request_sid).copied()?;
+        let matched = deps
+            .iter()
+            .find(|d| wait.request_sids.contains(*d))
+            .copied()?;
         self.correlations.remove(key);
         self.correlation_pairs += 1;
         Some(matched)

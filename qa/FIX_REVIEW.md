@@ -873,3 +873,89 @@
 **第十一轮结论**：R10-1 **已真实关闭**——失败状态（stat-failed）进入缓存键，坏文件删除/恢复后旧结果不再滞留（`ok=True`/`degraded=False` 可复现），同时正常路径仍命中同一编译对象（无性能回退）；新增两例分别锁定"行为序列"与"缓存键机制"，R9-1/R8-3 未回退。无阻塞项，仅 R11-1 一条信息性提示。
 
 **第十一轮复核边界**：未运行 `cargo test`/CI；结论为代码 diff + 32 例单测 + 独立脚本复现；CI 以增强步骤（XBITS_EXPECT_ENHANCED=1 + yara）为准。
+
+---
+
+# 第十二轮：C5 / C6 对抗式复核（t34~t40 收口）
+
+> 复核 V-10~V-15 与回归。只读源码/规则/文档；跑 Python 门禁与临时目录对抗，**未跑 cargo / CI / docker**。工作树其他改动已在前面各轮覆盖。
+> **操作披露**：试探 `build_match_buffers.py --help` 时该脚本忽略参数、执行了默认重生；产物与已提交内容一致，`git status` 无新增差异，未产生仓库改动。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| V-10 buffer 顺序 / dangling | **Partially** | 5,544 反转样例（sql.rules:3）已修、活动场景目录 0 违规、`dangling-http-uri` 消失且新判定仅"buffer 无后继且无前置命中"；但转换规则库仍有 **676 处** `content;buffer`，且棘轮门禁在违规**减少**时只打 advisory 仍 PASS（R12-1/R12-2） |
+| V-11 stat_code 段 | **Verified** | 抽样 5 条均为 `http.stat_code; content:"200"; pkt_data; …`；长 content 对抗实测生成器插入 `pkt_data` 重置，门禁 B 对无重置样本 FAIL |
+| V-12 canonical_buffer | **Verified** | 52 条共享表 + 精确 DOTTED 登记；Python 17 例（含 SharedAliases 4 例）过；15 条 raw 规则 primary/buffers 全为 `http.uri.raw` |
+| V-13 lua buffer 前置 | **Verified** | 门禁 C==0；对抗构造 `content;lua` 被抓、`http.uri;content;lua` 通过；拒绝明细 978 条唯一且抽样 10 条规则仍在、无 lua |
+| V-14 success_rules 消费 | **Verified（静态；待 CI 实跑）** | CLI→加载失败即退出→配对→`correlated`→confidence+15→计数链路完整；未配对有 TTL 日志/计数；文档已改；但本地旧 binary 无法 e2e，且发现 R12-3/R12-4 |
+| V-15 gaps 契约 | **Verified** | 18 reason 全有 owner/tested_by；负例 13/13 FAIL；剔除率告警线生效（当前 38.31% < 45.79%）；dead_rules 链路已删。残留一处 README 陈旧描述（R12-5） |
+| 回归（C8/C9/R8） | **Verified** | paths PASS、coverage PASS（74/19447）、hook matrix 12/12、triage 32、allowlist 8；PCAP 6 对正负例结构齐全（本地无 EVE 实跑） |
+
+## 逐项证据
+
+### V-10 buffer 顺序与 dangling 判定 —— **Partially**
+
+- 已修部分：
+  - 原反转样例 `规则检测/suricata/Web攻击/SQL注入/sql.rules:3` 现为 `http.uri; content:"select"; … lua:sqli_context.lua` —— buffer 在前 ✓；
+  - `qa_converter_semantics.py` 的 A 检测（`:73-119`）对全库 51 目录扫描，基线中的 677 处**活动 4 场景目录命中 0**（脚本核对），即活动检测规则已无 `content;buffer`；
+  - 旧 `dangling-http-uri` reason 已从 `semantic_gaps.json` 消失；新判定在 `convert_probe_rules.py:409-420`：仅当某 sticky buffer **既无后继 `content/pcre`（`nxt is None`）又无前置命中（`prev_match is None`）** 才记 `buffer-without-payload` —— 正是"buffer 无后继"的真实悬空，不再误删 `content;buffer` 的合法 Snort 顺序；`byte-extract-reference`（`:395-398`）是独立的 `within/distance:<变量>` 不可静态校验类。
+- 未闭合部分：
+  - 门禁实跑输出：`A content-then-buffer（回绑定残留）: 676`，其中 1 处（web.rules:11023718）已修复。**转换规则库仍有 676 处** `content;buffer`，例如 `sql.rules:176`（`content:"POST"; … http.uri; content:"/Common/File.aspx?code="`）与 `:179`。任务口径"`content;buffer` 应为 0"未全局达成。
+  - 棘轮实现 `qa_converter_semantics.py:362-380`：`new` → FAIL，`fixed` → 只打印"需更新 baseline"并 **PASS**。本次 676 vs 基线 677 即以 PASS 收场（输出末尾 `A==baseline ratchet`）。文件头 `:9-10` 声称"违规集合必须等于基线，减少会要求更新 baseline"，与实现不符；基线未收缩意味着那 1 处已修违规日后重现仍会被放过。
+  - 影响范围有限：676 全在 `规则检测/suricata/**` 的转换探针规则（只做 `suricata -T` 加载校验），**0 处在活动场景规则**，故不是活动检测链路的漏检。
+
+### V-11 stat_code —— **Verified**
+
+- 抽样 5 条（`规则检测/suricata/Web攻击/文件包含/file_include.rules:26-30`）均为 `http.stat_code; content:"200"; pkt_data; content:…`，状态码段之后有显式段重置；全库含 stat_code 行共 21 行，门禁 B 实跑 **0**。
+- 转换器 `convert_probe_rules.py:711-717` 把 `status_code:200` 线性化为 `content:"200"; http_stat_code`，经 `linearize_tree`（`:721-725`）后成为 `http.stat_code; content:"200"; pkt_data; …`；兜底断言 `:773-789` 对"状态码段内混入未重置 content"直接 `return None`（记 gap）。
+- 对抗实测（自写脚本）：给 `convert_rule()` 一个 220 字符 content 接在 `status_code:200` 后 → 输出 `http.stat_code; content:"200"; pkt_data; content:"AAAA…"`（正确插入重置）；把同样的形态写进临时 `.rules` 交给 `scan_stat_code()` → **1 条违规**（sid 99000005）。门禁 self-test 8/8 含 B 的正/负例（`:271-278`）。
+
+### V-12 canonical_buffer 与 raw 语义 —— **Verified**
+
+- 单一真源 `xbits/testdata/buffer_aliases.json`（52 条 = ALIASES 16 + DOTTED 36，生成自 `规则检测/build_match_buffers.py:262-309`）；Python 侧精确登记 `DOTTED`（`:55-66`）、`canonical_buffer()`（`:179`）只查登记名，未登记 dotted 名由 `unknown_dotted_warning()`（`:197`）告警，不再前缀塌缩。
+- Python 契约测试 `规则检测/tests/test_build_match_buffers.py` 17 例全过，其中 `SharedAliasesContractTests` 4 例（共享表一致、关键条目、canonical 闭包、raw 不塌缩）。
+- Rust 侧单测存在（未跑 cargo）：`analysis.rs:2345 canonical_buffer_matches_shared_aliases_source_of_truth`（`include_str!` 共享表逐条断言）、`:2388 context_only_buffers_match_python_side_contract`、`:2476 raw_uri_value_never_falls_back_to_normalized_uri`。
+- 15 条规则核对：`match_buffers.json` 全部存在且 `primary == "http.uri.raw"`、`buffers` 含 `http.uri.raw`（9103001/…/9110006 全 15 条，脚本核对）。
+
+### V-13 lua buffer 前置 —— **Verified**
+
+- 门禁 C 实跑 **0**；`apply_lua_enhancements.py:35 BUFFER_KEYWORD_RE`、`:59-72 has_buffer_before_lua()`（待注入候选检查 `sid:` 之前，已带 lua 的检查 `lua:` 之前）、`:87-89 --strict/--allow-no-buffer`、`:259-263` 拒绝明细与非零退出。
+- 对抗构造（临时目录，直接调 `qa_converter_semantics.scan_lua_without_buffer`）：`content:"x"; lua:sqli_context.lua` → 抓到 1 条；`http.uri; content:"x"; lua:…` → 0 条。self-test 8/8 含 C 正/负例。
+- 处置凭据：`规则检测/docs/Lua强化拒绝.json` 含 **978 条唯一 sid**（比 t37 当时 946 多，因后续重生成），每条有 `sid/file/script/mode/head`；抽样 10 条 sid：全部仍在当前规则文件中，且行内**无 `lua:`**（即保留纯签名规则，未整条消失）。
+
+### V-14 success_rules 消费链路 —— **Verified（静态）/ 待 CI**
+
+- CLI→加载：`main.rs:183-185` 解析 `--success-rules`，`:223-226` `xbits::analysis::load_success_rules(&path)?` 失败直接非零退出；`analysis.rs:604-616` 对读失败/坏 JSON 给出带路径与字节数的错误。
+- 配对：`engine.rs:811-829` 请求侧登记/响应侧消费；`:931-938 consume_correlation()` 校验等待 sid ∈ depends 后消费、计 `correlation_pairs`；`:24 CORRELATION_CONFIDENCE_BONUS=15`、`:633-636` 在门槛前加成；`:718 correlated=Some(请求 sid 文本)`、`:685-687` evidence。
+- 计数/出口：`engine.rs:431-435` TTL 超时 `correlation_timeouts` + eprintln；`:904-917` 容量 FIFO + `correlation_overflow` 计数；`analysis.rs:1577-1578` 计入 PipelineHealth、`:1913` 文档 `xbits.correlated`、`:2215-2220 sync_correlation_counts`；hook 三处调用（`:237,284,303`）。`qa_xbits_success_rules.py --self-test` 5/5（含 BONUS 常量一致性）。
+- 文档：`xbits/README.md:456-490`、`规则检测/README.md:17-26` 已改为"已消费"；`qa/QA_REPORT.md:159` 标"已修复（t39+t40…）"并保留原问题正文，未抹历史。
+- **待 CI**：本地 `xbits` binary 为旧版（无 `--success-rules`），无法跑 e2e 配对/对照/坏配置三态，且未跑 cargo；按 t40 自述留待 CI。另有 R12-3/R12-4。
+
+### V-15 semantic_gaps 契约 —— **Verified**
+
+- 实跑 `qa_semantic_gaps_gate.py` → PASS：`18 reasons` 全登记 owner/tested_by；3 个 `xbits-feature` reason 指到真实断言（`dependency-correlation`/`no-dependency`→`qa_xbits_success_rules.py`、`flowbits-correlation`→`qa_xbits_context.py`），14 个 dropped-document 显式 null + note；`lua-without-buffer`→`qa_converter_semantics.py`。
+- 负例 self-test 13/13：人为加剔除→FAIL、变化超 allowlist→FAIL、新/删 reason 未声明→FAIL、owner 非法/xbits-feature null/tested_by 幽灵/counts 无 ownership→FAIL；剔除率超 45.79%→FAIL（`:38`、`:211-212`），当前 38.31%。
+- `dead_rules`：`convert_probe_rules.py:798-801` 明标废弃，`main` 两处调用已删，`:1283-1288` 重生成时删除产物；`规则检测/README.md:31` 说明"已删除（输入恒空、产物恒 []，空转假治理）"。
+
+### 回归 —— **Verified**
+
+- 实跑：`qa_workflow_paths.py` PASS；`qa_rule_coverage.py` PASS（74/**19447** —— 规则数已随重生成变化，文案如实）；hook matrix self-test 12/12；triage 32 例 OK；allowlist 8 例 OK；converter semantics self-test 8/8；gaps self-test 13/13；success-rules self-test 5/5。
+- PCAP 对：`qa_converter_pcap_regression.py` `CASES` 6 条覆盖 http.uri / http.uri.raw / http.header / http.method / http.stat_code / payload；`:209-228` 对每 case 要求 `{case}__pos` 命中目标 sid 且 `{case}__neg` 不命中，缺文件即 FAIL（即"规则全没加载"会被 pos 抓）。本地未生成 EVE，实际命中留 CI。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R12-1 | **medium/low** | `xbits/test/qa_converter_semantics.py:362-380` | 棘轮只在**新增**违规时失败，违规**减少**时仅打印 advisory 仍 PASS；本次 676 vs 基线 677 即如此，基线不收缩会让已修违规静默复现，且与文件头"必须等于基线"声明不符 | CI 中 `fixed` 非空即 FAIL，要求同步收缩 baseline 后再绿；或实现"fixed 自动收缩 + diff 留痕" |
+| R12-2 | medium/low | `sql.rules:176,179` 等 676 处（全在转换规则库） | V-10 的"`content;buffer` == 0"未全局达成；虽仅影响加载校验用规则，仍与任务口径有差距 | 明确标注为"已接受基线（不影响活动检测）"或在转换器改进单中清零并收缩 baseline |
+| R12-3 | **medium/low** | `engine.rs:819-829`（登记）先于 `:831-890`（规则/门槛） | 请求侧等待登记按**事件 sid**发生，不要求该请求实际产出告警（可能被 `min_confidence`/threshold 过滤）；同一 key 多个请求 sid 只保留第一个（`:895-900`），第二个探测的关联会丢失且无独立计数 | 登记移到请求告警实际发射之后；同 key 存 `Vec<wait>` 或按 sid 分键；为"被丢弃的后续请求"加计数 |
+| R12-4 | low | `hook.rs:209-220`、`engine.rs:931-938` | `correlated_pairs/correlation_timeouts/correlation_overflow` 未进 hook 故障消息；"只发响应无请求"的不配对路径没有任何输出（TTL 超时有 eprintln）。可见性弱于其它计数器 | 把关联计数加入 `ensure_pipeline_healthy` 消息；对"响应无等待"加限流日志/计数 |
+| R12-5 | low | `规则检测/README.md:21-22` | 仍称 `zeek/威胁情报/` 存在，实际该目录不存在（QA_REPORT:236 已记录）；V-15 的"文档收口"未覆盖这处 | 改为"zeek/ 只含行为脚本；威胁情报由 allowlist/threat-intel 承载" |
+| R12-6 | low/info | `xbits/README.md:389-420` 与 `:456-490` | success_rules 出现两处章节（§8.2 与 §10）重复描述；QA_REPORT 标"已修复"但本地 CI 尚未实跑（旧 binary） | 合并/互相引用章节；CI 绿后再将状态改为"已验证" |
+| R12-7 | low | `qa_converter_pcap_regression.py:104` `CASES` | 每类 buffer 仅 1 对正负例（任务书建议 2~3 条）；其余同 buffer 家族 SID 只靠 `-T` 加载校验 | 每类再补 1~2 对 SID/变体，特别是 http.stat_code 家族 13060039/43/44 |
+
+**第十二轮结论**：V-11/V-12/V-13/V-15 **已实质修好**；V-14 链路静态完整但须 CI 新 binary 实跑（本地旧 binary 无法验）；**V-10 仅 Partially**——活动规则已清零、dangling 误删已根治，但转换规则库仍有 676 处回绑定且门禁允许基线不收缩（R12-1）。R12-1/R12-3 建议下一轮优先。
+
+**第十二轮复核边界**：未运行 `cargo test`/CI、未跑 docker/PCAP 实命中；所有"门禁过"结论来自本地 Python 执行与临时目录对抗；Rust 相关（V-12 三测试、V-14 配对/计数）为静态代码核对，以 CI 为准。

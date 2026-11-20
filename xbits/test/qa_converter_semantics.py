@@ -108,7 +108,7 @@ def scan_content_then_buffer(path: Path) -> list[dict]:
             sid_m = SID_RE.search(s)
             rows.append(
                 {
-                    "file": path.as_posix(),
+                    "file": path.resolve().relative_to(ROOT).as_posix(),
                     "line": ln,
                     "sid": int(sid_m.group(1)) if sid_m else None,
                     "buffer": kw_of(opts[-1]) if False else "payload-content-then-buffer",
@@ -143,7 +143,7 @@ def scan_stat_code(path: Path) -> list[dict]:
                     sid_m = SID_RE.search(s)
                     rows.append(
                         {
-                            "file": path.as_posix(),
+                            "file": path.resolve().relative_to(ROOT).as_posix(),
                             "line": ln,
                             "sid": int(sid_m.group(1)) if sid_m else None,
                         }
@@ -167,7 +167,7 @@ def scan_lua_without_buffer(path: Path) -> list[dict]:
             sid_m = SID_RE.search(s)
             rows.append(
                 {
-                    "file": path.as_posix(),
+                    "file": path.resolve().relative_to(ROOT).as_posix(),
                     "line": ln,
                     "sid": int(sid_m.group(1)) if sid_m else None,
                 }
@@ -367,11 +367,13 @@ def main() -> int:
                 for k in new[:10]:
                     failures.append(f"  A new {k[0]}:{k[1]} {k[2]}")
             if fixed:
-                print(
-                    f"A 棘轮：基线中 {len(fixed)} 处已修复（需更新 converter_semantics_baseline.json）"
+                # R12-1：棘轮必须对称——修复也必须同步收缩 baseline，
+                # 否则已修违规可在后续提交里静默复现而门禁仍 PASS。
+                failures.append(
+                    f"A 棘轮违规减少 {len(fixed)} 处（必须同步收缩 converter_semantics_baseline.json 并注明理由）"
                 )
                 for k in fixed[:10]:
-                    print(f"  A fixed {k[0]}:{k[1]} {k[2]}")
+                    failures.append(f"  A fixed {k[0]}:{k[1]} {k[2]}")
             if not new:
                 print(
                     f"A 棘轮：违规集合 == 基线（{len(cur_set)} 处锁死；0 新增）"
