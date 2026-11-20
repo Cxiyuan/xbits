@@ -722,12 +722,22 @@ mod tests {
 
     /// t23/R6-1：多数断言只关心告警本身，这里把 `(原始事件, 告警)` 对折成告警。
     /// 需要验证配对事件的测试直接用 `Engine::process` 返回的对。
-    fn process_alerts(engine: &mut Engine, ev: &HookEvent) -> Vec<EngineAlert> {
+    fn collect_alerts(engine: &mut Engine, ev: &HookEvent) -> Vec<EngineAlert> {
         engine
             .process(ev)
             .into_iter()
             .map(|(_, alert)| alert)
             .collect()
+    }
+
+    /// 让测试继续用 `eng.process_alerts(ev)` 写法（内部转调 collect_alerts）。
+    trait ProcessAlertsExt {
+        fn process_alerts(&mut self, ev: &HookEvent) -> Vec<EngineAlert>;
+    }
+    impl ProcessAlertsExt for Engine {
+        fn process_alerts(&mut self, ev: &HookEvent) -> Vec<EngineAlert> {
+            collect_alerts(self, ev)
+        }
     }
 
     #[test]
@@ -1092,11 +1102,11 @@ mod tests {
         assert_eq!(degraded.len(), 2, "溢出必须产出可见降级告警");
         assert!(degraded
             .iter()
-            .all(|a| a.degraded.as_deref() == Some("pending-overflow")));
+            .all(|(_, a)| a.degraded.as_deref() == Some("pending-overflow")));
         assert!(
-            degraded[0].evidence.contains("pending-overflow"),
+            degraded[0].1.evidence.contains("pending-overflow"),
             "evidence 必须写明 pending-overflow: {}",
-            degraded[0].evidence
+            degraded[0].1.evidence
         );
     }
 
