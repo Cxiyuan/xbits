@@ -828,7 +828,7 @@ impl Engine {
             }
             // 与 make_alert_full 同口径：benign 与 min_confidence 也会让告警被丢弃，
             // 这些事件不得登记关联等待（R13-2）。
-            if Self::benign(rule, context) {
+            if Self::benign(rule, context.as_ref()) {
                 return false;
             }
             let key = self.group_key(ev, rule);
@@ -844,7 +844,7 @@ impl Engine {
             if let Some(minimum) = rule.min_confidence {
                 // 采用最有把握的上界（情报加分 + 可能的关联加分）；上界都达不到门槛
                 // 才确定不会产出告警，避免误登记。
-                let mut best = Self::confidence(context).saturating_add(intel_score_bonus);
+                let mut best = Self::confidence(context.as_ref()).saturating_add(intel_score_bonus);
                 if ev
                     .sid
                     .and_then(|sid| self.success_rules.requests_for(sid))
