@@ -55,9 +55,13 @@ def dns_transaction(
     rcode: int = 0,
     offset: float = 0.0,
     ttl: int = 300,
+    fixed_sport: Optional[int] = None,
 ) -> None:
     txid = (len(packets) // 2 + 1) & 0xFFFF
-    sport = BASE_PORT + (len(packets) % 2000)
+    if fixed_sport is not None:
+        sport = fixed_sport
+    else:
+        sport = BASE_PORT + (len(packets) % 2000)
     q = (
         Ether(src=CLIENT_MAC, dst=DNS_MAC)
         / IP(src=CLIENT_IP, dst=DNS_IP)
@@ -282,6 +286,8 @@ def main() -> int:
     write("oob_other_positive", p, args.out)
 
     # TXT burst: positive (subdomain) vs negative (mail authentication).
+    # 突发用例走同一条 UDP 流（同一 sport）：Suricata 与 Zeek 的告警/关联落在同一 5 元组，
+    # community_id 两侧必然一致（不再依赖两侧"恰好都数到第 50 笔"）。
     p = []
     for i in range(50):
         dns_transaction(
@@ -290,6 +296,7 @@ def main() -> int:
             "TXT",
             dns_answer("abc.example.com", "TXT", "ok", 300),
             offset=i * 1.0,
+            fixed_sport=BASE_PORT,
         )
     write("txt_burst_positive", p, args.out)
 
@@ -301,6 +308,7 @@ def main() -> int:
             "TXT",
             dns_answer("_dmarc.example.com", "TXT", "v=DMARC1; p=none;", 300),
             offset=i * 1.0,
+            fixed_sport=BASE_PORT,
         )
     write("txt_burst_negative", p, args.out)
 
