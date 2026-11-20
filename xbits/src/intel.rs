@@ -695,7 +695,7 @@ mod tests {
                 _ => ev.file_sha256 = Some(value.clone()),
             }
             let ann = svc.annotate_event(&ev);
-            let hits = ann.threat.expect("hash hit").to_string();
+            let hits = ann.threat.clone().expect("hash hit").to_string();
             assert!(hits.contains(&format!("\"type\":\"{kind}\"")), "{hits}");
             assert_eq!(ann.decision(), Some("threat-hit"));
         }

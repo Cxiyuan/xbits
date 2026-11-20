@@ -397,7 +397,7 @@ impl Engine {
         } else {
             None
         };
-        let annotations = self.annotations(ev, context.as_deref());
+        let annotations = self.annotations(ev, context.as_ref());
         let intel_score_bonus = if annotations.as_ref().is_some_and(|a| a.threat_hit()) {
             INTEL_THREAT_SCORE_BONUS
         } else {
