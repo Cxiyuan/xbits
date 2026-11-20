@@ -1,0 +1,21 @@
+{
+  "$comment": "allowlist 白名单源清单。带 refresh 类型源的条目可由 tools/refresh.py 在联网环境定期刷新；custom/ 下的手工白名单永不覆盖。",
+  "sources": [
+    {
+      "name": "probe-white-domains",
+      "enabled": true,
+      "type": "refresh-static-ini-domains",
+      "path": "custom/white_domains.txt",
+      "license": "内部",
+      "notes": "业务白域名（源自探针 top100_white_domain.ini 转译，后续可手工增删）。"
+    },
+    {
+      "name": "public-dns-servers",
+      "enabled": true,
+      "type": "refresh-static-ini-ips",
+      "path": "custom/public_dns_servers.txt",
+      "license": "公共知识",
+      "notes": "公共 DNS 服务器（源自探针 common_dns_server.ini 转译），作为 DNS 行为基线白名单。"
+    }
+  ]
+}

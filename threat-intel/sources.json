@@ -1,0 +1,31 @@
+{
+  "$comment": "threat-intel 情报源清单。新增源：在此加一条 source，并在 tools/collect.py 实现对应 type 的解析器（见 collect_sources 注册表）。",
+  "sources": [
+    {
+      "name": "circl-misp-osint",
+      "enabled": true,
+      "type": "circl-misp-feed",
+      "url_base": "https://www.circl.lu/doc/misp/feed-osint/",
+      "options": { "max_events": 500, "malware_only": true, "to_ids": true, "workers": 16 },
+      "license": "TLP:WHITE",
+      "notes": "CIRCL MISP OSINT（权威，多经 VirusTotal 交叉核验）：文件哈希(md5/sha1/sha256) + IP/域名。"
+    },
+    {
+      "name": "feodo-tracker",
+      "enabled": true,
+      "type": "abusech-iplist",
+      "url": "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt",
+      "license": "abuse.ch ToU",
+      "notes": "abuse.ch Feodo Tracker：僵尸网络 C2 IP。"
+    },
+    {
+      "name": "malwarebazaar",
+      "enabled": false,
+      "type": "abusech-api",
+      "url": "https://mb-api.abuse.ch/api/v1/",
+      "options": { "auth_key_env": "ABUSECH_AUTH_KEY" },
+      "license": "abuse.ch ToU (CC0)",
+      "notes": "MalwareBazaar 批量导出已无匿名访问（410/401），需 Auth-Key：设置环境变量后置 enabled=true 并在 collect.py 实现解析器。"
+    }
+  ]
+}

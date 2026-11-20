@@ -82,6 +82,29 @@ pub struct HookEvent {
     #[serde(default)]
     pub app_proto: Option<String>,
 
+    // ---- 文件转存 / 静态 triage 相关 ----
+    /// 转存文件的 SHA256（Suricata file-store v2 以其命名 / 分桶）。
+    #[serde(default, alias = "sha256")]
+    pub file_sha256: Option<String>,
+    #[serde(default)]
+    pub file_sha1: Option<String>,
+    #[serde(default)]
+    pub file_md5: Option<String>,
+    /// 原始文件名（可能来自 HTTP 文件名 / Content-Disposition）。
+    #[serde(default, alias = "filename")]
+    pub file_name: Option<String>,
+    /// 魔数/类型描述（EVE fileinfo.magic）。
+    #[serde(default)]
+    pub file_magic: Option<String>,
+    #[serde(default)]
+    pub file_size: Option<u64>,
+    /// Suricata 是否真正把文件写盘（fileinfo.stored）。
+    #[serde(default)]
+    pub file_stored: Option<bool>,
+    /// 文件在磁盘上的绝对路径（可选；缺省时由 --file-spool-dir + sha256 推导）。
+    #[serde(default, alias = "filepath")]
+    pub file_path: Option<String>,
+
     #[serde(flatten)]
     pub extra: serde_json::Map<String, Value>,
 }
@@ -115,6 +138,8 @@ pub struct Rule {
     pub benign_uri_contains: Vec<String>,
     #[serde(default)]
     pub benign_host_contains: Vec<String>,
+    /// 输出置信度门槛（真正的过滤器）：`confidence` 只由上下文证据 + 威胁情报加分算出，
+    /// 低于该值直接丢弃；门槛**不会**反向抬高 `confidence`（见 engine.rs，V-09）。
     #[serde(default)]
     pub min_confidence: Option<u64>,
     #[serde(default)]

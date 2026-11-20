@@ -219,6 +219,30 @@ jobs:
             --rules xbits/testdata/match_context_rules.json \
             --match-buffers xbits/testdata/match_buffers.json
 
+      - name: Static triage unit tests (triage/, stdlib path)
+        run: |
+          set -euo pipefail
+          python3 triage/tests/test_triage.py
+
+      - name: Static triage unit tests (triage/, pefile+pyelftools enhanced path)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check pefile pyelftools
+          python3 triage/tests/test_triage.py
+
+      - name: Validate triage YARA rules compile (triage/rules)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check yara-python
+          python3 triage/tests/validate_rules.py
+
+      - name: File static-triage orchestration QA (suricata fileinfo -> xbits -> triage)
+        run: |
+          set -euo pipefail
+          python xbits/test/qa_file_triage.py \
+            --xbits xbits/target/release/xbits \
+            --triage-cmd "python3 triage/triage.py --stdin"
+
   suricata-live:
     name: Suricata 8.0.8 -> xbits -> Zeek 9.0.1 live linkage
     needs: rust

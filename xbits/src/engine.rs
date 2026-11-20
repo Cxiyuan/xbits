@@ -3,11 +3,27 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
+use crate::intel::EventIntelAnnotations;
 use crate::model::{HookEvent, Rule};
+
+/// 威胁情报命中对 `score` 的增量：直接参与 `threshold` 的累计分判定，
+/// 使"命中已知 C2 的告警"比同一规则下的未知告警更早越过阈值。
+pub const INTEL_THREAT_SCORE_BONUS: u64 = 20;
+
+/// 威胁情报命中对 `confidence` 的增量：在 `min_confidence` 门槛判定**之前**加到 confidence，
+/// 因此可以帮助证据不足的告警达到门槛，但不会让它们绕过门槛（门槛仍是过滤器，V-09）。
+pub const INTEL_THREAT_CONFIDENCE_BONUS: u64 = 15;
+
+/// 白名单命中对 `confidence` 的扣减（白方向只降级）：降低输出置信度并写
+/// `intel_decision=allowlist-downgraded`，不新增"情报驱动的静默丢弃"路径。
+pub const INTEL_ALLOWLIST_CONFIDENCE_PENALTY: u64 = 25;
 
 /// Central-engine output. Fields remain Xbits::Alert compatible; analysis
 /// metadata is appended for evidence/confidence consumers.
-#[derive(Debug, Clone, Serialize)]
+///
+/// 构造入口只有 [`Engine::make_alert`]：`Default` 是给测试/结构体更新语法用的，
+/// 新增字段时靠 `..Default::default()` 自动跟随，避免再次出现"测试构造器漏字段"。
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct EngineAlert {
     pub timestamp: String,
     pub signature_id: u64,
@@ -36,6 +52,15 @@ pub struct EngineAlert {
     pub uid: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<serde_json::Value>,
+    /// 威胁情报命中（threat-intel/ 子模块：ip/domain/hash）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intel: Option<serde_json::Value>,
+    /// 白名单命中（allowlist/ 子模块：domain/ip）与 DNS 基线提示
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowlist: Option<serde_json::Value>,
+    /// 情报决策标签：threat-hit / threat-overrides-allowlist / allowlist-downgraded
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intel_decision: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +81,8 @@ struct PendingAlert {
 ///   * buffers Zeek metadata contexts by connection;
 ///   * buffers Suricata alerts whose rules require context;
 ///   * emits only when context arrives, with confidence/evidence;
-///   * suppresses benign contexts and context-missing alerts.
+///   * suppresses benign contexts and context-missing alerts;
+///   * enforces `min_confidence` as a real filter (confidence is never lifted to the threshold).
 pub struct Engine {
     rules: Vec<Rule>,
     scores: HashMap<String, u64>,
@@ -64,6 +90,7 @@ pub struct Engine {
     contexts: HashMap<String, ContextEntry>,
     pending: Vec<PendingAlert>,
     ttl: Duration,
+    intel: Option<std::sync::Arc<crate::intel::IntelService>>,
 }
 
 impl Engine {
@@ -75,7 +102,30 @@ impl Engine {
             contexts: HashMap::new(),
             pending: Vec::new(),
             ttl: Duration::from_secs(60),
+            intel: None,
         }
+    }
+
+    /// 挂载统一情报服务（threat-intel + allowlist）；未挂载时告警不带情报标注。
+    pub fn with_intel(mut self, intel: std::sync::Arc<crate::intel::IntelService>) -> Self {
+        self.intel = Some(intel);
+        self
+    }
+
+    /// 事件的情报标注（未挂载情报服务时 None）。上下文到达后把告警事件与合并后的
+    /// 上下文一起查询，覆盖上下文里的 host/dns_query 等字段。
+    fn annotations(&self, ev: &HookEvent, ctx: Option<&HookEvent>) -> Option<EventIntelAnnotations> {
+        let svc = self.intel.as_ref()?;
+        let ann = match ctx {
+            Some(ctx) => svc.annotate_events(&[ev, ctx]),
+            None => svc.annotate_event(ev),
+        };
+        (!ann.is_empty()).then_some(ann)
+    }
+
+    /// 对单个事件产出情报标注（文件事件在进入 triage 前调用；与告警路径共用同一套查询语义）。
+    pub fn intel_annotations(&self, ev: &HookEvent) -> Option<EventIntelAnnotations> {
+        self.annotations(ev, None)
     }
 
     pub fn rules_len(&self) -> usize {
@@ -178,7 +228,10 @@ impl Engine {
                 .any(|v| !v.is_empty() && host.contains(&v.to_lowercase()))
     }
 
-    fn confidence(rule: &Rule, ctx: Option<&HookEvent>) -> u64 {
+    /// 置信度只由上下文证据计算：无上下文 50，有上下文 70，再按 host/uri/status/ua 证据加分，
+    /// 上限 100。**这里不应用 `min_confidence`**——门槛是过滤器（见 `make_alert`），
+    /// 不能被门槛反向抬升，否则 `if confidence < minimum` 恒假（V-09）。
+    fn confidence(ctx: Option<&HookEvent>) -> u64 {
         let mut confidence = if ctx.is_some() { 70 } else { 50 };
         if let Some(c) = ctx {
             if c.host.as_deref().is_some_and(|v| !v.is_empty()) {
@@ -194,20 +247,47 @@ impl Engine {
                 confidence += 5;
             }
         }
-        confidence.min(100).max(rule.min_confidence.unwrap_or(0))
+        confidence.min(100)
     }
 
-    fn make_alert(ev: &HookEvent, rule: &Rule, ctx: Option<&HookEvent>) -> Option<EngineAlert> {
+    fn make_alert(
+        ev: &HookEvent,
+        rule: &Rule,
+        ctx: Option<&HookEvent>,
+        intel: Option<&EventIntelAnnotations>,
+    ) -> Option<EngineAlert> {
         if rule.require_context && ctx.is_none() {
             return None;
         }
         if Self::benign(rule, ctx) {
             return None;
         }
-        let confidence = Self::confidence(rule, ctx);
+        let mut confidence = Self::confidence(ctx);
+        let mut score = rule.score.max(1);
+        let mut intel_decision: Option<&'static str> = None;
+        if let Some(ann) = intel {
+            if ann.threat_hit() {
+                // 威胁命中：score 参与 threshold 累计；confidence 在门槛判定前加分，
+                // 因此"帮助达到" min_confidence，但不能让低于门槛的证据绕过门槛。
+                score = score.saturating_add(INTEL_THREAT_SCORE_BONUS);
+                confidence = confidence
+                    .saturating_add(INTEL_THREAT_CONFIDENCE_BONUS)
+                    .min(100);
+                intel_decision = ann.decision();
+            }
+        }
+        // min_confidence 是真正的过滤门槛：confidence 只由上下文证据 + 情报加分算出（不含门槛抬升），
+        // 低于门槛即丢弃。白名单降级在门槛之后执行，保证"白方向只降级、不因门槛丢弃"。
         if let Some(minimum) = rule.min_confidence {
             if confidence < minimum {
                 return None;
+            }
+        }
+        if let Some(ann) = intel {
+            if ann.decision() == Some("allowlist-downgraded") {
+                // 白名单命中：只降级（扣置信度），输出照常，不在这里丢弃。
+                confidence = confidence.saturating_sub(INTEL_ALLOWLIST_CONFIDENCE_PENALTY);
+                intel_decision = Some("allowlist-downgraded");
             }
         }
         let signature = ev
@@ -231,6 +311,9 @@ impl Engine {
                 evidence = format!("{evidence}; {}", parts.join(" "));
             }
         }
+        if let Some(decision) = intel_decision {
+            evidence = format!("{evidence}; intel_decision={decision}");
+        }
         Some(EngineAlert {
             timestamp: ev.timestamp.clone().or_else(|| ev.ts.clone()).unwrap_or_default(),
             signature_id: ev.sid.unwrap_or(0),
@@ -242,7 +325,7 @@ impl Engine {
             dport: ev.dport.unwrap_or(0),
             proto: ev.proto.clone().unwrap_or_default(),
             flow_id: ev.flow_id.clone().unwrap_or_default(),
-            score: rule.score.max(1),
+            score,
             confidence,
             evidence,
             reason: rule.reason.clone().unwrap_or_else(|| rule.name.clone()),
@@ -253,13 +336,17 @@ impl Engine {
             severity: ev.severity.clone(),
             uid: ev.uid.clone(),
             context: ctx.and_then(|c| serde_json::to_value(c).ok()),
+            intel: intel.and_then(|ann| ann.threat.clone()),
+            allowlist: intel.and_then(EventIntelAnnotations::allowlist_document),
+            intel_decision: intel_decision.map(str::to_string),
         })
     }
 
-    fn score_for(&mut self, ev: &HookEvent, rule: &Rule) -> u64 {
+    /// 累计分：规则分 + 情报威胁加分（情报因此真实参与 threshold 判定）。
+    fn score_for(&mut self, ev: &HookEvent, rule: &Rule, intel_bonus: u64) -> u64 {
         let key = self.group_key(ev, rule);
         let entry = self.scores.entry(key).or_insert(0);
-        *entry += rule.score.max(1);
+        *entry = entry.saturating_add(rule.score.max(1).saturating_add(intel_bonus));
         *entry
     }
 
@@ -284,36 +371,48 @@ impl Engine {
         let mut out = Vec::new();
         if is_zeek_context {
             let context = self.contexts.get(&key).map(|c| c.event.clone());
+            let pending_all = std::mem::take(&mut self.pending);
             let mut remaining = Vec::new();
-            for pending in self.pending.drain(..) {
-                if pending.key == key {
-                    if let Some(ref ctx) = context {
-                        if let Some(alert) = Self::make_alert(&pending.event, &pending.rule, Some(ctx)) {
-                            out.push(alert);
-                        }
-                    }
-                    // Rejected benign/confidence cases are dropped.
-                } else {
+            for pending in pending_all {
+                if pending.key != key {
                     remaining.push(pending);
+                    continue;
                 }
+                if let Some(ctx) = &context {
+                    // 情报标注在决策点计算（合并上下文后），因此上下文里的 host/dns 也参与评分。
+                    let ann = self.annotations(&pending.event, Some(ctx));
+                    if let Some(alert) =
+                        Self::make_alert(&pending.event, &pending.rule, Some(ctx), ann.as_ref())
+                    {
+                        out.push(alert);
+                    }
+                }
+                // Rejected benign/confidence cases are dropped.
             }
             self.pending = remaining;
         }
+
+        let context = if ev.source.eq_ignore_ascii_case("suricata") {
+            self.contexts.get(&key).map(|c| c.event.clone())
+        } else {
+            None
+        };
+        let annotations = self.annotations(ev, context.as_deref());
+        let intel_score_bonus = if annotations.as_ref().is_some_and(|a| a.threat_hit()) {
+            INTEL_THREAT_SCORE_BONUS
+        } else {
+            0
+        };
 
         for rule in self.rules.clone() {
             if !rule.matches(ev) {
                 continue;
             }
-            let _score = self.score_for(ev, &rule);
-            // 累计分未达到规则阈值时不输出；避免 ignored threshold 导致规则洪泛
-            if _score < rule.threshold.max(1) {
+            let accumulated = self.score_for(ev, &rule, intel_score_bonus);
+            // 累计分（含情报加分）未达到规则阈值时不输出；避免 ignored threshold 导致规则洪泛
+            if accumulated < rule.threshold.max(1) {
                 continue;
             }
-            let context = if ev.source.eq_ignore_ascii_case("suricata") {
-                self.contexts.get(&key).map(|c| c.event.clone())
-            } else {
-                None
-            };
             if ev.source.eq_ignore_ascii_case("suricata") && rule.require_context && context.is_none()
             {
                 self.pending.push(PendingAlert {
@@ -324,7 +423,9 @@ impl Engine {
                 });
                 continue;
             }
-            if let Some(alert) = Self::make_alert(ev, &rule, context.as_ref()) {
+            if let Some(alert) =
+                Self::make_alert(ev, &rule, context.as_ref(), annotations.as_ref())
+            {
                 out.push(alert);
             }
         }
@@ -434,5 +535,220 @@ mod tests {
             ..Default::default()
         };
         assert!(eng.process(&context).is_empty());
+    }
+
+    // ---- 情报进入决策链（V-02/V-03）----
+
+    fn tmpdir(prefix: &str) -> std::path::PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("xbits-engine-{prefix}-{nanos}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn intel(
+        threat: Option<&std::path::PathBuf>,
+        allow: Option<&std::path::PathBuf>,
+    ) -> std::sync::Arc<crate::intel::IntelService> {
+        std::sync::Arc::new(crate::intel::IntelService::load(threat, allow))
+    }
+
+    #[test]
+    fn alert_default_covers_intel_fields() {
+        // 单一构造入口不变式：新增字段必须有 Default，测试用 ..Default::default() 跟随。
+        let alert = EngineAlert::default();
+        assert!(alert.intel.is_none());
+        assert!(alert.allowlist.is_none());
+        assert!(alert.intel_decision.is_none());
+    }
+
+    #[test]
+    fn threat_intel_boosts_score_and_confidence() {
+        let dir = tmpdir("threat");
+        std::fs::write(dir.join("ip.txt"), "203.0.113.9\n").unwrap();
+        let mut eng = Engine::new(vec![rule()]).with_intel(intel(Some(&dir), None));
+        let alerts = eng.process(&alert_event());
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].score, 20 + INTEL_THREAT_SCORE_BONUS);
+        assert_eq!(alerts[0].confidence, 50 + INTEL_THREAT_CONFIDENCE_BONUS);
+        assert_eq!(alerts[0].intel_decision.as_deref(), Some("threat-hit"));
+        assert!(alerts[0].intel.is_some());
+        assert!(alerts[0].evidence.contains("intel_decision=threat-hit"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn allowlist_downgrades_and_marks_decision() {
+        let dir = tmpdir("allow");
+        std::fs::write(dir.join("ip.txt"), "10.0.0.80\n").unwrap();
+        let mut eng = Engine::new(vec![rule()]).with_intel(intel(None, Some(&dir)));
+        let alerts = eng.process(&alert_event());
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].score, 20);
+        assert_eq!(alerts[0].confidence, 50 - INTEL_ALLOWLIST_CONFIDENCE_PENALTY);
+        assert_eq!(
+            alerts[0].intel_decision.as_deref(),
+            Some("allowlist-downgraded")
+        );
+        assert!(alerts[0].allowlist.is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn threat_overrides_allowlist() {
+        let threat = tmpdir("conflict-threat");
+        let allow = tmpdir("conflict-allow");
+        std::fs::write(threat.join("ip.txt"), "203.0.113.9\n").unwrap();
+        std::fs::write(allow.join("ip.txt"), "10.0.0.80\n").unwrap();
+        let mut eng = Engine::new(vec![rule()])
+            .with_intel(intel(Some(&threat), Some(&allow)));
+        let alerts = eng.process(&alert_event());
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].score, 20 + INTEL_THREAT_SCORE_BONUS);
+        assert_eq!(
+            alerts[0].intel_decision.as_deref(),
+            Some("threat-overrides-allowlist")
+        );
+        let _ = std::fs::remove_dir_all(&threat);
+        let _ = std::fs::remove_dir_all(&allow);
+    }
+
+    #[test]
+    fn threat_intel_from_context_applies_to_deferred_alert() {
+        // 文件/域名情报在"挂起告警 + 上下文到达"路径上同样参与决策。
+        let dir = tmpdir("threat-context");
+        std::fs::write(dir.join("domain.txt"), "evil.example\n").unwrap();
+        let mut r = rule();
+        r.require_context = true;
+        let mut eng = Engine::new(vec![r]).with_intel(intel(Some(&dir), None));
+        assert!(eng.process(&alert_event()).is_empty());
+        assert_eq!(eng.pending_len(), 1);
+        let context = HookEvent {
+            source: "zeek".into(),
+            kind: "event".into(),
+            event: Some("http_request".into()),
+            src: Some("203.0.113.9".into()),
+            dst: Some("10.0.0.80".into()),
+            sport: Some(40001),
+            dport: Some(80),
+            host: Some("evil.example".into()),
+            uri: Some("/login".into()),
+            ..Default::default()
+        };
+        let alerts = eng.process(&context);
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].intel_decision.as_deref(), Some("threat-hit"));
+        assert_eq!(alerts[0].score, 20 + INTEL_THREAT_SCORE_BONUS);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_event_intel_annotations_are_reachable() {
+        // 文件事件在 hook 层进入 triage 前，先由引擎给出同一套情报标注（V-03）。
+        let dir = tmpdir("file-hash");
+        std::fs::write(dir.join("md5.txt"), "aa".repeat(16).as_str()).unwrap();
+        let eng = Engine::new(Vec::new()).with_intel(intel(Some(&dir), None));
+        let ev = HookEvent {
+            source: "suricata".into(),
+            kind: "file_stored".into(),
+            file_md5: Some("aa".repeat(16)),
+            ..Default::default()
+        };
+        let ann = eng.intel_annotations(&ev).expect("md5 intel hit");
+        assert_eq!(ann.decision(), Some("threat-hit"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- min_confidence 必须是真的过滤器（V-09）----
+
+    fn weak_http_context() -> HookEvent {
+        // 只有 status 证据 → confidence = 70 + 5 = 75。
+        HookEvent {
+            source: "zeek".into(),
+            kind: "event".into(),
+            event: Some("http_request".into()),
+            src: Some("203.0.113.9".into()),
+            dst: Some("10.0.0.80".into()),
+            sport: Some(40001),
+            dport: Some(80),
+            status: Some(200),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn min_confidence_filters_low_confidence_and_strong_evidence_still_emits() {
+        let mut r = rule();
+        r.min_confidence = Some(90);
+        let mut eng = Engine::new(vec![r]);
+        // 无上下文：confidence = 50 < 90，必须不输出。
+        // 旧实现 `.max(min_confidence)` 会把它抬到 90，过滤条件恒假（V-09）。
+        assert!(eng.process(&alert_event()).is_empty());
+
+        // 强证据：host+uri+status+ua → 100 ≥ 90，仍必须输出。
+        let ctx = HookEvent {
+            source: "zeek".into(),
+            kind: "event".into(),
+            event: Some("http_request".into()),
+            src: Some("203.0.113.9".into()),
+            dst: Some("10.0.0.80".into()),
+            sport: Some(40001),
+            dport: Some(80),
+            host: Some("app.example.test".into()),
+            uri: Some("/search?q=1".into()),
+            status: Some(200),
+            user_agent: Some("sqlmap/1.7".into()),
+            ..Default::default()
+        };
+        assert!(eng.process(&ctx).is_empty(), "zeek 上下文不应触发 suricata 规则");
+        let alerts = eng.process(&alert_event());
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].confidence, 100);
+    }
+
+    #[test]
+    fn min_confidence_interacts_correctly_with_intel_bonus() {
+        let dir = tmpdir("minconf");
+        std::fs::write(dir.join("ip.txt"), "203.0.113.9\n").unwrap();
+
+        // 弱上下文 75 + min_confidence=90 + 无情报 → 丢弃。
+        let mut r = rule();
+        r.min_confidence = Some(90);
+        r.require_context = true;
+        let mut eng = Engine::new(vec![r]);
+        assert!(eng.process(&alert_event()).is_empty());
+        assert_eq!(eng.pending_len(), 1);
+        assert!(
+            eng.process(&weak_http_context()).is_empty(),
+            "75 < 90 必须被门槛过滤"
+        );
+        assert_eq!(eng.pending_len(), 0);
+
+        // 同样的弱上下文 + 威胁情报 +15 = 90 → 刚好达到门槛，输出。
+        let mut r2 = rule();
+        r2.min_confidence = Some(90);
+        r2.require_context = true;
+        let mut eng2 = Engine::new(vec![r2]).with_intel(intel(Some(&dir), None));
+        assert!(eng2.process(&alert_event()).is_empty());
+        let alerts = eng2.process(&weak_http_context());
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].confidence, 75 + INTEL_THREAT_CONFIDENCE_BONUS);
+        assert_eq!(alerts[0].intel_decision.as_deref(), Some("threat-hit"));
+
+        // 情报加分不能绕过过滤器：min_confidence=100 时 90 仍被丢弃。
+        let mut r3 = rule();
+        r3.min_confidence = Some(100);
+        r3.require_context = true;
+        let mut eng3 = Engine::new(vec![r3]).with_intel(intel(Some(&dir), None));
+        assert!(eng3.process(&alert_event()).is_empty());
+        assert!(
+            eng3.process(&weak_http_context()).is_empty(),
+            "情报加分不得绕过 min_confidence=100"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

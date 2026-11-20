@@ -1,0 +1,35 @@
+# xbits 静态 triage —— semgrep 脚本规则（起步集，示例）
+# 用法：triage.py --semgrep-config triage/semgrep/webshell.yml --semgrep-cmd semgrep
+rules:
+  - id: xbits-php-eval-superglobal
+    languages: [php]
+    message: "PHP eval/assert on request superglobal (possible webshell)"
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: eval($_POST[...])
+          - pattern: eval($_GET[...])
+          - pattern: eval($_REQUEST[...])
+          - pattern: assert($_POST[...])
+          - pattern: assert($_GET[...])
+
+  - id: xbits-php-command-exec
+    languages: [php]
+    message: "PHP command execution function"
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: system(...)
+          - pattern: exec(...)
+          - pattern: shell_exec(...)
+          - pattern: passthru(...)
+          - pattern: popen(...)
+
+  - id: xbits-jsp-runtime-exec
+    languages: [java]
+    message: "Java Runtime.exec / ProcessBuilder (possible webshell)"
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: Runtime.getRuntime().exec(...)
+          - pattern: new ProcessBuilder(...)

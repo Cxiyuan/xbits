@@ -8,6 +8,7 @@
 pub mod analysis;
 pub mod engine;
 pub mod hook;
+pub mod intel;
 pub mod model;
 
 use std::io::{self, BufRead, Write};

@@ -209,6 +209,7 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 
 - `--validator-cmd`：接收一行 JSON（event/alert/metadata/payload），输出
   `{"verdict":"true_positive|false_positive|uncertain","confidence":90,"reason":"...","evidence":["..."]}`；
+  validator 的 `reason` 记入分析文档 `xbits.validator_reason`，**不覆盖** `reason` 里的情报决策依据（`intel-*`）；
 - `--es-url`：直接 HTTP POST 到 Elasticsearch（当前实现支持 `http://`）；
   `--es-auth` 可传 `ApiKey ...` 或 `Basic ...`；
   `--es-command` 可接 `curl` 等命令，支持 HTTPS/认证；
@@ -216,6 +217,31 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 - `--match-buffers`：按 SID 加载规则实际匹配的 buffer，
   由 `规则检测/build_match_buffers.py` 生成；
 - `--suppression-ttl-sec`：xbits 内存抑制 TTL，默认 300 秒。
+
+**文档 sink 是硬性要求**：只要启用了任一分析选项，就必须至少配置一个文档去向
+（`--analysis-file` 和/或 `--es-url`/`--es-command`），否则启动直接失败并返回非零退出码——
+不会"照常运行但把文档丢掉"。
+
+**失败必须可见（可计数 / 可探测 / 可失败）**：
+
+- 审计文件打开/写入失败、文档序列化失败、ES 推送失败都会写 stderr 且计入 `document_errors`；
+- 没有 sink 可写的文档（未配 `--analysis-file` 时的被抑制告警与 `file_triage` 各阶段）
+  会写入 stderr 并计入 `documents_without_sink`（启动时另有告警）；
+- `--match-buffers` / `--sid-library` / `--rules-meta` 读取或 JSON 解析失败会写 stderr
+  并计入 `config_errors`（不再静默成空表、让抑制能力归零而无任何信号）；
+- 分析线程 panic 会把流水线标记为不可用（记录 panic 原因），入队连续失败 3 次同样标记；
+  hook listener 探测到不可用后立即以非零退出，而不是静默停摆。
+- 文件静态 triage 运行在独立的 `xbits-triage` worker 线程（有界队列 64）：外部命令
+  （默认 30s）不再阻塞告警判定与 pending 超时；队列满时丢弃并计入 `triage_dropped`
+  且落一条 `failed(triage-queue-full)` 文档；超时计入 `triage_timeouts`，并杀掉
+  整个进程组（含孙进程）。失败形态（timeout / 非零退出 / 坏 JSON / stored=false /
+  找不到文件）在 `file_triage` 文档的 `xbits.note` 里逐项区分，详见 `triage/README.md`。
+- 文件情报链路（单一数据源）：triage 的 stdin 请求会带上引擎在进 triage 前算好的情报标注
+  `{"intel": {"threat": [{type, value}...], "allowlist": [...]}}`（来自 `engine.intel_annotations`，
+  triage 在 `--stdin` 下不读本地名单）。**文件 hash 命中威胁情报时一定会推 ES**：
+  `completed` 即使 triage 判 `clean` 也推，并在文档标记 `xbits.intel_conflict=true`，
+  `xbits.verdict` 以情报为准（`malicious`）、原始 triage 结论保留在 `xbits.triage_verdict`；
+  `failed`/`skipped` 阶段命中同样推 ES，避免已知恶意文件被超时/类别跳过静默丢弃。
 
 **白名单只在 xbits 内部生效**：
 
@@ -297,13 +323,48 @@ xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/analysis.json
 规则文件为 JSON 数组（`xbits/rules/analysis.json` 为生产示例，`default.json` 仅兼容旧测试），支持
 `source/kind/proto/signature_contains/sid_in/event/desc_contains/method/group_by/score/threshold/reason`。
 
+## 8.1 统一情报查询（threat-intel + allowlist）
+
+xbits 中央引擎在**决策点**查询威胁情报与白名单（Zeek 只做纯行为分析，不持有名单；
+行为事件 hook 到 xbits 后由 xbits 统一查询并直接影响评分/降级/文档）：
+
+```bash
+xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/analysis.json \
+      --threat-intel-dir threat-intel/data \   # ip/domain/md5/sha1/sha256.txt（黑）
+      --allowlist-dir allowlist/data           # domain/ip/public_dns.txt（白）
+```
+
+- 两个目录必须显式指定；**未指定即不启用情报**（启动打印 `intel=unconfigured`），
+  不会去猜默认路径。
+- 启动时一次性加载为内存集合（数据由 `threat-intel/tools/collect.py`、
+  `allowlist/tools/{add,refresh}.py` 刷新，xbits 重启后生效），并逐项打印每个数据集的
+  条目数与读取失败原因，状态区分 `unconfigured / misconfigured / empty / loaded`。
+- 命中如何进入决策（常量见 `xbits/src/engine.rs` 的 `INTEL_*`）：
+  - 威胁命中（IP / 域名 / 文件 md5、sha1、sha256）→ `score += 20`（参与 `threshold` 累计分）、
+    `confidence += 15`（在 `min_confidence` 门槛判定前计入，可帮助达到门槛，但不会让证据不足的告警绕过门槛），告警写 `intel_decision=threat-hit`；
+  - 白名单命中（IP / 域名）→ `confidence -= 25`，告警写 `intel_decision=allowlist-downgraded`，
+    分析文档 `reason` 记 `intel-allowlist`（只降级；不在引擎里丢弃，也不阻断威胁命中）；
+  - 两者同时命中 → 以威胁为准，写 `intel_decision=threat-overrides-allowlist`；
+  - `allowlist.public_dns_off_baseline` 是 DNS 基线提示字段，**不参与加权**。
+  - 情报决策依据在分析文档里写作 `reason=intel-*`（`intel-threat` / `intel-allowlist` /
+    `intel-threat-allowlist-conflict`），**优先级最高**：validator 返回的 reason 不会覆盖它，
+    而是单独记在 `xbits.validator_reason`（并在 evidence 追加 `validator-reason=...`）。
+- 匹配语义：威胁域名**精确匹配**（与 `threat-intel/tools/query.py` 的集合语义一致）；
+  只有 allowlist 域名做后缀匹配（**最长**后缀）。加载期拒绝公共后缀/单标签条目
+  （如 `co.kr`、`com`），并打印被拒绝条目。
+- 标注进入两条输出：stdout 告警 JSON（`intel` / `allowlist` / `intel_decision`）与
+  归一化文档（`--analysis-file`、ES 的 `intel`、`allowlist`、`xbits.intel_decision`）；
+  文件 triage 文档同样携带（文件事件先经引擎标注，再进 triage）。
+
 ## 9. 上下文关联、误报判断与统一告警落盘
 
 生产分析规则使用 `xbits/rules/analysis.json`，额外支持：
 
 - `require_context`: Suricata 告警必须等到对应 Zeek `http_request/http_header/http_reply` 上下文才输出；
 - `benign_uri_contains` / `benign_host_contains`: 正常 URI/Host 上下文可抑制误报；
-- `min_confidence`: 只输出达到置信度阈值的告警；
+- `min_confidence`: **真正的过滤门槛**——`confidence` 只由上下文证据（无上下文 50、有上下文 70，再加
+  host/uri/status/ua 证据分）与威胁情报加分算出，低于阈值的告警直接丢弃；门槛不会反向抬高 `confidence`
+  （历史上曾用 `.max(min_confidence)` 抬升，导致过滤条件恒假，已修正）；
 - `sid_in`: 按精确 SID 集合选择规则，避免 `signature_contains` 宽匹配；
 - `score` / `threshold`: 累计分数达到阈值后才输出；
 - `alert_kind`: xbits 接管 Zeek `XbitsAlert::emit` 的告警类别管理（例如只接收 `scanner`）。

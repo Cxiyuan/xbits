@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 """外部探针规则导出 → Zeek 行为/情报脚本转换器。
 
-Snort/WAF/PVS 的 content/pcre 规则不适合 Zeek；本转换器只提取
-真正适合 Zeek 的**明文情报与白名单**，生成可直接加载的 Zeek 脚本：
+Snort/WAF/PVS 的 content/pcre 规则不适合 Zeek；历史上本转换器曾把明文
+情报与白名单转成 Zeek 数据脚本（white_domains/public_dns_servers/botnet_apps）。
 
-  规则检测/zeek/威胁情报/white_domains.zeek      业务白域名（减少 DNS/HTTP 误报）
-  规则检测/zeek/威胁情报/public_dns_servers.zeek 公共 DNS 服务器清单
-  规则检测/zeek/威胁情报/botnet_apps.zeek        僵尸网络/挖矿应用元数据
-
-Zeek 不做 content/UA 签名匹配；爬虫 UA 签名归 Suricata。
+注意：随「Zeek 纯行为分析」的架构决策，这些数据脚本已全部移除——
+白名单/基线统一由根目录 allowlist/ 子模块提供（custom/ 自定义 + data/ 快照
++ tools/{add,refresh,query}.py），威胁情报由 threat-intel/ 子模块提供，
+xbits 在 hook 到的事件上统一查询。本转换器现仅保留解析工具函数供历史
+转译参考；不再向 规则检测/zeek/ 输出任何数据脚本。
 
 输入：桌面 `流量检测规则` 导出目录。
 无法转换的内容（哈希化 UA 名单、SLS 加密黑名单、Snort 内容规则、
@@ -186,44 +186,6 @@ def write_public_dns(src: Path, out: Path) -> None:
     out.write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_botnet_apps(src: Path, out: Path) -> None:
-    sections = parse_sections(src)
-    entries = []
-    for name, kv in sections.items():
-        if not name.isdigit() or "name" not in kv:
-            continue
-        entries.append(
-            (
-                kv["name"],
-                int(kv.get("danger_class", "0") or 0),
-                kv.get("drop", "0") in ("1", "yes", "true"),
-                kv.get("desc", kv.get("Desc", "")),
-            )
-        )
-    out.parent.mkdir(parents=True, exist_ok=True)
-    lines = [
-        "##! 僵尸网络/挖矿应用元数据（由 convert_probe_zeek.py 生成）。",
-        "##! 仅用于告警名称/危险等级归一化，检测依赖 Zeek 协议/行为事件。",
-        "module XbitsBotnet;",
-        "",
-        "export {",
-        "    type AppInfo: record {",
-        "        danger_class: count;",
-        "        drop: bool;",
-        "        desc: string;",
-        "    };",
-        "",
-        "    global botnet_apps: table[string] of AppInfo = {",
-    ]
-    for name, danger, drop, desc in entries:
-        lines.append(
-            f"        [{zeek_str(name)}] = AppInfo($danger_class={danger}, "
-            f"$drop={'T' if drop else 'F'}, $desc={zeek_str(desc)}),"
-        )
-    lines += ["    };", "}", ""]
-    out.write_text("\n".join(lines), encoding="utf-8")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", required=True, help="外部探针导出目录（流量检测规则）")
@@ -233,11 +195,12 @@ def main() -> int:
         print(f"missing UTM dir: {src}", file=sys.stderr)
         return 2
 
-    # Zeek 只做行为/情报数据；爬虫 UA 匹配属于 Suricata 签名，不再生成 crawler_whitelist.zeek。
-    write_white_domains(src / "top100_white_domain.ini", OUT / "威胁情报" / "white_domains.zeek")
-    write_public_dns(src / "common_dns_server.ini", OUT / "威胁情报" / "public_dns_servers.zeek")
-    write_botnet_apps(src / "utm_app_botnet.ini", OUT / "威胁情报" / "botnet_apps.zeek")
-    print("zeek scripts written under 规则检测/zeek/")
+    # Zeek 只做纯行为分析：不生成任何数据/情报脚本。
+    # - 爬虫 UA 匹配属于 Suricata 签名（crawler_whitelist 不生成）；
+    # - botnet_apps 无检测引擎消费（孤儿数据），不生成；
+    # - 白域名/公共 DNS 白名单已迁至根目录 allowlist/ 子模块（custom/ 自定义 + tools/ 查询），
+    #   由 xbits 在 hook 到的事件上统一查询。
+    print("nothing to generate: zeek is behavior-analysis only; allowlists live in allowlist/")
     return 0
 
 

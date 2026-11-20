@@ -1,0 +1,1 @@
+# allowlist 自定义白名单（类型: domain）

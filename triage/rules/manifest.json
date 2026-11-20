@@ -1,0 +1,1570 @@
+[
+  {
+    "category": "webshell",
+    "sid": "17089967",
+    "msg": "WebShell Detect chopper:request",
+    "source": "etc_fw/pvs/rules/success/commonwebshell.rules",
+    "yara_rule": "xb_webshell_17089967"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073502",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073502"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073503",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073503"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073504",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073504"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073505",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073505"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073506",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073506"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073507",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073507"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073508",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073508"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073509",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073509"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073510",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073510"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073512",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073512"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073513",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073513"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073514",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073514"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073515",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073515"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073516",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073516"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073517",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073517"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073518",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073518"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073519",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073519"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073520",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073520"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073521",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073521"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073522",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073522"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073524",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073524"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073525",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073525"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073526",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073526"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073527",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073527"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073528",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073528"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073529",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073529"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073530",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073530"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073531",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073531"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073532",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073532"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073533",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073533"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073534",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073534"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073535",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073535"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073536",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073536"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073537",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073537"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073538",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073538"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073539",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073539"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073540",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073540"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073542",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073542"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073544",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073544"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073545",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073545"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073546",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073546"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073547",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073547"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073548",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073548"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073549",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073549"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073550",
+    "msg": "WebShell Detect 50.000 V1584931321",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073550"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073551",
+    "msg": "WebShell Detect 50.000 V1585207874",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073551"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073552",
+    "msg": "WebShell Detect 50.000 V1585207874",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073552"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073554",
+    "msg": "WebShell Detect 8.000 V1585207874",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073554"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073555",
+    "msg": "WebShell Detect 8.000 V1585207874",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073555"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073556",
+    "msg": "WebShell Detect 9.000 V1585207874",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073556"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073557",
+    "msg": "WebShell Detect 50.000 V1585207874",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073557"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073558",
+    "msg": "WebShell Detect 8.000 V1585223370",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073558"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073559",
+    "msg": "WebShell Detect 8.000 V1585223370",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073559"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073561",
+    "msg": "WebShell Detect 8.000 V1585223370",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073561"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073565",
+    "msg": "WebShell Detect 50.000 V1585301106",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073565"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073564",
+    "msg": "WebShell Detect 50.000 V1585301106",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073564"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073562",
+    "msg": "WebShell Detect 13.000 V1585301106",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073562"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073566",
+    "msg": "WebShell Detect 13.000 V1585301106",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073566"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073563",
+    "msg": "WebShell Detect 50.000 V1585301106",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073563"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073604",
+    "msg": "WebShell Detect 59.59296 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073604"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073603",
+    "msg": "WebShell Detect 59.59296 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073603"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073606",
+    "msg": "WebShell Detect 62.37172 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073606"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073601",
+    "msg": "WebShell Detect 59.59296 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073601"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073605",
+    "msg": "WebShell Detect 59.59296 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073605"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073624",
+    "msg": "WebShell Detect 9.76911 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073624"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073620",
+    "msg": "WebShell Detect 16.15825 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073620"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073608",
+    "msg": "WebShell Detect 19.91945 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073608"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073609",
+    "msg": "WebShell Detect 16.82841 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073609"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073616",
+    "msg": "WebShell Detect 10.07784 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073616"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073612",
+    "msg": "WebShell Detect 19.91945 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073612"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073614",
+    "msg": "WebShell Detect 19.91945 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073614"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073621",
+    "msg": "WebShell Detect 19.91945 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073621"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073613",
+    "msg": "WebShell Detect 17.08624 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073613"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073611",
+    "msg": "WebShell Detect 18.12769 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073611"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073622",
+    "msg": "WebShell Detect 13.56161 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073622"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073627",
+    "msg": "WebShell Detect 8.13650 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073627"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073625",
+    "msg": "WebShell Detect 16.42295 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073625"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073626",
+    "msg": "WebShell Detect 14.68834 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073626"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073628",
+    "msg": "WebShell Detect 12.95343 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073628"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073630",
+    "msg": "WebShell Detect 16.20588 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073630"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073631",
+    "msg": "WebShell Detect 15.85901 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073631"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073634",
+    "msg": "WebShell Detect 16.13526 V1587375945",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073634"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073652",
+    "msg": "WebShell Detect 50.000 V1587461705",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073652"
+  },
+  {
+    "category": "webshell",
+    "sid": "17073654",
+    "msg": "WebShell Detect 9.000 V1587461705",
+    "source": "etc_fw/pvs/rules/success/ml_webshell.rules",
+    "yara_rule": "xb_webshell_17073654"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041258",
+    "msg": "TROJAN CryptoWall Ransomware Checkin",
+    "source": "etc_fw/sf_snort/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041258"
+  },
+  {
+    "category": "backdoor",
+    "sid": "115",
+    "msg": "Backdoor NetBus Pro_2.0 Connection Established",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_115"
+  },
+  {
+    "category": "backdoor",
+    "sid": "2124",
+    "msg": "Backdoor Remote PC Access Connection Attempt",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_2124"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6108",
+    "msg": "Backdoor Dagger v1.1.40 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6108"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6024",
+    "msg": "Backdoor Nuclear Rat V6_21 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6024"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6125",
+    "msg": "Backdoor Dkangel Runtime Detection - Smtp",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6125"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6049",
+    "msg": "Backdoor Fun Factory Runtime Detection - Upload",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6049"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6110",
+    "msg": "Backdoor Forced Entry V1.1 Beta Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6110"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6118",
+    "msg": "Backdoor Net Runner Runtime Detection - Initial Connection Client-To-Server",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6118"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6051",
+    "msg": "Backdoor Fun Factory Runtime Detection - Set Volume",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6051"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6055",
+    "msg": "Backdoor Bifrose 1.1 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6055"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6025",
+    "msg": "Backdoor Tequila Bandita 1.2 Runtime Detection - Reverse Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6025"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6120",
+    "msg": "Backdoor Net Runner Runtime Detection - Download File",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6120"
+  },
+  {
+    "category": "backdoor",
+    "sid": "6161",
+    "msg": "Backdoor Furax 1.0 B2 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_6161"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7087",
+    "msg": "Backdoor Sinique 1.0 Runtime Detection - Initial Connection With Correct Password",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7087"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7660",
+    "msg": "Backdoor Lan Filtrator 1.1 Runtime Detection - Initial Connection Request",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7660"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7764",
+    "msg": "Backdoor Nt Remote Controller 2000 Runtime Detection - Sysinfo",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7764"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7734",
+    "msg": "Backdoor Bionet 4.05 Runtime Detection - Initial Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7734"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7659",
+    "msg": "Backdoor Lan Filtrator 1.1 Runtime Detection - Sin Notification",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7659"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7702",
+    "msg": "Backdoor Roach 1.0 Runtime Detection - Remote Control Actions",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7702"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7680",
+    "msg": "Backdoor Cool Remote Control 1.12 Runtime Detection - Download File",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7680"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7620",
+    "msg": "Backdoor Remote Control 1.7 Runtime Detection - Connection Request",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7620"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7763",
+    "msg": "Backdoor Nt Remote Controller 2000 Runtime Detection - Services",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7763"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7728",
+    "msg": "Backdoor Radmin Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7728"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7778",
+    "msg": "Backdoor Elfrat Runtime Detection - Initial Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7778"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7766",
+    "msg": "Backdoor Nt Remote Controller 2000 Runtime Detection - Foldermonitor",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7766"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7678",
+    "msg": "Backdoor Cool Remote Control 1.12 Runtime Detection - Upload File",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7678"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7814",
+    "msg": "Backdoor Darkmoon Initial Connection Detection - Stc",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7814"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7812",
+    "msg": "Backdoor Abacab Runtime Detection - Banner",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7812"
+  },
+  {
+    "category": "backdoor",
+    "sid": "8074",
+    "msg": "Backdoor Mithril Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_8074"
+  },
+  {
+    "category": "backdoor",
+    "sid": "8078",
+    "msg": "Backdoor Mithril Runtime Detection - Get Process List",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_8078"
+  },
+  {
+    "category": "backdoor",
+    "sid": "8076",
+    "msg": "Backdoor Mithril Runtime Detection - Get System Information",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_8076"
+  },
+  {
+    "category": "backdoor",
+    "sid": "8362",
+    "msg": "Backdoor Black Curse 4.0 Runtime Detection - Normal Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_8362"
+  },
+  {
+    "category": "backdoor",
+    "sid": "9838",
+    "msg": "Backdoor Sun Shadow 1.70 Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_9838"
+  },
+  {
+    "category": "backdoor",
+    "sid": "9659",
+    "msg": "Backdoor Bersek 1.0 Runtime Detection - File Manage",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_9659"
+  },
+  {
+    "category": "backdoor",
+    "sid": "9661",
+    "msg": "Backdoor Bersek 1.0 Runtime Detection - Show Processes",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_9661"
+  },
+  {
+    "category": "backdoor",
+    "sid": "10461",
+    "msg": "Backdoor Winicabras 1.1 Runtime Detection - Get System Info",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_10461"
+  },
+  {
+    "category": "backdoor",
+    "sid": "10449",
+    "msg": "Backdoor Acid Shivers Runtime Detection - Init Telnet Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_10449"
+  },
+  {
+    "category": "backdoor",
+    "sid": "10453",
+    "msg": "Backdoor Zalivator 1.4.2 Pro Runtime Detection - Smtp Notification",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_10453"
+  },
+  {
+    "category": "backdoor",
+    "sid": "11954",
+    "msg": "Backdoor Supervisor Plus Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_11954"
+  },
+  {
+    "category": "backdoor",
+    "sid": "11952",
+    "msg": "Backdoor Winshadow Runtime Detection - Udp Response",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_11952"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12051",
+    "msg": "Backdoor Ultimate Rat 2.1 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12051"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12165",
+    "msg": "Backdoor Lithium 1.02 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12165"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12143",
+    "msg": "Backdoor Access Remote Pc Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12143"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12240",
+    "msg": "Backdoor Genie 1.7 Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12240"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12235",
+    "msg": "Backdoor Theef 2.10 Runtime Detection - Connect With Password",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12235"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12234",
+    "msg": "Backdoor Theef 2.10 Runtime Detection - Connect With No Password",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12234"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12245",
+    "msg": "Backdoor Furax 1.0 B3 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12245"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12243",
+    "msg": "Backdoor Hotmail Hacker Log Edition 5.0 Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12243"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12298",
+    "msg": "Backdoor Bifrost V1.2.1 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12298"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12374",
+    "msg": "Backdoor Radmin 3.0 Runtime Detection - Initial Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12374"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12699",
+    "msg": "Backdoor Poison Ivy 2.3.0 Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12699"
+  },
+  {
+    "category": "backdoor",
+    "sid": "12726",
+    "msg": "Backdoor Bandook 1.35 Runtime Detection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_12726"
+  },
+  {
+    "category": "backdoor",
+    "sid": "13506",
+    "msg": "Backdoor Evilotus 1.3.2 Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_13506"
+  },
+  {
+    "category": "backdoor",
+    "sid": "13655",
+    "msg": "Backdoor Nuclear Rat 2.1 Runtime Detection - Init Connection",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_13655"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7758",
+    "msg": "Backdoor Glacier Runtime Detection - Initial Connection And Directory Browse",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7758"
+  },
+  {
+    "category": "backdoor",
+    "sid": "9663",
+    "msg": "Backdoor Bersek 1.0 Runtime Detection - Start Remote Shell",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_9663"
+  },
+  {
+    "category": "backdoor",
+    "sid": "9839",
+    "msg": "Backdoor Sun Shadow 1.70 Runtime Detection - Keep Alive",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_9839"
+  },
+  {
+    "category": "backdoor",
+    "sid": "7759",
+    "msg": "Backdoor Glacier Runtime Detection - Screen Capture",
+    "source": "lib_ips_feature/rules/backdoor.rules",
+    "yara_rule": "xb_backdoor_7759"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040003",
+    "msg": "Trojan Huigezi FuShe Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040003"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040004",
+    "msg": "Trojan Shangxing 2008/2009 Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040004"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040005",
+    "msg": "Trojan Shangxing 2010 Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040005"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040006",
+    "msg": "Trojan Netbull Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040006"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040013",
+    "msg": "Trojan Huigezi 2009 Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040013"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040016",
+    "msg": "Trojan Heidong Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040016"
+  },
+  {
+    "category": "trojan",
+    "sid": "10040017",
+    "msg": "Trojan YuanKongRenWoXing Remote Control",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10040017"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041009",
+    "msg": "MALWARE-CNC Win32.Worm Dorkbot Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041009"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041010",
+    "msg": "MALWARE-CNC Win32.Worm Dorkbot Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041010"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041011",
+    "msg": "MALWARE-CNC Win32.Dogrobot Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041011"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041012",
+    "msg": "MALWARE-CNC Backdoor.Sdbot Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041012"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041013",
+    "msg": "MALWARE-CNC Backdoor.Sdbot Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041013"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041029",
+    "msg": "MALWARE-CNC BLEEDING-EDGE P2P Iroffer IRC Bot Help Message Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041029"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041030",
+    "msg": "MALWARE-CNC BLEEDING-EDGE P2P Iroffer IRC Bot Offered Files Advertisement Traffic",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041030"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041055",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041055"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041056",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041056"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041057",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041057"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041058",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041058"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041059",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041059"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041060",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041060"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041061",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041061"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041062",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041062"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041063",
+    "msg": "DNS Query Dangerous Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041063"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041064",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041064"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041065",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041065"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041066",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041066"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041067",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041067"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041068",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041068"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041069",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041069"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041070",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041070"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041071",
+    "msg": "DNS Reply Sinkhole",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041071"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041095",
+    "msg": "MALWARE-CNC Mirai BotNet DNS",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041095"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041099",
+    "msg": "Cisco TclShell TFTP Read Request",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041099"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041100",
+    "msg": "Cisco TclShell TFTP Download",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041100"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041115",
+    "msg": "TROJAN Arucer Command Execution",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041115"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041116",
+    "msg": "TROJAN Arucer DIR Listing",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041116"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041117",
+    "msg": "TROJAN Arucer WRITE FILE command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041117"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041118",
+    "msg": "TROJAN Arucer READ FILE Command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041118"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041119",
+    "msg": "TROJAN Arucer NOP Command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041119"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041120",
+    "msg": "TROJAN Arucer FIND FILE Command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041120"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041121",
+    "msg": "TROJAN Arucer YES Command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041121"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041122",
+    "msg": "TROJAN Arucer ADD RUN ONCE Command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041122"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041123",
+    "msg": "TROJAN Arucer DEL FILE Command",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041123"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041146",
+    "msg": "TROJAN CryptoLocker Proxy Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041146"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041147",
+    "msg": "TROJAN CryptoLocker Proxy Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041147"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041148",
+    "msg": "TROJAN CryptoLocker Proxy Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041148"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041149",
+    "msg": "TROJAN CryptoWall Proxy Domain",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041149"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041152",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041152"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041153",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041153"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041154",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041154"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041155",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041155"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041156",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041156"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041157",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041157"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041158",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041158"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041160",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041160"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041161",
+    "msg": "TROJAN PowerShell Loader Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041161"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041162",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041162"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041163",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041163"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041167",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041167"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041172",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041172"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041180",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041180"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041182",
+    "msg": "TROJAN Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041182"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041183",
+    "msg": "TROJAN Cryptolocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041183"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041184",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041184"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041186",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041186"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041188",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041188"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041189",
+    "msg": "TROJAN Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041189"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041190",
+    "msg": "TROJAN TorrentLocker Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041190"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041191",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041191"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041192",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041192"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041193",
+    "msg": "TROJAN OSX/KeRanger Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041193"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041194",
+    "msg": "TROJAN OSX/KeRanger Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041194"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041195",
+    "msg": "TROJAN OSX/KeRanger Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041195"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041196",
+    "msg": "TROJAN OSX/KeRanger Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041196"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041200",
+    "msg": "TROJAN Locky Ransomware Checkin",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041200"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041350",
+    "msg": "Trojan Sinkhole DNS Reply CnC Beacon",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041350"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041357",
+    "msg": "Trojan Sinkhole DNS Reply CnC Beacon",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041357"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041361",
+    "msg": "Trojan Sinkhole DNS Reply CnC Beacon",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041361"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041362",
+    "msg": "Trojan Sinkhole DNS Reply CnC Beacon",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041362"
+  },
+  {
+    "category": "trojan",
+    "sid": "10041363",
+    "msg": "Trojan Sinkhole DNS Reply CnC Beacon",
+    "source": "lib_ips_feature/rules/trojan.rules",
+    "yara_rule": "xb_trojan_10041363"
+  }
+]

@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libpcre2-8-0 libyaml-0-2 zlib1g ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules /var/log/suricata /var/run/suricata /var/lib/suricata
+RUN mkdir -p /opt/xbits/plugins /opt/xbits/rules /opt/xbits/filestore /var/log/suricata /var/run/suricata /var/lib/suricata
 
 # 用 CI runner（同为 Ubuntu 22.04）编译的 patched Suricata 二进制与库
 COPY docker/stage/bin/suricata /usr/bin/suricata

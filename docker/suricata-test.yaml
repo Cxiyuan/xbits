@@ -22,6 +22,18 @@ security:
     allow-rules: yes
 
 outputs:
+  # 文件转存：检测到文件（含二进制/脚本/文档）时落盘，交由 xbits 静态 triage。
+  # file-store v2 以 SHA256 命名并按前 2 位分桶：<dir>/<sha[0:2]>/<sha256>
+  # xbits 侧用 --file-spool-dir 指向同一目录即可按 sha256 定位。
+  # 生产如需"只转存命中文件"，可去掉 force-filestore，改为在检测规则里加 filestore 关键字。
+  - file-store:
+      version: 2
+      enabled: yes
+      dir: /opt/xbits/filestore
+      force-filestore: yes
+      stream-depth: 0
+      write-fileinfo: yes
+      force-hash: [sha256]
   - eve-log:
       enabled: yes
       filetype: xbits-hook
@@ -32,6 +44,10 @@ outputs:
             payload-buffer-size: 16kb
             http-body: yes
             http-body-printable: yes
+        # files 事件（fileinfo）：驱动 xbits "文件已转存 -> 静态 triage" 编排
+        - files:
+            force-magic: yes
+            force-hash: [sha256]
 
 # 薄 hook 插件
 plugins:

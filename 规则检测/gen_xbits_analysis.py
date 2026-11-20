@@ -54,6 +54,8 @@ def main() -> int:
             "sid_in": sqli,
             "require_context": True,
             "benign_uri_contains": ["/healthz", "/health", "/favicon.ico"],
+            # min_confidence 是真正的过滤门槛（不是抬升）：80 表示必须带 host/uri 等 HTTP 证据
+            # （基础 70 + 证据分），否则告警被丢弃；见 xbits/src/engine.rs 的 make_alert。
             "min_confidence": 80,
             "score": 20,
             "threshold": 20,

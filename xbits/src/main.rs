@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use xbits::analysis::{AnalysisConfig, AnalysisPipeline};
-use xbits::hook::run_hook_listener_with_analysis;
+use xbits::hook::run_hook_listener_full;
 use xbits::model::Rule;
 
 fn load_rules(path: Option<String>) -> io::Result<Vec<Rule>> {
@@ -52,6 +52,18 @@ fn main() -> io::Result<()> {
     let mut fp_confidence: u64 = 90;
     let mut max_payload: usize = 16384;
     let mut pending_context_ms: u64 = 500;
+    let mut triage_command: Option<String> = None;
+    let mut triage_timeout_ms: u64 = 30000;
+    let mut file_spool_dir: Option<PathBuf> = None;
+    let mut triage_categories: Vec<String> = vec![
+        "binary".into(),
+        "script".into(),
+        "document".into(),
+        "archive".into(),
+    ];
+    let mut triage_cache_ttl_sec: u64 = 3600;
+    let mut threat_intel_dir: Option<PathBuf> = None;
+    let mut allowlist_dir: Option<PathBuf> = None;
 
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -131,6 +143,42 @@ fn main() -> io::Result<()> {
             "--pending-context-ms" => {
                 pending_context_ms = parse_u64(args.next(), "--pending-context-ms")?;
             }
+            "--triage-cmd" => {
+                triage_command = Some(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--triage-cmd value missing")
+                })?);
+            }
+            "--triage-timeout-ms" => {
+                triage_timeout_ms = parse_u64(args.next(), "--triage-timeout-ms")?;
+            }
+            "--file-spool-dir" => {
+                file_spool_dir = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--file-spool-dir value missing")
+                })?));
+            }
+            "--triage-categories" => {
+                let value = args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--triage-categories value missing")
+                })?;
+                triage_categories = value
+                    .split(',')
+                    .map(|v| v.trim().to_string())
+                    .filter(|v| !v.is_empty())
+                    .collect();
+            }
+            "--triage-cache-ttl-sec" => {
+                triage_cache_ttl_sec = parse_u64(args.next(), "--triage-cache-ttl-sec")?;
+            }
+            "--threat-intel-dir" => {
+                threat_intel_dir = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--threat-intel-dir value missing")
+                })?));
+            }
+            "--allowlist-dir" => {
+                allowlist_dir = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--allowlist-dir value missing")
+                })?));
+            }
             "--once" => once = true,
             "--stdin" => stdin_mode = true,
             "--help" | "-h" => {
@@ -145,7 +193,12 @@ fn main() -> io::Result<()> {
                        --sid-library FILE --rules-meta FILE\n\
                        --es-url http://host:9200/index/_doc | --es-command CMD\n\
                        --es-auth HEADER --analysis-file FILE --match-buffers FILE\n\
-                       --suppression-ttl-sec N --fp-confidence N --max-payload N --pending-context-ms N"
+                       --suppression-ttl-sec N --fp-confidence N --max-payload N --pending-context-ms N\n\
+                       静态 triage: --triage-cmd CMD --triage-timeout-ms N --file-spool-dir DIR\n\
+                                    --triage-categories binary,script,document,archive --triage-cache-ttl-sec N\n\
+                       情报查询(需显式指定，未指定即不启用):\n\
+                         --threat-intel-dir DIR   # 读 ip.txt/domain.txt/md5.txt/sha1.txt/sha256.txt（威胁方向，参与评分）\n\
+                         --allowlist-dir DIR      # 读 domain.txt/ip.txt/public_dns.txt（白名单，参与降级）"
                 );
                 return Ok(());
             }
@@ -171,7 +224,19 @@ fn main() -> io::Result<()> {
             || es_url.is_some()
             || es_command.is_some()
             || analysis_file.is_some()
-            || match_buffers.is_some();
+            || match_buffers.is_some()
+            || triage_command.is_some()
+            || file_spool_dir.is_some();
+        // 启用了分析但一个文档 sink 都没有 → 启动即失败：
+        // 否则审计/ES 文档只能被丢弃（"报个日志就算完"不接受）。
+        if analysis_enabled && analysis_file.is_none() && es_url.is_none() && es_command.is_none() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "analysis is enabled but no document sink is configured: \
+                 pass --analysis-file and/or --es-url/--es-command \
+                 (otherwise every analysis document would be dropped)",
+            ));
+        }
         let pipeline = if analysis_enabled {
             let config = AnalysisConfig {
                 validator_command,
@@ -187,12 +252,21 @@ fn main() -> io::Result<()> {
                 fp_confidence: fp_confidence.min(100),
                 max_payload: max_payload.max(64),
                 pending_context_timeout: Duration::from_millis(pending_context_ms.max(1)),
+                triage_command,
+                triage_timeout: Duration::from_millis(triage_timeout_ms.max(1)),
+                file_spool_dir,
+                triage_categories,
+                triage_cache_ttl: Duration::from_secs(triage_cache_ttl_sec.max(1)),
             };
             Some(AnalysisPipeline::start(config)?)
         } else {
             None
         };
-        return run_hook_listener_with_analysis(&path, rules, &mut *out, pipeline.as_ref());
+        let intel = std::sync::Arc::new(xbits::intel::IntelService::load(
+            threat_intel_dir.as_ref(),
+            allowlist_dir.as_ref(),
+        ));
+        return run_hook_listener_full(&path, rules, &mut *out, pipeline.as_ref(), Some(intel));
     }
 
     if stdin_mode {

@@ -1,0 +1,38 @@
+{
+  "collected_utc": "2026-11-19 08:58:40Z",
+  "counts": {
+    "md5": 2408,
+    "sha1": 2044,
+    "sha256": 3204,
+    "file_hash_total": 7656,
+    "ip": 11474,
+    "domain": 50000,
+    "domain_collected": 263416,
+    "domain_cap": 50000
+  },
+  "sources": {
+    "circl-misp-osint": {
+      "events": 500,
+      "attrs_hash": 8913,
+      "attrs_net": 285944
+    },
+    "feodo-tracker": {
+      "ips": 1
+    },
+    "local": {
+      "entries": 0
+    }
+  },
+  "data_schema": {
+    "md5.txt": "一行一个 32 位 md5",
+    "sha1.txt": "一行一个 40 位 sha1",
+    "sha256.txt": "一行一个 64 位 sha256",
+    "ip.txt": "一行一个 IPv4/IPv6",
+    "domain.txt": "一行一个小写域名",
+    "file_hash.txt": "md5+sha1+sha256 合并"
+  },
+  "consumers": {
+    "triage": "data/file_hash.txt（默认加载）",
+    "suricata": "exports/suricata/（iprep + datasets，见其 README）"
+  }
+}

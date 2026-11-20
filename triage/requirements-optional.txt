@@ -1,0 +1,25 @@
+# 静态 triage 可选增强组件（不安装也能运行，装了就自动启用）
+#
+# —— Python 库（triage.py 自动探测，装了即增强）——
+# 权威魔数/MIME
+python-magic
+# 家族/行为规则（配合 --rules-dir 指向 *.yar）
+yara-python
+# Office 宏解析
+oletools
+# PE / ELF 结构解析（导入表、节区熵、imphash、数字签名探测等）
+pefile
+pyelftools
+# 模糊哈希（相似样本归并）
+ssdeep
+tlsh
+#
+# —— 外部命令（显式开启；不在 PATH 时自动跳过）——
+#   capa        : 能力语义提取        -> --capa-cmd capa       或 --all-engines
+#   clamscan    : ClamAV 病毒库扫描    -> --clamscan-cmd clamscan 或 --all-engines
+#   semgrep     : 脚本 AST 规则        -> --semgrep-config rules/ --semgrep-cmd semgrep
+#   binwalk     : 内嵌/压缩容器拆解    -> --binwalk-cmd binwalk 或 --all-engines
+#
+# 安装示例：
+#   python3 -m pip install -r triage/requirements-optional.txt
+#   # 系统包：apt-get install clamav yara（capa/semgrep/binwalk 见各自文档）
