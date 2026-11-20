@@ -123,7 +123,8 @@ jobs:
             --log 测试用例/zeek_out/recon/recon_correlation.log \
             --scenario recon \
             --eve-root 测试用例/out/suricata \
-            --case recon_404_burst
+            --case recon_404_burst \
+            --link-scope multi
 
       - name: Upload Suricata logs
         if: always()

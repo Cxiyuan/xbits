@@ -7,7 +7,7 @@ import argparse
 import json
 import os
 import sys
-from typing import List, Set
+from typing import List
 
 
 def load_json_lines(path: str) -> List[dict]:
@@ -26,17 +26,14 @@ def load_json_lines(path: str) -> List[dict]:
     return rows
 
 
-def suricata_community_ids(eve_path: str) -> Set[str]:
-    ids: Set[str] = set()
+def suricata_alerts(eve_path: str) -> List[dict]:
+    alerts: List[dict] = []
     if not os.path.isfile(eve_path):
-        return ids
+        return alerts
     for row in load_json_lines(eve_path):
-        if row.get("event_type") != "alert":
-            continue
-        cid = row.get("community_id")
-        if isinstance(cid, str) and cid:
-            ids.add(cid)
-    return ids
+        if row.get("event_type") == "alert":
+            alerts.append(row)
+    return alerts
 
 
 def main() -> int:
@@ -46,6 +43,16 @@ def main() -> int:
     parser.add_argument("--min-events", type=int, default=1)
     parser.add_argument("--eve-root")
     parser.add_argument("--case")
+    parser.add_argument(
+        "--link-scope",
+        choices=("single", "multi"),
+        default="single",
+        help=(
+            "single: 该用例的告警只发生在一条流上，要求两侧 community_id 有交集；"
+            "multi: 用例是多次独立连接组成的突发（如扫描/爆破），"
+            "community_id 天然分属不同流，改为断言告警与关联事件端点一致。"
+        ),
+    )
     args = parser.parse_args()
 
     if not os.path.isfile(args.log):
@@ -70,17 +77,35 @@ def main() -> int:
 
     if not failures and args.eve_root and args.case:
         eve = os.path.join(args.eve_root, args.case, "eve.json")
-        suricata_ids = suricata_community_ids(eve)
+        alerts = suricata_alerts(eve)
+        suricata_ids = {a.get("community_id") for a in alerts if a.get("community_id")}
         zeek_ids = {row.get("community_id") for row in rows if row.get("community_id")}
         if not suricata_ids:
             failures.append("no Suricata alert community_id in %s" % eve)
         if not zeek_ids:
             failures.append("no Zeek community_id in %s" % args.log)
-        if suricata_ids and zeek_ids and not (suricata_ids & zeek_ids):
-            failures.append(
-                "community_id mismatch: suricata=%s zeek=%s"
-                % (sorted(suricata_ids), sorted(zeek_ids))
-            )
+        if args.link_scope == "single":
+            if suricata_ids and zeek_ids and not (suricata_ids & zeek_ids):
+                failures.append(
+                    "community_id mismatch: suricata=%s zeek=%s"
+                    % (sorted(suricata_ids), sorted(zeek_ids))
+                )
+        else:
+            # 多流突发：cid 必不相同，断言两侧描述的是同一对端点。
+            eve_pairs = {
+                (a.get("src_ip"), a.get("dest_ip")) for a in alerts if a.get("src_ip")
+            }
+            zeek_pairs = {(row.get("src"), row.get("dst")) for row in rows}
+            if not (eve_pairs & zeek_pairs):
+                failures.append(
+                    "endpoint mismatch: suricata=%s zeek=%s"
+                    % (sorted(eve_pairs), sorted(zeek_pairs))
+                )
+            else:
+                print(
+                    "NOTE link-scope=multi: community_id 分属不同流（扫描/爆破形态），"
+                    "只断言端点一致：%s" % sorted(eve_pairs & zeek_pairs)
+                )
 
     for row in rows:
         print(

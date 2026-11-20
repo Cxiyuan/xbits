@@ -33,7 +33,6 @@ def http_request(
     host: str = "app.example.test",
     method: str = "GET",
     extra_headers: Optional[Dict[str, str]] = None,
-    connection_close: bool = True,
 ) -> bytes:
     lines = [
         "%s %s HTTP/1.1" % (method, path),
@@ -44,8 +43,7 @@ def http_request(
         lines.append("User-Agent: %s" % user_agent)
     for name, value in (extra_headers or {}).items():
         lines.append("%s: %s" % (name, value))
-    if connection_close:
-        lines.append("Connection: close")
+    lines.append("Connection: close")
     return ("\r\n".join(lines) + "\r\n\r\n").encode("ascii")
 
 
@@ -150,72 +148,6 @@ def http_exchange(
     packets.extend(
         [syn, synack, ack, request_pkt, server_ack, response_pkt, client_ack]
     )
-
-
-def keep_alive_session(
-    packets: List,
-    client_ip: str,
-    client_mac: str,
-    server_ip: str,
-    server_mac: str,
-    sport: int,
-    exchanges: List,
-    start_offset: float = 0.0,
-    step: float = 0.1,
-) -> None:
-    """One TCP connection carrying N HTTP request/response exchanges (keep-alive).
-
-    Same 5-tuple for N transactions: Suricata and Zeek alerts/correlation land on
-    the same connection, so community_id matches by construction (required for
-    burst cases; per-transaction sport made the two engines pick different flows).
-    """
-    dport = HTTP_PORT
-    client_base = Ether(src=client_mac, dst=server_mac) / IP(src=client_ip, dst=server_ip)
-    server_base = Ether(src=server_mac, dst=client_mac) / IP(src=server_ip, dst=client_ip)
-
-    cseq = 1000
-    sseq = 5000
-    t0 = BASE_TIME + start_offset
-
-    syn = client_base / TCP(sport=sport, dport=dport, flags="S", seq=cseq)
-    syn.time = t0
-    synack = server_base / TCP(sport=dport, dport=sport, flags="SA", seq=sseq, ack=cseq + 1)
-    synack.time = t0 + 0.001
-    ack = client_base / TCP(sport=sport, dport=dport, flags="A", seq=cseq + 1, ack=sseq + 1)
-    ack.time = t0 + 0.002
-    packets.extend([syn, synack, ack])
-
-    for i, (request, response) in enumerate(exchanges):
-        t = BASE_TIME + start_offset + i * step
-        req = client_base / TCP(
-            sport=sport, dport=dport, flags="PA", seq=cseq + 1, ack=sseq + 1
-        ) / Raw(load=request)
-        req.time = t + 0.003
-        srv_ack = server_base / TCP(
-            sport=dport, dport=sport, flags="A", seq=sseq + 1, ack=cseq + 1 + len(request)
-        )
-        srv_ack.time = t + 0.004
-        resp = server_base / TCP(
-            sport=dport, dport=sport, flags="PA", seq=sseq + 1, ack=cseq + 1 + len(request)
-        ) / Raw(load=response)
-        resp.time = t + 0.005
-        cli_ack = client_base / TCP(
-            sport=sport,
-            dport=dport,
-            flags="A",
-            seq=cseq + 1 + len(request),
-            ack=sseq + 1 + len(response),
-        )
-        cli_ack.time = t + 0.006
-        packets.extend([req, srv_ack, resp, cli_ack])
-        cseq += len(request)
-        sseq += len(response)
-
-    fin_c = client_base / TCP(sport=sport, dport=dport, flags="FA", seq=cseq + 1, ack=sseq + 1)
-    fin_c.time = BASE_TIME + start_offset + len(exchanges) * step + 0.01
-    fin_s = server_base / TCP(sport=dport, dport=sport, flags="FA", seq=sseq + 1, ack=cseq + 2)
-    fin_s.time = BASE_TIME + start_offset + len(exchanges) * step + 0.012
-    packets.extend([fin_c, fin_s])
 
 
 def add_external_case(
@@ -509,33 +441,16 @@ def main() -> int:
     write("recon_soft404_negative", p, args.out)
 
     # 16. Random-UA wordlist scanning: 60 non-sensitive paths -> 403/404 burst.
-    # burst 必须走同一条 TCP 连接（keep-alive）：Suricata 与 Zeek 的告警/关联
-    # 都落在同一 5 元组，community_id 两侧由构造保证一致。
     p = []
-    exchanges = []
     for i in range(60):
-        exchanges.append(
-            (
-                http_request(
-                    "/wordlist-%03d" % i,
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                    "app.example.test",
-                    connection_close=False,
-                ),
-                http_response(404, b"", "text/plain"),
-            )
+        add_external_case(
+            p,
+            47100 + i,
+            "/wordlist-%03d" % i,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            status=404,
+            offset=i * 0.1,
         )
-    keep_alive_session(
-        p,
-        EXTERNAL_CLIENT_IP,
-        EXTERNAL_CLIENT_MAC,
-        INTERNAL_SERVER_IP,
-        INTERNAL_SERVER_MAC,
-        47100,
-        exchanges,
-        start_offset=0.0,
-        step=0.1,
-    )
     write("recon_404_burst", p, args.out)
 
     # 17. Negative: static asset 404s must not count as wordlist scanning.
