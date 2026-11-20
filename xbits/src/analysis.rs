@@ -713,11 +713,15 @@ fn run_shell(command: &str, input: &str, timeout: Duration) -> ShellOutcome {
     let stdin_error = match child.stdin.take() {
         Some(mut stdin) => {
             let mut write_error: Option<String> = None;
-            if let Err(err) = stdin.write_all(input.as_bytes()) {
-                write_error = Some(err.to_string());
-            } else if let Err(err) = stdin.write_all(b"\n") {
-                write_error = Some(err.to_string());
+            if !input.is_empty() {
+                if let Err(err) = stdin.write_all(input.as_bytes()) {
+                    write_error = Some(err.to_string());
+                } else if let Err(err) = stdin.write_all(b"\n") {
+                    write_error = Some(err.to_string());
+                }
             }
+            // input 为空时绝不写换行：快速退出且不读 stdin 的命令（如 `printf ...`）
+            // 会让这次多余写入撞上 EPIPE，把正常输出误判成 IoError（CI 曾偶发）。
             write_error
         }
         None => None,
