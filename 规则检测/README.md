@@ -3,8 +3,11 @@
 规则按“哪个引擎消费 + 攻击类别”归档，不设厂商目录：
 
 - `suricata/`：**签名命中规则 + 自研 Lua 增强**（`.rules`、场景 `lua/`、数据集 `.lst`）。
-  自研 Lua 用于签名匹配/解码/结构判定，减少误报、提高精确度；转换规则不注入
-  flowbits、depend/scope 状态链，相关依赖交 xbits 关联。
+  自研 Lua 用于签名匹配/解码/结构判定，减少误报、提高精确度；每条 `lua:` 规则
+  **必须已有 sticky buffer**（`lua:` 之前存在 buffer 关键词，V-13 前置；无 buffer 的规则
+  不注入 lua，明细见 `docs/Lua强化拒绝.json`）。转换规则不注入 flowbits、depend/scope
+  状态链——相关语义缺口在 `xbits/规则库元数据/semantic_gaps.json` 的 `ownership` 区
+  声明接管方（suricata-rule / xbits-feature / dropped-document）与 CI 覆盖断言。
   - 自研场景：`DNS隧道与带外检测/`、`Web漏洞利用/`、`侦察与攻击工具指纹/`、`后门通信/`；
   - 外部探针转换规则按攻击类别归档，例如：
     - `Web攻击/SQL注入/`、`Web攻击/XSS/`、`Web攻击/WebShell/`、`Web攻击/命令注入/`、
@@ -16,14 +19,19 @@
   `威胁情报/` 为白域名、公共 DNS、僵尸网络元数据。不再包含 content/UA 签名匹配。
 - `xbits/规则库元数据/`：xbits 中央分析引擎消费的数据（由转换器生成，勿手改）：
   - `rules_meta.json`：每条规则元数据（depend/scope/holetype/tier/category）；
-  - `success_rules.json`：PVS 成功确认依赖（供 xbits 做请求→响应关联）；
-  - `dead_rules.json`：已清理的失效规则；
-  - `semantic_gaps.json`：剔除的 SID 与原因（含语义、状态链、依赖关联）；
+  - `success_rules.json`：PVS 成功确认依赖（全量元数据；active 规则未消费，
+    接管方待 xbits --success-rules 落地，见 semantic_gaps.json `ownership.dependency-correlation`）；
+  - `semantic_gaps.json`：剔除的 SID 与原因（含语义、状态链、依赖关联），每个 reason
+    带 `owner`（谁接管）与 `tested_by`（CI 哪个断言覆盖该缺口，null＝显式承认无覆盖）；
+  - `dead_rules.json`：**已删除**（flowbits 清理链路输入恒空、产物恒为 `[]`，属空转假治理；
+    flowbits 依赖接管见 `semantic_gaps.json ownership.flowbits-correlation`）；
   - `audit_rules.json`：云审计规则；
   - `sid_library.json`：SID → 名称/类别/危险等级映射；
   - `exceptions.json`：例外/强 SID 列表。
 - `docs/`：各场景规则设计、误报分析与清理报告。
-- `convert_probe_rules.py`：外部探针 Suricata 规则转换器（按类别归档），生成：
+- `convert_probe_rules.py`：外部探针 Suricata 规则转换器（语义树归约：
+  Snort 的「content 在前、buffer 修饰其后」顺序统一转成 Suricata 前置
+  sticky buffer；`status_code` 段带静态容量断言），按类别归档并生成：
   - `docker/probe-rules-production.yaml`：生产强规则加载集（不含 weak）；
   - `docker/probe-rules-weak.yaml`：weak 规则单独加载集；
   - `docker/probe-rules-validate.yaml`：全量加载验证集；

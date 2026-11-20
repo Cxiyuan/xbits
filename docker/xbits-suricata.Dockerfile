@@ -56,7 +56,7 @@ RUN mkdir -p /opt/xbits/rules/qa /tmp/suri-out \
        done \
     && cp /opt/xbits/rules/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst /opt/xbits/rules/qa/
 COPY 测试用例/classification.config 测试用例/reference.config /opt/xbits/rules/
-COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.yaml docker/probe-rules-validate.yaml docker/probe-rules-production.yaml docker/probe-rules-weak.yaml /opt/xbits/
+COPY docker/suricata-test.yaml docker/suricata-qa.yaml docker/suricata-qa-eve.yaml docker/suricata-converter-pcap.yaml docker/probe-rules-validate.yaml docker/probe-rules-production.yaml docker/probe-rules-weak.yaml /opt/xbits/
 
 # 运行测试时可通过 -e XBITS_HOOK_SOCKET=... 覆盖
 ENV XBITS_HOOK_SOCKET=/var/run/xbits/hook.sock

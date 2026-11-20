@@ -1,0 +1,86 @@
+%YAML 1.1
+---
+# C5-D 转译规则 PCAP 命中回归配置（qa_converter_pcap_regression.py 用）：
+# probe-rules-validate 的全部转译规则 + 4 场景自研规则，EVE JSON 输出。
+default-log-dir: /tmp/suri-out
+
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8]"
+    EXTERNAL_NET: "[203.0.113.0/24]"
+    CLIENT_NET: "[10.0.0.0/8]"
+
+default-rule-path: /opt/xbits/rules/suricata
+rule-files:
+  - "Web攻击/SQL注入/sql.rules"
+  - "Web攻击/SQL注入/sql.strong.rules"
+  - "Web攻击/SQL注入/sql.weak.rules"
+  - "Web攻击/WebShell/pvs-webshell.rules"
+  - "Web攻击/WebShell/webshell.rules"
+  - "Web攻击/WebShell/webshell_detect.request.rules"
+  - "Web攻击/WebShell/webshell_detect.rules"
+  - "Web攻击/Web应用漏洞/webapp.rules"
+  - "Web攻击/Web服务漏洞/web.rules"
+  - "Web攻击/XSS/pvs-xss.rules"
+  - "Web攻击/XSS/xss.rules"
+  - "Web攻击/信息泄露/information_disclose.rules"
+  - "Web攻击/命令执行/cmd_executed.request.rules"
+  - "Web攻击/命令执行/cmd_executed.rules"
+  - "Web攻击/命令注入/cmd.rules"
+  - "Web攻击/命令注入/oscmd.rules"
+  - "Web攻击/客户端组件漏洞/web_activex.rules"
+  - "Web攻击/扫描器/web_scan.rules"
+  - "Web攻击/敏感关键词/gray_keyword.rules"
+  - "Web攻击/文件上传/file_upload.rules"
+  - "Web攻击/文件包含/file_include.rules"
+  - "Web攻击/文件包含/rfi.rules"
+  - "Web攻击/浏览器漏洞/web_browse.rules"
+  - "Web攻击/目录遍历/directory_tranversal.rules"
+  - "Web攻击/目录遍历/directory_traversal.rules"
+  - "主机系统漏洞/system.rules"
+  - "其他/bp_ips.rules"
+  - "其他/other.rules"
+  - "应用软件漏洞/application.rules"
+  - "应用软件漏洞/媒体服务/media.rules"
+  - "恶意URL/malice_url_report.rules"
+  - "恶意软件/Shellcode/shellcode.rules"
+  - "恶意软件/后门/backdoor.rules"
+  - "恶意软件/木马/trojan.rules"
+  - "恶意软件/蠕虫/worm.rules"
+  - "恶意软件/间谍软件/spyware.rules"
+  - "文件与协议解析漏洞/file.rules"
+  - "暴力破解/brute_force.rules"
+  - "网络服务漏洞/DNS/dns.rules"
+  - "网络服务漏洞/FTP/ftp.rules"
+  - "网络服务漏洞/Telnet/telnet.rules"
+  - "网络服务漏洞/TFTP/tftp.rules"
+  - "网络服务漏洞/数据库/database.rules"
+  - "网络服务漏洞/邮件/mail.rules"
+  - "网络设备漏洞/network_device.rules"
+  - "配置与运维缺陷/config_error.rules"
+  - "DNS隧道与带外检测/DNS隧道与带外检测规则.rules"
+  - "侦察与攻击工具指纹/侦察与攻击工具指纹规则.rules"
+  - "Web漏洞利用/Web漏洞利用规则.rules"
+  - "后门通信/WebShell后门通信规则.rules"
+  - "后门通信/命令与控制信标规则.rules"
+
+classification-file: /opt/xbits/rules/classification.config
+reference-config-file: /opt/xbits/rules/reference.config
+
+security:
+  lua:
+    allow-rules: yes
+
+outputs:
+  - eve-log:
+      enabled: yes
+      community-id: true
+      community-id-seed: 0
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - http
+
+plugins:
+  - /opt/xbits/plugins/xbits-suricata-hook.so

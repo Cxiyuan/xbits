@@ -220,7 +220,8 @@ MATCH_CTX_LOW_FP = {
 
 
 def run_case(xbits, validator, rules, match_buffers, name, match_contexts, alerts,
-             want_suppressed, want_emitted, defer_contexts=0.0):
+             want_suppressed, want_emitted, defer_contexts=0.0,
+             expect_suppression_evidence=None):
     work = Path(tempfile.mkdtemp(prefix="xbits-match-context-"))
     out = work / "out.jsonl"
     engine = None
@@ -258,8 +259,23 @@ def run_case(xbits, validator, rules, match_buffers, name, match_contexts, alert
     suppressed = [r for r in rows if r.get("xbits", {}).get("verdict") == "suppressed"]
     emitted = [r for r in rows if r.get("xbits", {}).get("verdict") != "suppressed"]
     ok = (len(suppressed) == want_suppressed and len(emitted) == want_emitted)
+    if ok and expect_suppression_evidence is not None and suppressed:
+        # V-12：raw 规则的抑制 key 必须来自 context 导出的精确值（evidence key= 里有
+        # http.uri.raw=<导出值>），而不是 EVE 归一化兜底。
+        want = f"http.uri.raw={expect_suppression_evidence}"
+        key_lines = [
+            e for r in suppressed for e in r.get("xbits", {}).get("evidence", [])
+            if e.startswith("key=")
+        ]
+        if not any(want in k for k in key_lines):
+            ok = False
+            detail_extra = f"; MISSING {want!r} in keys {key_lines}"
+        else:
+            detail_extra = "; raw key verified"
+    else:
+        detail_extra = ""
     detail = (f"{name}: suppressed={len(suppressed)} want={want_suppressed} "
-              f"emitted={len(emitted)} want={want_emitted}; rows={rows}")
+              f"emitted={len(emitted)} want={want_emitted}{detail_extra}; rows={rows}")
     try:
         shutil.rmtree(work)
     except OSError:
@@ -273,6 +289,9 @@ def main() -> int:
     parser.add_argument("--validator", required=True)
     parser.add_argument("--rules", required=True)
     parser.add_argument("--match-buffers", required=True)
+    parser.add_argument("--production-meta", default=None,
+                        help="生产 match_buffers.json（规则检测/xbits/规则库元数据/）；"
+                             "提供时追加真实 SID 的 V-12 回归用例")
     args = parser.parse_args()
 
     cases = [
@@ -376,14 +395,131 @@ def main() -> int:
     for case in cases:
         name, ctxs, alerts, want_sup, want_emit = case[:5]
         defer = case[5] if len(case) > 5 else 0.0
+        evidence = case[6] if len(case) > 6 else None
         ok, detail = run_case(
             Path(args.xbits), Path(args.validator), Path(args.rules),
             Path(args.match_buffers), name, ctxs, alerts, want_sup, want_emit,
             defer_contexts=defer,
+            expect_suppression_evidence=evidence,
         )
         print(("OK " if ok else "FAIL ") + detail)
         if not ok:
             failures.append(detail)
+
+    # ---- V-12：生产元数据回归（真实 SID）----
+    # 用 规则检测/xbits/规则库元数据/match_buffers.json（19k 条真实规则元数据）跑
+    # 至少 3 个真实 SID（含 http.uri.raw 规则），断言 primary=raw 时抑制 key 里的
+    # http.uri.raw=<值> 来自 match_context 导出，而不是 EVE 归一化兜底。
+    # xbits 规则文件用 testdata 的 sid_in 语义不通（真实 SID 不在 testdata 规则里），
+    # 因此这里动态生成一个只含这 3 条 SID 的规则文件（与生产 gen_xbits_analysis 同构）。
+    prod_meta = Path(args.production_meta) if args.production_meta else None
+    if prod_meta is not None and prod_meta.exists():
+        PROD_SIDS = [9103001, 9104001, 11020687]  # raw / raw / uri+raw 混合
+        prod_rules = [
+            {
+                "id": f"xb-prod-{sid}",
+                "name": f"prod sid {sid}",
+                "source": "suricata",
+                "kind": "alert",
+                "group_by": "src",
+                "score": 20,
+                "threshold": 20,
+                "reason": f"prod-{sid}",
+                "sid_in": [sid],
+            }
+            for sid in PROD_SIDS
+        ]
+        work = Path(tempfile.mkdtemp(prefix="xbits-prod-meta-"))
+        try:
+            rules_file = work / "prod_rules.json"
+            rules_file.write_text(json.dumps(prod_rules, ensure_ascii=False), encoding="utf-8")
+
+            def real_alert(sid: int, sport: int) -> dict:
+                return dict(
+                    BASE_ALERT,
+                    src_port=sport,
+                    flow_id=sport,
+                    uid=f"CPROD{sid}",
+                    alert={"signature_id": sid, "signature": f"[Web漏洞利用] prod {sid}"},
+                )
+
+            def real_ctx(sid: int, sport: int, raw: bool) -> dict:
+                # Suricata 导出内部名：http_raw_uri（raw）/ http_uri（归一化）
+                return {
+                    "timestamp": "2026-11-08T00:00:01.000000+0000",
+                    "source": "suricata",
+                    "kind": "match_context",
+                    "sid": sid,
+                    "src": "203.0.113.9",
+                    "sport": sport,
+                    "dst": "10.0.0.80",
+                    "dport": 80,
+                    "proto": "TCP",
+                    "tx_id": 1,
+                    "buffer": "http_raw_uri" if raw else "http_uri",
+                    "buffer_len": 23,
+                    # /api/../../etc/passwd —— raw URI 的精确导出值
+                    "buffer_b64": "L2FwaS8uLi8uLi9ldmMvcGFzc3dk",
+                }
+
+            prod_cases = [
+                (
+                    "prod-9103001-raw-uri-fp-then-suppressed",
+                    [real_ctx(9103001, 40001, raw=True)],
+                    [real_alert(9103001, 40001), real_alert(9103001, 40001)],
+                    1,
+                    1,
+                    0.0,
+                    "L2FwaS8uLi8uLi9ldmMvcGFzc3dk",  # key 里必须是导出的 raw 值
+                ),
+                (
+                    "prod-9104001-raw-uri-fp-then-suppressed",
+                    [real_ctx(9104001, 40002, raw=True)],
+                    [real_alert(9104001, 40002), real_alert(9104001, 40002)],
+                    1,
+                    1,
+                    0.0,
+                    "L2FwaS8uLi8uLi9ldmMvcGFzc3dk",
+                ),
+                (
+                    "prod-11020687-uri-plus-raw-needs-both",
+                    [real_ctx(11020687, 40003, raw=True)],
+                    [real_alert(11020687, 40003), real_alert(11020687, 40003)],
+                    # 元数据 buffers=[http.uri, http.uri.raw]：缺 http.uri（归一化）
+                    # 导出时必须 fail-closed 不建 key（无近似兜底），两次都 emitted。
+                    0,
+                    2,
+                    0.0,
+                    None,
+                ),
+                (
+                    "prod-11020687-both-contexts-suppressed",
+                    [
+                        real_ctx(11020687, 40004, raw=True),
+                        {**real_ctx(11020687, 40004, raw=False),
+                         "buffer": "http_uri",
+                         "buffer_b64": "L2FwaS9sb2dpbg=="},  # /api/login
+                    ],
+                    [real_alert(11020687, 40004), real_alert(11020687, 40004)],
+                    1,
+                    1,
+                    0.0,
+                    None,
+                ),
+            ]
+            for case in prod_cases:
+                name, ctxs, alerts, want_sup, want_emit, defer, evidence = case
+                ok, detail = run_case(
+                    Path(args.xbits), Path(args.validator), Path(rules_file),
+                    prod_meta, name, ctxs, alerts, want_sup, want_emit,
+                    defer_contexts=defer,
+                    expect_suppression_evidence=evidence,
+                )
+                print(("OK " if ok else "FAIL ") + detail)
+                if not ok:
+                    failures.append(detail)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
 
     print(f"\n{len(cases) - len(failures)}/{len(cases)} cases passed")
     return 1 if failures else 0

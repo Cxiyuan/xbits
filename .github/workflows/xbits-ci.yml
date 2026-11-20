@@ -28,6 +28,8 @@ on:
       - "规则检测/suricata/Web漏洞利用/lua/**"
       - "规则检测/suricata/后门通信/*.rules"
       - "规则检测/suricata/后门通信/lua/**"
+      # match-context job 的 --production-meta：真实规则库元数据（V-12 raw-URI 回归）
+      - "规则检测/xbits/规则库元数据/match_buffers.json"
       - ".github/workflows/xbits-ci.yml"
   pull_request:
     paths:
@@ -55,6 +57,8 @@ on:
       - "规则检测/suricata/Web漏洞利用/lua/**"
       - "规则检测/suricata/后门通信/*.rules"
       - "规则检测/suricata/后门通信/lua/**"
+      # match-context job 的 --production-meta：真实规则库元数据（V-12 raw-URI 回归）
+      - "规则检测/xbits/规则库元数据/match_buffers.json"
       - ".github/workflows/xbits-ci.yml"
 
 env:
@@ -283,11 +287,14 @@ jobs:
       - name: Verify match_context + suppression behavior
         run: |
           set -euo pipefail
+          # --production-meta：用真实规则库元数据（19k SID）追加 V-12 回归用例
+          # （http.uri.raw 规则的抑制 key 必须来自 match_context 导出，不塌缩、不兜底）。
           python xbits/test/qa_xbits_match_context.py \
             --xbits xbits/target/release/xbits \
             --validator 'python3 xbits/test/stub_validator.py' \
             --rules xbits/testdata/match_context_rules.json \
-            --match-buffers xbits/testdata/match_buffers.json
+            --match-buffers xbits/testdata/match_buffers.json \
+            --production-meta '规则检测/xbits/规则库元数据/match_buffers.json'
 
       - name: Static triage unit tests (triage/, stdlib path)
         run: |

@@ -331,6 +331,7 @@ const CONTEXT_ONLY_BUFFERS: &[&str] = &[
     "http.header",
     "http.request_header",
     "http.response_header",
+    "http.headers",
     "http.header.raw",
     "http.cookie",
     "file.data",
@@ -346,28 +347,35 @@ fn is_context_only(buffer: &str) -> bool {
 /// 把 Suricata 内部 buffer 名（ DetectEngineBufferTypeGetNameById 返回，
 /// 形如 http_uri / file_data / http_raw_uri / dns_query）归一到 match_buffers.json 使用的
 /// 统一名（http.uri / file.data / http.uri.raw / dns.query）。
-/// 必须与 规则检测/build_match_buffers.py 的 ALIASES 保持一致。
-/// 已验证的内部注册名（Suricata 8.0.8 源码）：
+/// 单一真源：`规则检测/build_match_buffers.py` 生成 `xbits/testdata/buffer_aliases.json`，
+/// 本函数在测试里对共享表做集合相等断言（V-12/R-03：不再各写一份表）。
+/// Suricata 8.0.8 已验证的内部注册名（会到达本函数的下划线形态）：
 ///   http_uri / http_raw_uri / http_header / http_raw_header / file_data
-///   dns_query(rust multi-buffer) / dns.rrtype / tls.alpn（点号直注）
+///   dns_query(rust multi-buffer) / dns.rrtype / tls.alpn（点号直注）。
+/// 共享表中其余 dotted 名（http.headers / http.request_header / http.stat_code 等）
+/// 出现在 match_buffers 元数据里（规则文本自带），match_context_key 的缓存键与
+/// suppression_key 都会先经本函数——因此登记的 dotted 名也必须归一，否则同名
+/// buffer 会因"内部名 vs 元数据名"差异拆成两个缓存键（V-12 一致性）。
 fn canonical_buffer_name(name: &str) -> &str {
     match name {
-        "http_uri" => "http.uri",
-        "http_raw_uri" => "http.uri.raw",
-        "http_method" => "http.method",
-        "http_cookie" => "http.cookie",
+        "http_uri" | "http.uri" => "http.uri",
+        "http_raw_uri" | "http.uri.raw" => "http.uri.raw",
+        "http_method" | "http.method" => "http.method",
+        "http_cookie" | "http.cookie" => "http.cookie",
         "http_raw_cookie" => "http.cookie",
-        "http_client_body" => "http.request_body",
-        "http_server_body" => "http.response_body",
-        "http_header" => "http.header",
-        "http_raw_header" => "http.header",
-        "http_host" => "http.host",
+        "http_client_body" | "http.request_body" => "http.request_body",
+        "http_server_body" | "http.response_body" => "http.response_body",
+        "http_header" | "http.header" => "http.header",
+        "http_raw_header" | "http.headers" => "http.header",
+        "http_host" | "http.host" => "http.host",
         "http_raw_host" => "http.host",
-        "http_user_agent" => "http.user_agent",
-        "http_stat_code" => "http.status",
-        "http_stat_msg" => "http.status_msg",
-        "file_data" => "file.data",
-        "dns_query" => "dns.query",
+        "http_user_agent" | "http.user_agent" => "http.user_agent",
+        "http_stat_code" | "http.stat_code" => "http.status",
+        "http_stat_msg" | "http.stat_msg" => "http.status_msg",
+        "http.request_header" | "http.response_header" => "http.header",
+        "file_data" | "file.data" => "file.data",
+        "dns_query" | "dns.query" => "dns.query",
+        "dns.queries.rrname" => "dns.query",
         other => other,
     }
 }
@@ -441,6 +449,7 @@ fn buffer_value(event: &HookEvent, alert: &EngineAlert, buffer: &str) -> Option<
             "dns.query" | "dns.queries.rrname" => e.dns_query.clone(),
             "tls.sni" => e.sni.clone(),
             "http.status" | "http.stat_code" => e.status.map(|v| v.to_string()),
+            "http.stat_msg" => None,
             // 以下 buffer 的精确值只来自 match_context 导出；
             // EVE 没有等价字段，禁止用近似值兜底。
             b if is_context_only(b) => None,
@@ -2235,6 +2244,88 @@ mod tests {
         assert_eq!(canonical_buffer_name("lua"), "lua");
         assert_eq!(canonical_buffer_name("new_buffer"), "new_buffer");
     }
+
+    // ---- V-12：buffer 名映射单一真源（规则检测/build_match_buffers.py）----
+
+    /// 共享真源：`规则检测/build_match_buffers.py` 的 `write_shared_aliases()` 生成，
+    /// 键 = 旧式下划线名 + 登记的 dotted 名，值 = 统一名。两侧映射必须集合相等（R-03 根因：
+    /// 各写一份映射表却没有一致性测试 → http.uri.raw 被塌缩）。
+    #[test]
+    fn canonical_buffer_matches_shared_aliases_source_of_truth() {
+        let data: serde_json::Value = serde_json::from_str(include_str!(
+            "../testdata/buffer_aliases.json"
+        ))
+        .expect("buffer_aliases.json must parse");
+        let aliases = data
+            .get("aliases")
+            .and_then(|v| v.as_object())
+            .expect("aliases object");
+        assert!(
+            !aliases.is_empty(),
+            "shared alias table must not be empty (regenerate via build_match_buffers.py)"
+        );
+        for (name, target) in aliases {
+            let target = target.as_str().unwrap_or_else(|| panic!("{name}: non-string target"));
+            // 关键语义断言：raw URI 不得塌缩（R-03/V-12）
+            if name == "http.uri.raw" || name == "http_raw_uri" {
+                assert_eq!(target, "http.uri.raw", "{name} must stay raw");
+            }
+            if name == "http.uri" || name == "http_uri" {
+                assert_eq!(target, "http.uri", "{name} must stay normalized");
+            }
+            // 共享表里能查到的名字，Rust 侧 canonical_buffer_name 的结果必须一致
+            // （注意：Rust 函数的契约是"未知名原样返回"，而 Python 对未登记 dotted 名
+            // 返回 None——这里只断言共享表内登记的名字，两侧语义才能对齐比较）。
+            assert_eq!(
+                canonical_buffer_name(name),
+                target,
+                "analysis.rs canonical_buffer_name({name}) diverges from shared source of truth"
+            );
+            // Rust 视角：登记的 dotted/underscore 名不能落进 CONTEXT_ONLY 之外的不一致
+            // ——canonical 目标必须是字面规范名或表中另一键（保持闭包）。
+            let canonical = target;
+            let closure_ok = aliases.contains_key(canonical)
+                || matches!(
+                    canonical,
+                    "http.status" | "http.status_msg"
+                );
+            assert!(closure_ok, "canonical target {canonical} of {name} is not registered");
+        }
+    }
+
+    #[test]
+    fn context_only_buffers_match_python_side_contract() {
+        // Python 侧（build_match_buffers.py）对 http.uri.raw 保留 raw；Rust 侧把它列为
+        // context-only（禁止归一化兜底）——两侧必须同进退：凡 python 保 raw 的 URI buffer
+        // （http.uri.raw）必须是 context-only；凡 python 塌缩的（cookie/header/host）不得列 raw。
+        assert!(is_context_only("http.uri.raw"));
+        assert!(!is_context_only("http.uri"));
+        // 共享真源里 raw→raw 的名（无豁免）也必须 context-only；raw→归一化的豁免名不列 raw。
+        for name in ["http_raw_uri", "http_raw_cookie", "http_raw_header", "http_raw_host"] {
+            let canonical = canonical_buffer_name(name);
+            let should_be_context_only = canonical.contains("raw");
+            assert_eq!(
+                is_context_only(canonical),
+                should_be_context_only,
+                "context-only contract mismatch for {name} -> {canonical}"
+            );
+        }
+    }
+
+    #[test]
+    fn raw_uri_value_never_falls_back_to_normalized_uri() {
+        // 端到端语义（R-03 的原始场景）：规则声明 http.uri.raw、EVE 只有归一化 uri、
+        // 没有 match_context 导出 → 不建 key（禁止归一化值兜底）。
+        let ev = event();
+        assert!(ev.uri.is_some(), "fixture must carry the normalized EVE uri");
+        assert!(
+            buffer_value(&ev, &alert(), "http.uri.raw").is_none(),
+            "http.uri.raw must never fall back to EVE's normalized uri"
+        );
+        // 对照组：归一化 buffer 允许从 EVE 取值。
+        assert!(buffer_value(&ev, &alert(), "http.uri").is_some());
+    }
+
 
     #[test]
     fn no_metadata_never_builds_key() {

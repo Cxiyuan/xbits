@@ -16,7 +16,8 @@
   * 只取 etc_fw（现网生效）；lib_* 基线库跳过（SID 重复）；
   * Sangfor 私有关键字（ruletype/holetype-id/scope_id/depend/depended/action）
     从 Suricata 规则剥离，保留到 rules_meta.json 给 xbits；
-  * uricontent → content + http_uri；
+  * uricontent / content;http_uri / pcre buffer 标志 → 语义树绑定 buffer，
+ *   线性化为 Suricata 前置 sticky buffer 顺序（详见 docs/规则归档与转换方案.md）；
   * <> 双向操作符 → ->（Suricata 不支持 <>）；
   * classtype 全部剥离（类别语义走 xbits sid_library；
     未知 classtype 会导致 Suricata 拒绝加载）；
@@ -222,28 +223,87 @@ def extract_meta(line: str) -> dict:
     return meta
 
 
+# pcre 值内允许出现裸双引号（Suricata 规则解析器对 pcre 特殊处理，无需转义）。
+# split_options 需要识别 pcre:".../flags" 的真实结束位置，否则带引号的 pcre 会把
+# 后续选项吞进同一个 token。 Suricata pcre 形如 pcre:"/pattern/flags"，flags 后的
+# 结束引号之前的所有 '/' 都属于模式。
+PCRE_SPAN_RE = re.compile(r'pcre\s*:\s*"(/.*?/[A-Za-z]*)"\s*(?=[;)]|$)', re.I | re.S)
+
+
 def split_options(opts: str) -> list[str]:
-    """按分号拆分规则选项，尊重双引号与反斜杠转义。"""
-    tokens, cur = [], []
+    """按分号拆分规则选项，尊重双引号与反斜杠转义；pcre 值内裸引号不截断。"""
+    tokens: list[str] = []
+    cur: list[str] = []
+    i = 0
+    n = len(opts)
     inq = esc = False
-    for ch in opts:
+    while i < n:
+        ch = opts[i]
         if esc:
             cur.append(ch)
             esc = False
+            i += 1
             continue
         if ch == "\\":
             cur.append(ch)
             esc = True
+            i += 1
             continue
         if ch == '"':
             inq = not inq
             cur.append(ch)
+            i += 1
             continue
         if ch == ";" and not inq:
             tokens.append("".join(cur).strip())
             cur = []
+            i += 1
             continue
         cur.append(ch)
+        i += 1
+    tail = "".join(cur).strip()
+    if tail:
+        tokens.append(tail)
+    # 修复：若某个 token 因 pcre 内裸引号被错误截断（token 不以引号配对收尾，
+    # 且以下一个 pcre span 能闭合为特征），用 PCRE_SPAN_RE 把跨越的碎片重新合并。
+    if not any(PCRE_SPAN_RE.fullmatch(t.strip()) for t in tokens):
+        merged = opts
+        spans = [m for m in PCRE_SPAN_RE.finditer(merged)]
+        if spans:
+            # 用扫描器重建：逐字符，pcre span 视为原子
+            return _split_with_pcre_atoms(opts)
+    return tokens
+
+
+def _split_with_pcre_atoms(opts: str) -> list[str]:
+    tokens: list[str] = []
+    cur: list[str] = []
+    i = 0
+    n = len(opts)
+    while i < n:
+        m = PCRE_SPAN_RE.match(opts, i)
+        if m:
+            cur.append(m.group(0))
+            i = m.end()
+            continue
+        ch = opts[i]
+        if ch == "\\":
+            cur.append(ch)
+            if i + 1 < n:
+                cur.append(opts[i + 1])
+            i += 2
+            continue
+        if ch == '"':
+            cur.append(ch)
+            i += 1
+            continue
+        if ch == ";":
+            tokens.append("".join(cur).strip())
+            cur = []
+            i += 1
+            continue
+        cur.append(ch)
+        i += 1
     tail = "".join(cur).strip()
     if tail:
         tokens.append(tail)
@@ -255,12 +315,53 @@ REQUEST_BUFFERS = {
     "http_cookie", "http_user_agent", "http_only_uri", "http_uri_only",
 }
 
+# Suricata sticky-buffer 上界（字节）：用于生成期静态容量断言（V-11）。
+# content/pcre 绑定到该 buffer 时，若匹配体长度超过上界则规则永远不可能命中。
+BUFFER_CAPACITY = {
+    "http_stat_code": 3,   # "200"
+    "http_method": 16,     # OPTIONS/CONNECT 等
+    "http_stat_msg": 64,
+}
 
-def rule_option_tokens(line: str) -> list[str]:
-    if "(" not in line or ")" not in line:
-        return []
-    body = line[line.find("(") + 1 : line.rfind(")")]
-    return [t.strip() for t in split_options(body) if t.strip()]
+# Snort 修饰词（跟随其 content/pcre）
+SNORT_MODIFIERS = {"nocase", "distance", "within", "offset", "depth", "fast_pattern"}
+
+# pcre 修饰标志 → 由语义树上的 buffer 决定匹配面，字符标志必须剥离
+PCRE_BUFFER_FLAGS = set("UIHDCPQMVWSZYT")
+PCRE_DROP_FLAGS = set("RPB")  # R 相对链语义在树模型下重写；P/B 不支持
+
+
+def match_atom_capacity(atom_buffer: str, atom_token: str) -> int | None:
+    """返回该 match 原子在其 buffer 上的容量上界；payload/无 buffer 返回 None。"""
+    cap = BUFFER_CAPACITY.get(atom_buffer)
+    if cap is None:
+        return None
+    tl = atom_token.strip().lower()
+    if tl.startswith("content:"):
+        # 取引号内字面长度（|XX| 十六进制按字节计，转义还原后即匹配体长度）
+        m = re.match(r'content\s*:\s*(!?)\s*"(.*)"\s*$', atom_token.strip(), re.S)
+        if not m:
+            return cap
+        body = m.group(2)
+        length = 0
+        i = 0
+        while i < len(body):
+            if body[i] == "|":
+                j = body.find("|", i + 1)
+                if j < 0:
+                    break
+                hexpart = body[i + 1:j].replace(" ", "")
+                length += max(1, len(hexpart) // 2)
+                i = j + 1
+            elif body[i] == "\\":
+                length += 1
+                i += 2
+            else:
+                length += 1
+                i += 1
+        return cap if length > cap else None
+    # pcre 等其他匹配体：无法静态求长，交给 Suricata 载入与 PCAP 验证
+    return None
 
 
 def semantic_skip_reason(line: str) -> str | None:
@@ -291,12 +392,18 @@ def semantic_skip_reason(line: str) -> str | None:
     if to_client and any(t.lower() in REQUEST_BUFFERS for t in tokens):
         return "response-direction-conflict"
 
-    prev = ""
-    for t in tokens:
-        tl = t.lower()
-        if tl == "http_uri" and not prev.lower().startswith("content:"):
-            return "dangling-http-uri"
-        prev = t
+    # 悬空 sticky buffer：其后没有任何 content/pcre 承接（V-10：新判定，
+    # 替代旧版对「content 在前、buffer 在后」正确 Snort 顺序的误删）
+    match_idx = [i for i, t in enumerate(tokens)
+                 if t.lower().startswith(("content:", "pcre:"))]
+    if match_idx:
+        buf_pos = [i for i, t in enumerate(tokens)
+                   if t.lower() in REQUEST_BUFFERS or t.lower().startswith("http_stat_code")]
+        for b in buf_pos:
+            nxt = next((i for i in match_idx if i > b), None)
+            prev_match = next((i for i in reversed(match_idx) if i < b), None)
+            if nxt is None and prev_match is None:
+                return "buffer-without-payload"
 
     groups: list[list[str]] = []
     cur: list[str] = []
@@ -327,8 +434,187 @@ def semantic_skip_reason(line: str) -> str | None:
     return None
 
 
+def rule_option_tokens(line: str) -> list[str]:
+    if "(" not in line or ")" not in line:
+        return []
+    body = line[line.find("(") + 1 : line.rfind(")")]
+    return [t.strip() for t in split_options(body) if t.strip()]
+
+
+BUFFER_CANON = {
+    # Snort 旧式 buffer 名 → 语义树上的规范 buffer（与 build_match_buffers.py 对齐）
+    "http_uri": "http_uri", "http_raw_uri": "http_raw_uri",
+    "http_method": "http_method", "http_header": "http_header",
+    "http_raw_header": "http_raw_header", "http_cookie": "http_cookie",
+    "http_client_body": "http_client_body", "http_server_body": "http_server_body",
+    "http_host": "http_host", "http_raw_host": "http_raw_host",
+    "http_user_agent": "http_user_agent", "http_stat_code": "http_stat_code",
+    "http_stat_msg": "http_stat_msg", "file_data": "file_data",
+    "dns_query": "dns_query",
+}
+
+
+# pcre 缓冲区标志 → 语义树 buffer（Suricata 差异文档 Buffer Reference Chart）
+PCRE_FLAG_BUFFER = {
+    "U": "http_uri", "I": "http_raw_uri", "H": "http_header", "D": "http_raw_header",
+    "C": "http_cookie", "P": "http_client_body", "Q": "http_server_body",
+    "M": "http_method", "V": "http_user_agent", "W": "http_host", "Z": "http_raw_host",
+    "S": "http_stat_code", "Y": "http_stat_msg",
+}
+
+
+def build_semantic_tree(tokens: list[str]) -> list[dict]:
+    """把规则选项归约成 (buffer, match, modifiers) 语义树。
+
+    Snort 语义：content 在前，其后紧跟的 buffer 修饰词（http_uri 等）只修饰
+    该 content 的匹配面 → 反向绑定（back-bind）。
+    Suricata 语义：sticky buffer 只作用于其后的匹配 → 正向吸附（sticky）。
+
+    修饰词归属：nocase/distance/within/offset/depth/fast_pattern 跟随其
+    content/pcre；同一原子尚未持有同类修饰时可向前吸附（如
+    content:"A"; http_uri; nocase; content:"B"; distance:0; 中 distance
+    属于 B）。每个修饰类别每原子至多一个，重复即视为下一原子的修饰。
+
+    pcre 的 buffer 标志（U/I/H/D/C/P/Q/M/V/W/Z/S/Y）同样表达匹配面：
+    原子已有 buffer 时标志冗余（剥离）；无 buffer 时按标志绑定，避免
+    「flag 说 URI、树说 payload」的语义回退。
+
+    返回的每个节点：
+      {"buffer": <规范名|None>, "match": <content/pcre token|None>, "mods": [..]}
+    buffer=None 表示 payload 匹配（与旧版行为一致）。
+    """
+    tree: list[dict] = []
+    cur_sticky: str | None = None   # 待吸附的 sticky buffer
+    prev_atom: dict | None = None   # 最后一个 match 原子（修饰词归属目标）
+    for tok in tokens:
+        tl = tok.lower()
+        head = tl.split(":", 1)[0]
+        if head.startswith(("content", "pcre")):
+            atom = {"buffer": cur_sticky, "match": tok, "mods": []}
+            cur_sticky = None
+            # pcre buffer 标志 → 绑定
+            if head == "pcre" and atom["buffer"] is None:
+                flag_buf = _pcre_flag_buffer(tok)
+                if flag_buf:
+                    atom["buffer"] = flag_buf
+            tree.append(atom)
+            prev_atom = atom
+            continue
+        if head in SNORT_MODIFIERS:
+            # 修饰词归属：最近一个 match 原子；若该原子已持有同类修饰，
+            # 且它是 buffer 绑定原子，则归属下一原子（Snort 允许跨原子排队）。
+            target = prev_atom
+            if target is not None:
+                cls = head if head != "fast_pattern" else "fast_pattern"
+                have = {m.lower().split(":", 1)[0] for m in target["mods"]}
+                if cls in have:
+                    target = None  # 排队到下一个 match 原子
+            if target is not None:
+                target["mods"].append(tok)
+            continue
+        if head in BUFFER_CANON:
+            # Snort 修饰词形态：content:"X"; http_uri; → 回绑
+            if (prev_atom is not None and prev_atom["buffer"] is None
+                    and prev_atom.get("_bind", True) and cur_sticky is None):
+                prev_atom["buffer"] = BUFFER_CANON[head]
+                prev_atom["_bind"] = False
+            else:
+                cur_sticky = BUFFER_CANON[head]
+            continue
+        # 其他 token（sid/rev/msg/flow/...）：修饰归属截止，sticky 保持
+        prev_atom = None
+    # 末尾悬空的 sticky buffer：无 match 承接 → 丢弃（由调用方记 gap）
+    return tree
+
+
+def _pcre_flag_buffer(tok: str) -> str | None:
+    m = re.match(r'pcre\s*:\s*"(/.*?/[A-Za-z]*)"\s*$', tok.strip(), re.S | re.I)
+    if not m:
+        return None
+    body = m.group(1)
+    last = body.rfind("/")
+    if last <= 0:
+        return None
+    flags = body[last + 1:]
+    for c in flags:
+        if c in PCRE_FLAG_BUFFER:
+            return PCRE_FLAG_BUFFER[c]
+    return None
+
+
+def linearize_tree(tree: list[dict]) -> tuple[list[str], list[str]]:
+    """语义树 → Suricata token 序列。
+
+    返回 (tokens, problems)：
+      tokens  Suricata 线性化结果（buffer 前置、修饰词跟随 content）
+      problems 静态容量断言失败等问题的 reason 列表（非空 → 该规则不可用）
+    """
+    out: list[str] = []
+    problems: list[str] = []
+    last_buf: str | None = None
+    for node in tree:
+        buf = node["buffer"]
+        tok = node["match"]
+        tl = tok.lower()
+        head = tl.split(":", 1)[0]
+        # V-11 静态容量断言：绑定到容量型 buffer 的匹配体超长 → 永不命中
+        cap = match_atom_capacity(buf, tok) if buf else None
+        if cap is not None:
+            problems.append(f"buffer-capacity:{buf}")
+            continue
+        # buffer 切换：换段输出
+        if buf is not None and buf != last_buf:
+            out.append(buf)
+            last_buf = buf
+        elif buf is None and last_buf is not None:
+            # 回到 payload 段：显式重置（Suricata 语义）。
+            # file_data/http_header 等本身以 CRLF CRLF 开头/结尾的差异靠内容
+            # 模式兼容；跨段相对链（distance/within）不支持，由 semantic_skip
+            # 的 mixed-position 前置拦截。
+            out.append("pkt_data")
+            last_buf = None
+        # pcre 修饰标志清理：buffer 已由树决定，删除 UIHDCPQMVWSZYT / R / P / B
+        if head == "pcre":
+            tok = _strip_pcre_flags(tok, problems)
+            if tok is None:
+                continue
+        out.append(tok)
+        for m in node["mods"]:
+            ml = m.lower()
+            if ml == "nocase":
+                out.append("nocase")
+            elif ml.startswith(("distance:", "within:", "offset:", "depth:")):
+                # 定位修饰在 buffer 内同样有效（Suricata 支持相对/绝对定位于
+                # sticky buffer 内容），必须保留，否则丢约束
+                out.append(m)
+            elif ml == "fast_pattern":
+                out.append("fast_pattern")
+    return out, problems
+
+
+def _strip_pcre_flags(tok: str, problems: list[str]) -> str | None:
+    m = re.match(r'pcre\s*:\s*"(.*)"\s*$', tok.strip(), re.S)
+    if not m:
+        return tok
+    s = m.group(1)
+    last = s.rfind("/")
+    if last <= 0 or not s.startswith("/"):
+        return tok
+    pat, flags = s[1:last], s[last + 1:]
+    # R 相对链：语义树上同段绑定，相对语义丢失 → 保守跳过（与旧版一致）
+    if any(c in flags for c in PCRE_DROP_FLAGS):
+        problems.append("pcre-relative-flags")
+        return None
+    newflags = "".join(c for c in flags if c not in PCRE_BUFFER_FLAGS)
+    # 保留 i/s/m 等语义修饰
+    return f'pcre:"/{pat}/{newflags}"'
+
+
 def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> str | None:
-    """Return cleaned Suricata rule text or None (if unconvertible)."""
+    """语义树转换：token 重写 → (buffer, match, mods) 树 → Suricata 线性化。
+
+    返回清理后的 Suricata 规则文本；无法等价转换时返回 None。
+    """
     if MAIL_URI_RE.search(line):
         return None
     out = line
@@ -356,73 +642,66 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
     # 残留的 uricontent（无引号等怪形态）也剥离，避免 Suricata 拒载
     out = re.sub(r"\buricontent\s*:\s*[^;]+;?", "", out, flags=re.I)
 
-    injections = []
-    if flowbit_set is not None:
-        injections.append(f"flowbits:set,xb_dep_{flowbit_set}")
-    if flowbit_is is not None:
-        injections.append(f"flowbits:isset,xb_dep_{flowbit_is}")
-
-    # 规整：折叠 "; )" 与多余空白
+    # ---- 语义树归约 ----
     out = out.strip()
     out = re.sub(r";\s+\)", ";)", out)
     out = re.sub(r";\s+", "; ", out)
     out = re.sub(r"\(\s*;", "(", out)
-    # 取出选项体（去掉结尾的 ')'），按分号拆分后做最后清理
     body = out[:-1].rstrip() if out.endswith(")") else out
-    tokens = split_options(body)
+    head_end = body.find("(")
+    header = body[: head_end].strip() if head_end >= 0 else body
+    opt_body = body[head_end + 1:] if head_end >= 0 else ""
+    tokens = [t.strip() for t in split_options(opt_body) if t.strip()]
     to_client = bool(re.search(r"flow:[^;]*to_client", body, re.I))
-    cleaned: list[str] = []
-    prev = ""
-    for tok in tokens:
-        t = tok.strip()
-        if not t:
-            continue
+
+    # 头部/元数据 token 与检测 token 分离；非检测 token 原样保留
+    tree_tokens: list[str] = []
+    passthrough: list[tuple[int, str]] = []  # (tree_token 序号 or -1, 原样 token)
+    meta: list[str] = []
+    for t in tokens:
         tl = t.lower()
+        head = tl.split(":", 1)[0]
         # 无法等价转换的语义一律返回 None（由主流程记入 semantic_gaps）
         if tl in ("http_only_uri", "http_uri_only", "rawbytes"):
             return None
         if tl.startswith(("rate:", "method:", "resp:", "logto:")):
             return None
-        # status_code:N → Suricata HTTP 响应状态码约束
-        if tl.startswith("status_code:"):
+        if head in BUFFER_CANON or head in SNORT_MODIFIERS or head.startswith(("content", "pcre")):
+            if to_client and head in REQUEST_BUFFERS:
+                return None
+            tree_tokens.append(t)
+        elif tl.startswith("status_code:"):
+            # status_code:N → 独立状态码段（树中作为容量型 buffer 原子）
             value = t.split(":", 1)[1].strip().strip('"')
             if not re.fullmatch(r"\d{3}", value):
                 return None
-            cleaned.append(f'content:"{value}"')
-            cleaned.append("http_stat_code")
-            prev = "http_stat_code"
+            tree_tokens.append(f'content:"{value}"')
+            tree_tokens.append("http_stat_code")
+        else:
+            meta.append(t)
+
+    tree = build_semantic_tree(tree_tokens)
+    linear, problems = linearize_tree(tree)
+    if problems:
+        # V-11 静态容量断言失败 / 不可转换 pcre：该规则不产出（调用方记 gap）
+        return None
+    # 规整 token：去重相邻 nocase、去掉 pcre 后多余 nocase
+    cleaned: list[str] = []
+    for tok in linear:
+        tl = tok.lower()
+        if tl == "nocase" and cleaned and (
+            cleaned[-1].lower() == "nocase" or cleaned[-1].lower().startswith("pcre:")
+        ):
             continue
-        if to_client and tl in REQUEST_BUFFERS:
-            return None
-        # 悬空的 http_uri（前面不是 content）→ 规则语义不完整，不使用
-        if tl == "http_uri" and not prev.lower().startswith("content:"):
-            return None
-        # pcre 后重复的 nocase（Snort 允许，Suricata 报错）
-        if tl == "nocase" and prev.lower().startswith("pcre:"):
-            continue
-        if tl == "nocase" and prev.lower() == "nocase":
-            continue
-        # PCRE 兼容性：Python re 编译不过 / 含 P 修饰符的规则跳过，避免 Suricata 拒载
-        if tl.startswith("pcre:"):
-            m = re.match(r'pcre\s*:\s*"(.*)"$', t, re.S)
-            if m:
-                s = m.group(1)
-                last = s.rfind("/")
-                if s.startswith("/") and last > 1:
-                    pat, flags = s[1:last], s[last + 1:]
-                    # R/P/B 在 Suricata 中语义/前置条件不同，直接跳过
-                    if any(c in flags for c in "RPB"):
-                        return None
-                    if sum(flags.count(c) for c in "UBP") > 1:
-                        return None
-                    try:
-                        re.compile(pat)
-                    except Exception:
-                        return None
-        cleaned.append(t)
-        prev = t
-    if injections:
-        cleaned.extend(injections)
+        cleaned.append(tok)
+
+    if meta:
+        cleaned.extend(meta)
+    if flowbit_set is not None:
+        cleaned.append(f"flowbits:set,xb_dep_{flowbit_set}")
+    if flowbit_is is not None:
+        cleaned.append(f"flowbits:isset,xb_dep_{flowbit_is}")
+
     # 同一 content 不能同时使用绝对(offset/depth)与相对(within/distance)定位：
     # 有相对定位时去掉绝对定位（Snort 允许混用，Suricata 拒绝）
     groups: list[list[str]] = []
@@ -446,21 +725,42 @@ def convert_rule(line: str, flowbit_set: int | None, flowbit_is: int | None) -> 
                 abs_keys.append("offset")
             elif xl.startswith("depth:"):
                 abs_keys.append("depth")
-        # 绝对/相对定位混用或重复的原始约束无法等价表达，直接不使用该规则
         if has_rel and abs_keys:
             return None
         if len(abs_keys) != len(set(abs_keys)):
             return None
         fixed.extend(g)
     cleaned = fixed
-    body = "; ".join(cleaned).rstrip()
-    body = body.rstrip(";").rstrip()
-    body = re.sub(r";\s*;", ";", body)
-    return body + ";)"
+
+    # 状态码段必须是其所在 buffer 段的最后一段：其后不得再有同段 content
+    # （V-11：线性化已保证 stat_code 后的匹配各自开新段，这里校验兜底）
+    META_HEADS = ("sid", "rev", "msg", "flow", "priority", "metadata",
+                  "threshold", "classtype", "reference", "flowbits", "lua",
+                  "filesize", "noalert", "tag", "session", "replace", "detection_filter")
+    for i, tok in enumerate(cleaned):
+        if tok.lower() == "http_stat_code":
+            # 跳过状态码自身的 content（紧随其后的第一个 content/pcre）
+            j = i + 1
+            if j < len(cleaned) and cleaned[j].lower().startswith(("content", "pcre")):
+                j += 1
+            for k in range(j, len(cleaned)):
+                h = cleaned[k].lower().split(":", 1)[0]
+                if h in BUFFER_CANON or h == "pkt_data":
+                    break  # 新段开始：状态码段已结束
+                if h.startswith(("content", "pcre")):
+                    return None  # 状态码段内混入了未重置的 content → 拒绝
+                if h.startswith(META_HEADS) or h in META_HEADS:
+                    break
+    body_out = "; ".join(cleaned).rstrip()
+    body_out = body_out.rstrip(";").rstrip()
+    body_out = re.sub(r";\s*;", ";", body_out)
+    return header + " (" + body_out + ";)"
 
 
 def cleanup_dead_flowbits(out_suricata: Path) -> dict:
-    """删除永远不会触发或没有检测原语的 flowbits:isset 规则，并返回清理统计。"""
+    """[已废弃，R10/V-15] flowbits:isset 死规则清理——active 规则不再注入 flowbits:set，
+    本函数输入恒空、removed 恒为 []（convert_probe_rules.py 曾以此宣称"已清理失效规则"）。
+    保留函数体仅供历史排查参考；主流程不再调用，dead_rules.json 不再产出。"""
     prim = re.compile(
         r"\b(content|pcre|byte_test|byte_jump|byte_extract|byte_math|dsize|"
         r"isdataat|urilen|filemagic|fileext|filename|tls_|dns_|http_|ssh_|smtp_|ftp_)\b"
@@ -576,6 +876,21 @@ def main() -> int:
         (OUT_XBITS / generated).unlink(missing_ok=True)
     cleaned_dirs: set[Path] = set()
 
+    def clean_generated_rules(root: Path) -> None:
+        """删除目录内转换器生成的 *.rules，保留手工维护文件（lua/、*.lst 等）。
+
+        旧实现 rmtree 整个类目目录，会连带删除 lua/ 增强脚本与数据集文件，
+        导致重生成后规则里的 `lua:` 引用悬空、Suricata 拒载。
+        """
+        if not root.is_dir():
+            return
+        for path in sorted(root.rglob("*.rules")):
+            path.unlink()
+        # 删除随之清空的子目录
+        for sub in sorted(root.rglob("*"), reverse=True):
+            if sub.is_dir() and not any(sub.iterdir()):
+                sub.rmdir()
+
     # 已知 Suricata 无法加载的 SID（由 CI 加载验证日志提取），直接跳过
     quarantine: set[int] = set()
     qfile = ROOT / "docs" / "unsupported-sids.txt"
@@ -634,14 +949,14 @@ def main() -> int:
                 category = f"{SUCCESS_CATEGORY}/{stem}"
                 success_root = OUT_SURICATA / SUCCESS_CATEGORY
                 if success_root not in cleaned_dirs:
-                    shutil.rmtree(success_root, ignore_errors=True)
+                    clean_generated_rules(success_root)
                     cleaned_dirs.add(success_root)
             else:
                 category = CATEGORY_MAP.get(stem, "其他")
             meta_category = category
             out_dir = OUT_SURICATA / category
             if out_dir not in cleaned_dirs:
-                shutil.rmtree(out_dir, ignore_errors=True)
+                clean_generated_rules(out_dir)
                 cleaned_dirs.add(out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
             converted: list[str] = []
@@ -829,9 +1144,60 @@ def main() -> int:
         reason = meta.get("skip")
         if reason:
             gaps.setdefault(reason, []).append(int(sid_str))
+    # V-15 契约结构：每个 reason 必须声明 owner（谁接管）与 tested_by（CI 哪个断言覆盖）。
+    # owner ∈ suricata-rule（能力留在/回到规则层）/ xbits-feature（交 xbits 实现）/ dropped-document（明确放弃，仅文档留痕）。
+    # tested_by=None 表示当前无 CI 断言覆盖该缺口——这是显式承认，不是隐藏。
+    REASON_OWNERSHIP = {
+        "convert-rule-none":        {"owner": "dropped-document", "tested_by": None,
+                                     "note": "转换器无法等价转换（返回 None），规则不产出"},
+        "dependency-correlation":   {"owner": "xbits-feature", "tested_by": None,
+                                     "note": "depend/scope 请求→响应配对（V-14 决议：等 xbits --success-rules）"},
+        "dsl-semantic":             {"owner": "dropped-document", "tested_by": None,
+                                     "note": "DSL 语义无法映射到 Suricata"},
+        "duplicate-position":       {"owner": "dropped-document", "tested_by": None,
+                                     "note": "同 content 重复绝对定位"},
+        "false-positive-quarantine":{"owner": "dropped-document", "tested_by": None,
+                                     "note": "人工确认高误报，隔离名单 docs/false-positive-sids.txt"},
+        "flowbits-correlation":     {"owner": "xbits-feature", "tested_by": None,
+                                     "note": "跨包 flowbits 状态链（V-14 决议）"},
+        "http-only-uri-unsupported":{"owner": "dropped-document", "tested_by": None,
+                                     "note": "http_only_uri Snort 专属语义"},
+        "isdataat":                 {"owner": "dropped-document", "tested_by": None,
+                                     "note": "isdataat 偏移越界 Suricata 拒载"},
+        "lua-without-buffer":       {"owner": "suricata-rule", "tested_by": None,
+                                     "note": "lua: 前无 sticky buffer（V-13）：可定位的补 buffer，"
+                                             "其余不注入 lua（apply_lua_enhancements.py 前置拒绝）"},
+        "mail_uri":                 {"owner": "dropped-document", "tested_by": None,
+                                     "note": "邮件 URI 语法不支持"},
+        "method-unsupported":       {"owner": "dropped-document", "tested_by": None,
+                                     "note": "Suricata 不支持的 method 语法"},
+        "mixed-position":           {"owner": "dropped-document", "tested_by": None,
+                                     "note": "绝对+相对定位混用，Suricata 拒载"},
+        "negated-pcre":             {"owner": "dropped-document", "tested_by": None,
+                                     "note": "pcre:! 否定形式不支持"},
+        "no-dependency":            {"owner": "xbits-feature", "tested_by": None,
+                                     "note": "PVS 成功确认无依赖，保留为 xbits 元数据"},
+        "rate-unsupported":         {"owner": "dropped-document", "tested_by": None,
+                                     "note": "rate 过滤不支持"},
+        "rawbytes-unsupported":     {"owner": "dropped-document", "tested_by": None,
+                                     "note": "rawbytes 修饰不支持"},
+        "response-direction-conflict": {"owner": "dropped-document", "tested_by": None,
+                                     "note": "请求 buffer 出现在响应方向规则"},
+        "state-noalert":            {"owner": "dropped-document", "tested_by": None,
+                                     "note": "noalert 状态规则不产出告警"},
+        "unsupported":              {"owner": "dropped-document", "tested_by": None,
+                                     "note": "已知加载失败 SID 隔离名单 docs/unsupported-sids.txt"},
+    }
+    unknown = [k for k in gaps if k not in REASON_OWNERSHIP]
+    if unknown:
+        # 新 reason 忘记登记归属 → 直接失败（契约化：不允许出现无主缺口）
+        raise SystemExit(
+            "semantic_gaps 存在未登记 owner 的 reason: %s（请在 REASON_OWNERSHIP 补充）"
+            % sorted(unknown))
     semantic_gaps = {
         "counts": {k: len(v) for k, v in sorted(gaps.items())},
         "sids": {k: sorted(v) for k, v in sorted(gaps.items())},
+        "ownership": {k: REASON_OWNERSHIP[k] for k in sorted(gaps)},
     }
     (OUT_XBITS / "semantic_gaps.json").write_text(
         json.dumps(semantic_gaps, ensure_ascii=False, indent=1), encoding="utf-8"
@@ -860,11 +1226,14 @@ def main() -> int:
         json.dumps(exceptions, ensure_ascii=False, indent=1), encoding="utf-8"
     )
 
-    # ---- 5.5) 清理永远不会触发的 flowbits:isset 规则 ----
-    cleanup = cleanup_dead_flowbits(OUT_SURICATA)
-    (OUT_XBITS / "dead_rules.json").write_text(
-        json.dumps(cleanup["removed"], ensure_ascii=False, indent=1), encoding="utf-8"
-    )
+    # ---- 5.5) flowbits 清理链路（V-15 处置：删除） ----
+    # 旧链路：active 规则自 t? 决议起不再注入 flowbits:set（:1057 flowbit_set=None），
+    # cleanup_dead_flowbits 扫描不到任何 set → removed 恒为 []，dead_rules.json 恒空——
+    # 属"永远空转的假治理"。现删除该链路与 dead_rules.json 产物；
+    # flowbits 依赖的接管方见 semantic_gaps.json ownership（flowbits-correlation → xbits-feature）。
+    dead_rules_path = OUT_XBITS / "dead_rules.json"
+    if dead_rules_path.exists():
+        dead_rules_path.unlink()
 
     # 清理后重新统计实际落盘的 SID，并过滤失效的成功确认依赖
     emitted: set[int] = set()
@@ -881,15 +1250,6 @@ def main() -> int:
             count = sum(1 for line in text.splitlines() if line.startswith("alert"))
             if count:
                 rule_files.append((str(path.relative_to(ROOT)).replace("\\", "/"), count))
-
-    # 成功确认依赖保留为 xbits 元数据（active 规则不再注入 flowbits）
-    # 二次清理，确保清理阶段新写入/遗漏的 isset 规则也被处理
-    cleanup2 = cleanup_dead_flowbits(OUT_SURICATA)
-    if cleanup2["removed"]:
-        cleanup["removed"].extend(cleanup2["removed"])
-        (OUT_XBITS / "dead_rules.json").write_text(
-            json.dumps(cleanup["removed"], ensure_ascii=False, indent=1), encoding="utf-8"
-        )
 
     # 删除清空后的规则文件/目录，并按最终落盘内容重建验证清单
     emitted2: set[int] = set()
@@ -998,7 +1358,6 @@ def main() -> int:
     print(f"cloud audit rules: {len(audit_rules)}")
     print(f"sid meta entries: {len(rules_meta)}; sid library entries: {len(sid_library)}")
     print(f"flowbit-gated request sids: {len(dep_refs)}")
-    print(f"dead flowbits rules removed: {len(cleanup['removed'])}")
     return 0
 
 

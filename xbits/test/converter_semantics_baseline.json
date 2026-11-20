@@ -1,0 +1,4068 @@
+{
+ "_comment": "回绑定残留基线（payload-cursor content 之后出现 sticky buffer；Suricata 8 下前者的匹配仍留在 payload，而源 Snort legacy 语义要求绑定 buffer）。棘轮：违规集合必须等于本基线（只许修复减少，不许新增）；修复后同步收缩本文件。",
+ "generated": "2026-11-20",
+ "violations": [
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/SQL注入/sql.rules",
+   "line": 176,
+   "sid": 14010365,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/SQL注入/sql.rules",
+   "line": 179,
+   "sid": 14010371,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/WebShell/webshell.rules",
+   "line": 686,
+   "sid": 13082099,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/WebShell/webshell.rules",
+   "line": 687,
+   "sid": 13082100,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/WebShell/webshell_detect.request.rules",
+   "line": 13,
+   "sid": 13169969,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 171,
+   "sid": 13122192,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 214,
+   "sid": 13121198,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 215,
+   "sid": 13121199,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 216,
+   "sid": 13121204,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 217,
+   "sid": 13121205,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 218,
+   "sid": 13121206,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 219,
+   "sid": 13121209,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 291,
+   "sid": 13121364,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 341,
+   "sid": 13121388,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 380,
+   "sid": 13121418,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 391,
+   "sid": 13122194,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 420,
+   "sid": 13121465,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 421,
+   "sid": 13121468,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 422,
+   "sid": 13121472,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 423,
+   "sid": 13121473,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 426,
+   "sid": 13121486,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web应用漏洞/webapp.rules",
+   "line": 431,
+   "sid": 13121471,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 113,
+   "sid": 11020169,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 215,
+   "sid": 11020285,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 224,
+   "sid": 11020298,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 365,
+   "sid": 11020514,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 476,
+   "sid": 11020673,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 477,
+   "sid": 11020674,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 486,
+   "sid": 11020688,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 487,
+   "sid": 11020776,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 528,
+   "sid": 11020806,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 550,
+   "sid": 11020947,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 563,
+   "sid": 11020966,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 564,
+   "sid": 11020937,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 565,
+   "sid": 11020938,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 566,
+   "sid": 11020939,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 569,
+   "sid": 11020942,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 577,
+   "sid": 11020944,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 578,
+   "sid": 11020945,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 580,
+   "sid": 11020926,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 581,
+   "sid": 11020927,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 582,
+   "sid": 11020928,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 583,
+   "sid": 11020929,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 584,
+   "sid": 11020930,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 585,
+   "sid": 11020931,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 587,
+   "sid": 11020933,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 593,
+   "sid": 11020982,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 617,
+   "sid": 11021011,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 618,
+   "sid": 11021012,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 625,
+   "sid": 11021022,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 627,
+   "sid": 11021024,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 628,
+   "sid": 11021025,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 645,
+   "sid": 11021039,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 649,
+   "sid": 11021041,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 650,
+   "sid": 11021043,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 692,
+   "sid": 11021173,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 748,
+   "sid": 11021234,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 754,
+   "sid": 11021243,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 758,
+   "sid": 11021246,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 759,
+   "sid": 11021247,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 765,
+   "sid": 11021260,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 766,
+   "sid": 11021262,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 767,
+   "sid": 11021261,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 770,
+   "sid": 11021252,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 771,
+   "sid": 11021254,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 773,
+   "sid": 11021259,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 774,
+   "sid": 11021266,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 775,
+   "sid": 11021265,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 777,
+   "sid": 11021257,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 798,
+   "sid": 11021284,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 799,
+   "sid": 11021285,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 800,
+   "sid": 11021286,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 808,
+   "sid": 11021327,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 809,
+   "sid": 11021328,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 822,
+   "sid": 11021367,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 900,
+   "sid": 11021650,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 910,
+   "sid": 11021661,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 912,
+   "sid": 11021668,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 913,
+   "sid": 11021669,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 914,
+   "sid": 11021670,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 915,
+   "sid": 11021671,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 916,
+   "sid": 11021672,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 917,
+   "sid": 11021673,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 918,
+   "sid": 11021674,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 919,
+   "sid": 11021675,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 921,
+   "sid": 11021677,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 922,
+   "sid": 11021678,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 963,
+   "sid": 11023257,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 965,
+   "sid": 11023259,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1009,
+   "sid": 11024006,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1130,
+   "sid": 11023383,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1154,
+   "sid": 11023418,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1159,
+   "sid": 11023426,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1161,
+   "sid": 11023428,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1162,
+   "sid": 11023429,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1163,
+   "sid": 11023432,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1166,
+   "sid": 11023436,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1167,
+   "sid": 11023437,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1172,
+   "sid": 11023442,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1176,
+   "sid": 11023446,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1182,
+   "sid": 11023450,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1184,
+   "sid": 11023454,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1201,
+   "sid": 11024569,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1248,
+   "sid": 11024582,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1249,
+   "sid": 11024587,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1250,
+   "sid": 11024588,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1285,
+   "sid": 11024722,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1309,
+   "sid": 11024780,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1407,
+   "sid": 11024063,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1422,
+   "sid": 11025207,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1423,
+   "sid": 11025208,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1424,
+   "sid": 11025187,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1425,
+   "sid": 11025188,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1491,
+   "sid": 11026305,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1539,
+   "sid": 11025560,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1582,
+   "sid": 11026334,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1594,
+   "sid": 11225012,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1611,
+   "sid": 11225277,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1614,
+   "sid": 11225280,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1631,
+   "sid": 11022010,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1633,
+   "sid": 11022014,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1641,
+   "sid": 11020946,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1642,
+   "sid": 11020949,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1650,
+   "sid": 11021264,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1658,
+   "sid": 11021388,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1660,
+   "sid": 11021401,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1688,
+   "sid": 11023430,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1689,
+   "sid": 11023431,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1886,
+   "sid": 11020778,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1890,
+   "sid": 11027850,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1911,
+   "sid": 11021416,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1916,
+   "sid": 11021424,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1945,
+   "sid": 11021619,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1946,
+   "sid": 11021621,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1951,
+   "sid": 11021630,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1964,
+   "sid": 11021697,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1974,
+   "sid": 11021714,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1975,
+   "sid": 11021715,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 1981,
+   "sid": 11021724,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2003,
+   "sid": 11021778,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2004,
+   "sid": 11021779,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2005,
+   "sid": 11021780,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2026,
+   "sid": 11021816,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2031,
+   "sid": 11021826,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2046,
+   "sid": 11021841,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2052,
+   "sid": 11021856,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2055,
+   "sid": 11021861,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2060,
+   "sid": 11021870,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2069,
+   "sid": 11021885,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2085,
+   "sid": 11021914,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2090,
+   "sid": 11021935,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2124,
+   "sid": 11023043,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2125,
+   "sid": 11023045,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2126,
+   "sid": 11023047,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2127,
+   "sid": 11023049,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2128,
+   "sid": 11023050,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2129,
+   "sid": 11023051,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2130,
+   "sid": 11023052,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2132,
+   "sid": 11023054,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2144,
+   "sid": 11023070,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2147,
+   "sid": 11023076,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2148,
+   "sid": 11023077,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2150,
+   "sid": 11023087,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2151,
+   "sid": 11023090,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2152,
+   "sid": 11023093,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2153,
+   "sid": 11023095,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2162,
+   "sid": 11023114,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2163,
+   "sid": 11023115,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2164,
+   "sid": 11023116,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2173,
+   "sid": 11023140,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2174,
+   "sid": 11023141,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2175,
+   "sid": 11023142,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2176,
+   "sid": 11023143,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2177,
+   "sid": 11023144,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2203,
+   "sid": 11023174,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2231,
+   "sid": 11023703,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2232,
+   "sid": 11023704,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2238,
+   "sid": 11023714,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2239,
+   "sid": 11023718,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2257,
+   "sid": 11023750,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2268,
+   "sid": 11023801,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2269,
+   "sid": 11023802,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2272,
+   "sid": 11023807,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2273,
+   "sid": 11023809,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2274,
+   "sid": 11023814,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2280,
+   "sid": 11023944,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2295,
+   "sid": 11023947,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2305,
+   "sid": 11024014,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2315,
+   "sid": 11023915,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2316,
+   "sid": 11023916,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2317,
+   "sid": 11023917,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2327,
+   "sid": 11024057,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2336,
+   "sid": 11024021,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2340,
+   "sid": 11024079,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2342,
+   "sid": 11024074,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2343,
+   "sid": 11023976,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2414,
+   "sid": 11024576,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2438,
+   "sid": 11023486,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2446,
+   "sid": 11023498,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2450,
+   "sid": 11023505,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2451,
+   "sid": 11023508,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2457,
+   "sid": 11023518,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2478,
+   "sid": 11024447,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2507,
+   "sid": 11225139,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2509,
+   "sid": 11024817,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2520,
+   "sid": 11025090,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2538,
+   "sid": 11025152,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2557,
+   "sid": 11025171,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2573,
+   "sid": 11025278,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2576,
+   "sid": 11025281,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2577,
+   "sid": 11025282,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2578,
+   "sid": 11025283,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2579,
+   "sid": 11025284,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2586,
+   "sid": 11025290,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2597,
+   "sid": 11025350,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2599,
+   "sid": 11025378,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2600,
+   "sid": 11025379,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2613,
+   "sid": 11025512,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2615,
+   "sid": 11026000,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2621,
+   "sid": 11026011,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2622,
+   "sid": 11026150,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2627,
+   "sid": 11026349,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2669,
+   "sid": 11026027,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2711,
+   "sid": 11026556,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2771,
+   "sid": 11026595,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2818,
+   "sid": 11026118,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2833,
+   "sid": 11026099,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2834,
+   "sid": 11026105,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2863,
+   "sid": 11026114,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2864,
+   "sid": 11026115,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2865,
+   "sid": 11026116,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2881,
+   "sid": 11026134,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2898,
+   "sid": 11026978,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2945,
+   "sid": 11025845,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2946,
+   "sid": 11025846,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2948,
+   "sid": 11025848,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2949,
+   "sid": 11025850,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2950,
+   "sid": 11025852,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2951,
+   "sid": 11025853,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2952,
+   "sid": 11025854,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2953,
+   "sid": 11025855,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2954,
+   "sid": 11025856,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2955,
+   "sid": 11025857,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2956,
+   "sid": 11025858,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2957,
+   "sid": 11025859,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2958,
+   "sid": 11025860,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2959,
+   "sid": 11025862,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2960,
+   "sid": 11025863,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2968,
+   "sid": 11025874,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2969,
+   "sid": 11025875,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2971,
+   "sid": 11025877,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2972,
+   "sid": 11025878,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2974,
+   "sid": 11025881,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2975,
+   "sid": 11025882,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2976,
+   "sid": 11025883,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2977,
+   "sid": 11025884,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2978,
+   "sid": 11025886,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2979,
+   "sid": 11025887,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2980,
+   "sid": 11025888,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2981,
+   "sid": 11025889,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2982,
+   "sid": 11025893,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2983,
+   "sid": 11025894,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2984,
+   "sid": 11025895,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2985,
+   "sid": 11025897,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2987,
+   "sid": 11025899,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2988,
+   "sid": 11026604,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2989,
+   "sid": 11026605,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2990,
+   "sid": 11026606,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2991,
+   "sid": 11026608,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2994,
+   "sid": 11026612,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 2995,
+   "sid": 11026992,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3005,
+   "sid": 11026902,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3056,
+   "sid": 11027171,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3057,
+   "sid": 11027172,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3079,
+   "sid": 11028812,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3100,
+   "sid": 11029018,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3102,
+   "sid": 11027886,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3147,
+   "sid": 11021368,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3155,
+   "sid": 11022015,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3157,
+   "sid": 11021349,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3169,
+   "sid": 11021620,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3170,
+   "sid": 11021622,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3184,
+   "sid": 11021741,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3196,
+   "sid": 11021823,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3197,
+   "sid": 11021828,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3199,
+   "sid": 11021830,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3200,
+   "sid": 11021842,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3204,
+   "sid": 11021855,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3207,
+   "sid": 11021891,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3211,
+   "sid": 11021926,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3222,
+   "sid": 11021998,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3223,
+   "sid": 11023042,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3224,
+   "sid": 11023044,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3225,
+   "sid": 11023046,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3226,
+   "sid": 11023048,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3236,
+   "sid": 11023134,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3261,
+   "sid": 11023751,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3268,
+   "sid": 11023784,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3274,
+   "sid": 11023808,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3275,
+   "sid": 11023810,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/Web服务漏洞/web.rules",
+   "line": 3522,
+   "sid": 11023419,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 216,
+   "sid": 13030246,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 232,
+   "sid": 13032016,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 233,
+   "sid": 13032017,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 234,
+   "sid": 13032018,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 235,
+   "sid": 13032019,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 236,
+   "sid": 13032020,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 237,
+   "sid": 13032021,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 238,
+   "sid": 13032022,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 239,
+   "sid": 13032023,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 240,
+   "sid": 13032024,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 241,
+   "sid": 13032025,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 242,
+   "sid": 13032026,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 243,
+   "sid": 13032027,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 244,
+   "sid": 13032028,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 245,
+   "sid": 13032029,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 246,
+   "sid": 13032030,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 247,
+   "sid": 13032031,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 248,
+   "sid": 13032032,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 249,
+   "sid": 13032033,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 250,
+   "sid": 13032034,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 251,
+   "sid": 13032035,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 252,
+   "sid": 13032036,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 253,
+   "sid": 13032037,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 254,
+   "sid": 13032038,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 255,
+   "sid": 13032039,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 256,
+   "sid": 13032040,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 257,
+   "sid": 13032041,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 258,
+   "sid": 13032042,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 259,
+   "sid": 13032043,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 260,
+   "sid": 13032044,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 261,
+   "sid": 13032045,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 262,
+   "sid": 13032046,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 263,
+   "sid": 13032047,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 264,
+   "sid": 13032048,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 265,
+   "sid": 13032049,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 266,
+   "sid": 13032050,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 267,
+   "sid": 13032051,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 268,
+   "sid": 13032052,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 269,
+   "sid": 13032053,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 270,
+   "sid": 13032054,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 271,
+   "sid": 13032055,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 272,
+   "sid": 13032056,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 273,
+   "sid": 13032057,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 274,
+   "sid": 13032058,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 275,
+   "sid": 13032059,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 276,
+   "sid": 13032060,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 277,
+   "sid": 13032061,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/XSS/xss.rules",
+   "line": 278,
+   "sid": 13032062,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/信息泄露/information_disclose.rules",
+   "line": 168,
+   "sid": 13070038,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/命令注入/oscmd.rules",
+   "line": 270,
+   "sid": 13012201,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/命令注入/oscmd.rules",
+   "line": 271,
+   "sid": 13012205,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/命令注入/oscmd.rules",
+   "line": 285,
+   "sid": 13012237,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/命令注入/oscmd.rules",
+   "line": 288,
+   "sid": 13012245,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/文件包含/file_include.rules",
+   "line": 30,
+   "sid": 13060045,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/Web攻击/文件包含/file_include.rules",
+   "line": 34,
+   "sid": 13060073,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 239,
+   "sid": 10010502,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 297,
+   "sid": 10010631,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 474,
+   "sid": 10010764,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 605,
+   "sid": 10010530,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 616,
+   "sid": 10010652,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 746,
+   "sid": 10010501,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/主机系统漏洞/system.rules",
+   "line": 747,
+   "sid": 10010503,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/其他/bp_ips.rules",
+   "line": 445,
+   "sid": 10070970,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/其他/bp_ips.rules",
+   "line": 549,
+   "sid": 10071115,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/其他/other.rules",
+   "line": 16,
+   "sid": 14090029,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 134,
+   "sid": 12032050,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 177,
+   "sid": 12032266,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 178,
+   "sid": 12032292,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 179,
+   "sid": 12032302,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 180,
+   "sid": 12032268,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 206,
+   "sid": 12032760,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 484,
+   "sid": 12032290,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 485,
+   "sid": 12032291,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 486,
+   "sid": 12032305,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 487,
+   "sid": 12032251,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 491,
+   "sid": 12032262,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 492,
+   "sid": 12032263,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 493,
+   "sid": 12032265,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 494,
+   "sid": 12032269,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 495,
+   "sid": 12032270,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 498,
+   "sid": 12032276,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 499,
+   "sid": 12032279,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 500,
+   "sid": 12032281,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 501,
+   "sid": 12032286,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 502,
+   "sid": 12032287,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 504,
+   "sid": 12032299,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 508,
+   "sid": 12032310,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 511,
+   "sid": 12032300,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 512,
+   "sid": 12032260,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 524,
+   "sid": 12032314,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 557,
+   "sid": 12032403,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 673,
+   "sid": 12032070,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 684,
+   "sid": 12030324,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 685,
+   "sid": 12030327,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 729,
+   "sid": 12030953,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 733,
+   "sid": 12032255,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 734,
+   "sid": 12032256,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 739,
+   "sid": 12032272,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 740,
+   "sid": 12032273,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 742,
+   "sid": 12032277,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 743,
+   "sid": 12032278,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 746,
+   "sid": 12032283,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 748,
+   "sid": 12032289,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 749,
+   "sid": 12032293,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 751,
+   "sid": 12032306,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/应用软件漏洞/application.rules",
+   "line": 752,
+   "sid": 12032307,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/后门/backdoor.rules",
+   "line": 270,
+   "sid": 10020400,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/后门/backdoor.rules",
+   "line": 332,
+   "sid": 10020656,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 35,
+   "sid": 10041433,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 41,
+   "sid": 10041439,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 49,
+   "sid": 10041448,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 50,
+   "sid": 10041449,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 51,
+   "sid": 10041450,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 65,
+   "sid": 10041467,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 68,
+   "sid": 10041470,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 83,
+   "sid": 10041506,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 84,
+   "sid": 10041509,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 93,
+   "sid": 10041207,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 95,
+   "sid": 10041209,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 96,
+   "sid": 10041210,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 106,
+   "sid": 10041220,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 111,
+   "sid": 10041225,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 113,
+   "sid": 10041227,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 114,
+   "sid": 10041228,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 118,
+   "sid": 10041232,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 119,
+   "sid": 10041233,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 126,
+   "sid": 10041240,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 129,
+   "sid": 10041243,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 133,
+   "sid": 10041247,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 135,
+   "sid": 10041249,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 145,
+   "sid": 10041260,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 147,
+   "sid": 10041262,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 148,
+   "sid": 10041263,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 162,
+   "sid": 10041278,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 167,
+   "sid": 10041283,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 176,
+   "sid": 10041292,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 182,
+   "sid": 10041298,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 187,
+   "sid": 10041303,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 188,
+   "sid": 10041304,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 189,
+   "sid": 10041305,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 190,
+   "sid": 10041306,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 191,
+   "sid": 10041307,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 196,
+   "sid": 10041312,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 197,
+   "sid": 10041313,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 198,
+   "sid": 10041314,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 199,
+   "sid": 10041315,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 200,
+   "sid": 10041316,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 201,
+   "sid": 10041318,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 202,
+   "sid": 10041319,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 203,
+   "sid": 10041320,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 204,
+   "sid": 10041321,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 205,
+   "sid": 10041322,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 222,
+   "sid": 10041339,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 223,
+   "sid": 10041340,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 224,
+   "sid": 10041341,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 225,
+   "sid": 10041342,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 226,
+   "sid": 10041343,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 227,
+   "sid": 10041344,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 228,
+   "sid": 10041345,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 229,
+   "sid": 10041346,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 230,
+   "sid": 10048438,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 231,
+   "sid": 10048439,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 232,
+   "sid": 10048440,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 233,
+   "sid": 10048441,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 234,
+   "sid": 10048442,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 235,
+   "sid": 10048443,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 236,
+   "sid": 10048444,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 237,
+   "sid": 10048445,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 238,
+   "sid": 10048446,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 239,
+   "sid": 10048447,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 240,
+   "sid": 10048448,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 241,
+   "sid": 10048449,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 242,
+   "sid": 10048450,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 243,
+   "sid": 10048451,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 244,
+   "sid": 10048452,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 245,
+   "sid": 10048453,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 246,
+   "sid": 10048454,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 247,
+   "sid": 10048455,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 248,
+   "sid": 10048456,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 249,
+   "sid": 10048457,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 250,
+   "sid": 10048458,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 251,
+   "sid": 10048459,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 252,
+   "sid": 10048460,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 253,
+   "sid": 10048461,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 254,
+   "sid": 10048462,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 255,
+   "sid": 10048463,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 256,
+   "sid": 10048464,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 257,
+   "sid": 10048465,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 258,
+   "sid": 10048466,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 259,
+   "sid": 10048467,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 260,
+   "sid": 10048468,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 261,
+   "sid": 10048469,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 262,
+   "sid": 10048470,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 263,
+   "sid": 10048471,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 264,
+   "sid": 10048472,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 265,
+   "sid": 10048473,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 266,
+   "sid": 10048474,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 267,
+   "sid": 10048475,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 268,
+   "sid": 10048476,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 269,
+   "sid": 10048477,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 270,
+   "sid": 10048478,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 271,
+   "sid": 10048479,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 272,
+   "sid": 10048480,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 273,
+   "sid": 10048481,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 274,
+   "sid": 10048482,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 275,
+   "sid": 10048483,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 276,
+   "sid": 10048484,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 277,
+   "sid": 10048485,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 278,
+   "sid": 10048486,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 279,
+   "sid": 10048487,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 280,
+   "sid": 10048488,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 281,
+   "sid": 10048489,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 282,
+   "sid": 10048490,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 283,
+   "sid": 10048491,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 284,
+   "sid": 10048492,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 285,
+   "sid": 10048493,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 286,
+   "sid": 10048494,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 287,
+   "sid": 10048495,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 288,
+   "sid": 10048496,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 289,
+   "sid": 10048497,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 290,
+   "sid": 10048498,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 291,
+   "sid": 10048499,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 292,
+   "sid": 10048500,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 293,
+   "sid": 10048501,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 294,
+   "sid": 10048502,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 295,
+   "sid": 10048503,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 296,
+   "sid": 10048504,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 297,
+   "sid": 10048505,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 298,
+   "sid": 10048506,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 299,
+   "sid": 10048507,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 300,
+   "sid": 10048508,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 301,
+   "sid": 10048509,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 302,
+   "sid": 10048510,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 303,
+   "sid": 10048511,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 304,
+   "sid": 10048512,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 305,
+   "sid": 10048513,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 306,
+   "sid": 10048514,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 307,
+   "sid": 10048515,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 308,
+   "sid": 10048516,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 309,
+   "sid": 10048517,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 310,
+   "sid": 10048518,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 311,
+   "sid": 10048519,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 312,
+   "sid": 10048520,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 313,
+   "sid": 10048521,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 314,
+   "sid": 10048522,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 315,
+   "sid": 10048523,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 316,
+   "sid": 10048524,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 317,
+   "sid": 10048525,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 318,
+   "sid": 10048526,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 319,
+   "sid": 10048527,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 320,
+   "sid": 10048528,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 321,
+   "sid": 10048529,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 322,
+   "sid": 10048530,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 323,
+   "sid": 10048531,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 324,
+   "sid": 10048532,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 325,
+   "sid": 10048533,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 326,
+   "sid": 10048534,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 327,
+   "sid": 10048535,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 328,
+   "sid": 10048536,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 329,
+   "sid": 10048537,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 330,
+   "sid": 10048538,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 331,
+   "sid": 10048539,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 332,
+   "sid": 10048540,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 333,
+   "sid": 10048541,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 334,
+   "sid": 10048542,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 335,
+   "sid": 10048543,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 336,
+   "sid": 10048544,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 337,
+   "sid": 10048545,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 338,
+   "sid": 10048546,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 339,
+   "sid": 10048547,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 340,
+   "sid": 10048548,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 341,
+   "sid": 10048549,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 342,
+   "sid": 10048550,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 343,
+   "sid": 10048551,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 344,
+   "sid": 10048552,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 345,
+   "sid": 10048553,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 346,
+   "sid": 10048554,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 347,
+   "sid": 10048555,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 348,
+   "sid": 10048556,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 349,
+   "sid": 10048557,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 350,
+   "sid": 10048558,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 351,
+   "sid": 10048559,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 352,
+   "sid": 10048560,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 353,
+   "sid": 10048561,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 354,
+   "sid": 10048562,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 355,
+   "sid": 10048563,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 356,
+   "sid": 10048564,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 357,
+   "sid": 10048565,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 358,
+   "sid": 10048566,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 359,
+   "sid": 10048567,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 360,
+   "sid": 10048568,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 361,
+   "sid": 10048569,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 362,
+   "sid": 10048570,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 363,
+   "sid": 10048571,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 364,
+   "sid": 10048572,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 365,
+   "sid": 10048573,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 366,
+   "sid": 10048574,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 367,
+   "sid": 10048575,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 368,
+   "sid": 10048576,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 369,
+   "sid": 10048577,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 370,
+   "sid": 10048578,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 371,
+   "sid": 10048579,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 372,
+   "sid": 10048580,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 373,
+   "sid": 10048581,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 374,
+   "sid": 10048582,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 375,
+   "sid": 10048583,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 376,
+   "sid": 10048584,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 377,
+   "sid": 10048585,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 378,
+   "sid": 10048586,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 379,
+   "sid": 10048587,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 380,
+   "sid": 10048588,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 381,
+   "sid": 10048589,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 382,
+   "sid": 10048590,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 383,
+   "sid": 10048591,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 384,
+   "sid": 10048592,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 385,
+   "sid": 10048593,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 386,
+   "sid": 10048594,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 387,
+   "sid": 10048595,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 388,
+   "sid": 10048596,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 389,
+   "sid": 10048597,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 390,
+   "sid": 10048598,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 391,
+   "sid": 10048599,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 392,
+   "sid": 10048600,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 393,
+   "sid": 10048601,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 394,
+   "sid": 10048602,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 395,
+   "sid": 10048603,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 396,
+   "sid": 10048604,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 397,
+   "sid": 10048605,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 398,
+   "sid": 10048606,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 399,
+   "sid": 10048607,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/恶意软件/木马/trojan.rules",
+   "line": 1713,
+   "sid": 10042002,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络服务漏洞/数据库/database.rules",
+   "line": 26,
+   "sid": 11000434,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络服务漏洞/邮件/mail.rules",
+   "line": 81,
+   "sid": 11010191,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 75,
+   "sid": 11070103,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 76,
+   "sid": 11070104,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 78,
+   "sid": 11070106,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 79,
+   "sid": 11070108,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 82,
+   "sid": 11070111,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 83,
+   "sid": 11070112,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 93,
+   "sid": 11070129,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 94,
+   "sid": 11070130,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 101,
+   "sid": 11070156,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 116,
+   "sid": 11070183,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 130,
+   "sid": 11070226,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 131,
+   "sid": 11070227,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 132,
+   "sid": 11070228,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 142,
+   "sid": 11070213,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 175,
+   "sid": 11070251,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 188,
+   "sid": 11070300,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 210,
+   "sid": 11070357,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 242,
+   "sid": 11070399,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 243,
+   "sid": 11070872,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 264,
+   "sid": 11070407,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 269,
+   "sid": 11070413,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 284,
+   "sid": 11070527,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 285,
+   "sid": 11070538,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 296,
+   "sid": 11070508,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 302,
+   "sid": 11070741,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 319,
+   "sid": 11070802,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 329,
+   "sid": 11070804,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 330,
+   "sid": 11070814,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 348,
+   "sid": 11070781,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 398,
+   "sid": 11070270,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 399,
+   "sid": 11070271,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 403,
+   "sid": 11070116,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 406,
+   "sid": 11070358,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 416,
+   "sid": 11070530,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 442,
+   "sid": 11070842,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 477,
+   "sid": 11070624,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 480,
+   "sid": 11070632,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 482,
+   "sid": 11070634,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 490,
+   "sid": 11070859,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 494,
+   "sid": 11070883,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 495,
+   "sid": 11070913,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 496,
+   "sid": 11070914,
+   "buffer": "payload-content-then-buffer"
+  },
+  {
+   "file": "E:/开发中的项目/xbits.数位警戒-网络分析探针/规则检测/suricata/网络设备漏洞/network_device.rules",
+   "line": 501,
+   "sid": 11070201,
+   "buffer": "payload-content-then-buffer"
+  }
+ ]
+}

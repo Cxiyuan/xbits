@@ -1,10 +1,10 @@
 # Converted from Sangfor export: etc_fw/waf/cmd_executed_rules/cmd_executed.request.rules
 # rules=8 skipped=0 dup_sid=0
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170002; flow:to_server,established; content:"passwd"; http_uri; nocase; pcre: "/cat .*passwd/Ui";)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170003; flow:to_server,established; content:"shadow"; http_uri; nocase; pcre: "/cat .*shadow/Ui";)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170004; flow:to_server,established; content:"wget "; http_uri; nocase;)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170005; flow:to_server,established; content:"net "; http_uri; nocase; pcre: "/net (config|view|user|localgroup|accounts)/Ui";)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170006; flow:to_server,established; content:"dir"; http_uri; nocase;)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170007; flow:to_server,established; content:"tracert"; http_uri; nocase;)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170008; flow:to_server,established; content:"quser"; http_uri; nocase;)
-alert tcp any any -> any $HTTP_PORTS ( lua:cmdi_context.lua; sid: 13170009; flow:to_server,established; content:"_config/query_servers"; http_uri; nocase;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"passwd"; nocase; pcre:"/cat .*passwd/i"; lua:cmdi_context.lua;  sid: 13170002; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"shadow"; nocase; pcre:"/cat .*shadow/i"; lua:cmdi_context.lua;  sid: 13170003; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"wget "; nocase; lua:cmdi_context.lua;  sid: 13170004; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"net "; nocase; pcre:"/net (config|view|user|localgroup|accounts)/i"; lua:cmdi_context.lua;  sid: 13170005; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"dir"; nocase; lua:cmdi_context.lua;  sid: 13170006; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"tracert"; nocase; lua:cmdi_context.lua;  sid: 13170007; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"quser"; nocase; lua:cmdi_context.lua;  sid: 13170008; flow:to_server,established;)
+alert tcp any any -> any $HTTP_PORTS (http_uri; content:"_config/query_servers"; nocase; lua:cmdi_context.lua;  sid: 13170009; flow:to_server,established;)
