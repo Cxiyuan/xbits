@@ -2660,7 +2660,8 @@ mod tests {
             other => panic!("expected Timeout, got {other:?}"),
         }
         // 非 UTF-8 stdout 必须显式区分，不要退化成"JSON 解析失败"。
-        match run_shell(r"printf '\0377'", "", Duration::from_secs(5)) {
+        // 用 0xC3 0x28 组成非法 UTF-8 序列（dash 的 \0377 只会产生 0x1F+'7'，仍是合法 UTF-8）。
+        match run_shell(r"printf '\303\050'", "", Duration::from_secs(5)) {
             ShellOutcome::OutputNotUtf8(_) => {}
             other => panic!("expected OutputNotUtf8, got {other:?}"),
         }
