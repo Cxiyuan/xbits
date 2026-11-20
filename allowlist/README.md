@@ -42,6 +42,11 @@ python3 allowlist/tools/query.py --ip 8.8.8.8 --kind public_dns
 ```
 Python API：`tools/query.py` 的 `AllowlistStore`（domain 按后缀匹配，IP 精确匹配）。
 
+> **IP 归一化（V-23）**：add.py / refresh.py / query.py 共用 `tools/ipnorm.py` 的 `canonical_ip()`
+> （IPv6 规范压缩式、统一小写、拒绝 zone id）——`add.py add public_dns 2001:DB8::1` 与
+> `query.py --ip 2001:0db8:0:0:0:0:0:1` 及 xbits 侧查询命中同一表示；单测见
+> `allowlist/tests/test_allowlist.py`。
+
 ## xbits 消费
 xbits 启动参数 `--allowlist-dir allowlist/data`（见 xbits README）：
 - 告警分析时查 `domain/ip` 白名单 → 命中则**降级**：`confidence -= 25`、

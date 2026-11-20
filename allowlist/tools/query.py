@@ -17,6 +17,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ipnorm import canonical_ip  # noqa: E402
 
 MODULE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(MODULE_ROOT, "data")
@@ -35,19 +39,27 @@ class AllowlistStore:
     def _load(self):
         if self._ips is not None:
             return
-        def read(name):
+        def read(name, normalizer=None):
             p = os.path.join(self.data_dir, name)
             s = set()
             if os.path.isfile(p):
                 with open(p, encoding="utf-8", errors="replace") as fh:
                     for line in fh:
                         v = line.strip().split("#")[0].strip()
-                        if v:
-                            s.add(v.lower())
+                        if not v:
+                            continue
+                        # V-23：加载即归一（IP 用 canonical_ip；域名保持小写原文）
+                        if normalizer is not None:
+                            v = normalizer(v)
+                            if not v:
+                                continue
+                        else:
+                            v = v.lower()
+                        s.add(v)
             return s
         self._domain_suffixes = sorted(read("domain.txt"))
-        self._ips = read("ip.txt")
-        self._public_dns = read("public_dns.txt")
+        self._ips = read("ip.txt", normalizer=canonical_ip)
+        self._public_dns = read("public_dns.txt", normalizer=canonical_ip)
         mp = os.path.join(self.data_dir, "meta.json")
         if os.path.isfile(mp):
             try:
@@ -65,7 +77,10 @@ class AllowlistStore:
         return None
 
     def lookup_ip(self, value: str, kind: str = "ip"):
-        v = str(value).strip().lower()
+        # V-23：查询值与快照同一 canonical_ip 归一，IPv6 才能真正命中
+        v = canonical_ip(str(value))
+        if v is None:
+            return None
         self._load()
         pool = self._public_dns if kind == "public_dns" else self._ips
         if v in pool:

@@ -127,7 +127,7 @@ jobs:
           python 测试用例/generate_backdoor_pcaps.py --out 测试用例/backdoor_pcap
           python app-id/tests/gen_pcaps.py
 
-      - name: Rule coverage gate (all SIDs must be exercised)
+      - name: Rule coverage gate (asserted sids exercised; excluded dirs printed with reasons)
         run: python xbits/test/qa_rule_coverage.py
 
       - name: Convert probe rules (archive by category)
@@ -241,6 +241,9 @@ jobs:
             [ -S /tmp/xbits-hook.sock ] && break
             sleep 0.1
           done
+          if [ ! -S /tmp/xbits-hook.sock ]; then
+            echo "::error::xbits hook socket never appeared"; cat /tmp/xbits-hook.err || true; exit 1
+          fi
 
           echo "=== xbits-suricata: run pcap with thin hook ==="
           docker run --rm --network none \
@@ -264,14 +267,28 @@ jobs:
             xbits-zeek \
             -Cr /pcap/web_sqli_uri_union.pcap
 
-          sleep 1
           echo "=== xbits central engine output ==="
           cat /tmp/xbits-hook.out
-          echo "=== assertions ==="
-          grep -q '"rule_id":"xb-suricata-web-sqli"' /tmp/xbits-hook.out
-          grep -q '"rule_id":"xb-zeek-http-request"' /tmp/xbits-hook.out
-          echo "PASS: both thin hooks reached xbits central engine"
-          kill $(cat /tmp/xbits-hook.pid) || true
+          echo "=== assertions (poll for parsed JSON lines, fields validated) ==="
+          python3 xbits/test/assert_hook_output.py \
+            --file /tmp/xbits-hook.out --timeout 30 \
+            --rule-id xb-suricata-web-sqli --reason suricata-web-sqli \
+            --signature-id 9103001 \
+            --require-fields rule_id,reason,signature_id,src,dst,proto
+          python3 xbits/test/assert_hook_output.py \
+            --file /tmp/xbits-hook.out --timeout 30 \
+            --rule-id xb-zeek-http-request --reason zeek-http-request \
+            --allow-zero-signature-id \
+            --require-fields rule_id,reason,src,dst,proto
+          kill -TERM "$(cat /tmp/xbits-hook.pid)" 2>/dev/null || true
+          rc=0; wait "$(cat /tmp/xbits-hook.pid)" 2>/dev/null || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 143 ]; then
+            echo "::error::xbits exited rc=$rc"; cat /tmp/xbits-hook.err || true; exit 1
+          fi
+          if grep -Eq 'bad hook event|hook accept error|hook read error|panicked' /tmp/xbits-hook.err; then
+            echo "::error::engine stderr anomalies"; cat /tmp/xbits-hook.err; exit 1
+          fi
+          echo "PASS: both thin hooks reached xbits central engine with required fields"
 
       - name: Upload xbits hook logs
         if: always()

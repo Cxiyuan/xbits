@@ -114,14 +114,27 @@ jobs:
             [ -S /tmp/xbits-hook.sock ] && break
             sleep 0.1
           done
+          if [ ! -S /tmp/xbits-hook.sock ]; then
+            echo "::error::xbits hook socket never appeared"; cat /tmp/xbits-hook.err || true; exit 1
+          fi
           ZEEK_PLUGIN_PATH="$PWD/xbits/zeek-plugin" \
           ZEEK_PLUGIN_ACTIVATE="Xbits::Hook" \
           XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
             zeek -Cr /tmp/web-pcap/web_sqli_uri_union.pcap
-          sleep 1
-          cat /tmp/xbits-hook.out
-          grep -q 'xb-zeek-http-request' /tmp/xbits-hook.out
-          kill $(cat /tmp/xbits-hook.pid) || true
+          # 轮询到 engine 真正写出匹配的 JSON 行并校验字段（替代 sleep+grep 子串）
+          python3 xbits/test/assert_hook_output.py \
+            --file /tmp/xbits-hook.out --timeout 30 \
+            --rule-id xb-zeek-http-request --reason zeek-http-request \
+            --allow-zero-signature-id \
+            --require-fields rule_id,reason,src,dst,proto
+          kill -TERM "$(cat /tmp/xbits-hook.pid)" 2>/dev/null || true
+          rc=0; wait "$(cat /tmp/xbits-hook.pid)" 2>/dev/null || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 143 ]; then
+            echo "::error::xbits exited rc=$rc"; cat /tmp/xbits-hook.err || true; exit 1
+          fi
+          if grep -Eq 'bad hook event|hook accept error|hook read error|panicked' /tmp/xbits-hook.err; then
+            echo "::error::engine stderr anomalies"; cat /tmp/xbits-hook.err; exit 1
+          fi
 
   rust:
     name: Rust bridge tests and release build
@@ -209,8 +222,14 @@ jobs:
       - name: Verify xbits stdin bridge
         run: |
           set -euo pipefail
-          xbits/target/release/xbits --stdin < xbits/testdata/alert.jsonl \
-            | grep -q '"signature_id":9103001'
+          # 旧写法 `| grep -q '"signature_id":9103001'` 是回声测试：输入第 1 行本身就含该串。
+          # 这里解析输出 JSON，断言"恰好 1 条 alert 且字段齐全"（第 2 行 flow 不得产生输出）。
+          xbits/target/release/xbits --stdin < xbits/testdata/alert.jsonl > /tmp/xbits-stdin.out
+          cat /tmp/xbits-stdin.out
+          python3 xbits/test/assert_xbits.py \
+            --log /tmp/xbits-stdin.out --source alert-json \
+            --signature-id 9103001 --expect-count 1 \
+            --require-fields signature_id,signature,src,dst,proto,community_id
 
       - name: Verify xbits central hook engine
         run: |
@@ -273,15 +292,16 @@ jobs:
       - name: Static triage unit tests (triage/, stdlib path)
         run: |
           set -euo pipefail
-          python3 triage/tests/test_triage.py
+          XBITS_EXPECT_ENHANCED=0 python3 triage/tests/test_triage.py
 
-      - name: Static triage unit tests (triage/, pefile+pyelftools enhanced path)
+      - name: Static triage unit tests (triage/, pefile+pyelftools+YARA enhanced path)
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet --disable-pip-version-check pefile pyelftools
-          python3 triage/tests/test_triage.py
+          python3 -m pip install --quiet --disable-pip-version-check pefile pyelftools yara-python
+          # XBITS_EXPECT_ENHANCED=1：增强路径必须断言真实字段值；缺依赖直接失败而不是 skip
+          XBITS_EXPECT_ENHANCED=1 python3 triage/tests/test_triage.py
 
-      - name: Validate triage YARA rules compile (triage/rules)
+      - name: Validate triage YARA rules compile + positive/negative sample pair
         run: |
           set -euo pipefail
           python3 -m pip install --quiet --disable-pip-version-check yara-python
@@ -435,13 +455,27 @@ jobs:
             [ -S /tmp/xbits-hook.sock ] && break
             sleep 0.1
           done
+          if [ ! -S /tmp/xbits-hook.sock ]; then
+            echo "::error::xbits hook socket never appeared"; cat /tmp/xbits-hook.err || true; exit 1
+          fi
           XBITS_HOOK_SOCKET=/tmp/xbits-hook.sock \
             suricata -r 测试用例/web_pcap/web_sqli_uri_union.pcap \
             -c 测试用例/suricata-hook-test.yaml -l /tmp/suricata-hook-out
-          sleep 1
           cat /tmp/xbits-hook.out
-          grep -q 'xb-suricata-web-sqli' /tmp/xbits-hook.out
-          kill $(cat /tmp/xbits-hook.pid) || true
+          # 轮询到匹配 JSON 行 + 字段校验（替代 sleep 1 + grep 子串）
+          python3 xbits/test/assert_hook_output.py \
+            --file /tmp/xbits-hook.out --timeout 30 \
+            --rule-id xb-suricata-web-sqli --reason suricata-web-sqli \
+            --signature-id 9103001 \
+            --require-fields rule_id,reason,signature_id,src,dst,proto
+          kill -TERM "$(cat /tmp/xbits-hook.pid)" 2>/dev/null || true
+          rc=0; wait "$(cat /tmp/xbits-hook.pid)" 2>/dev/null || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 143 ]; then
+            echo "::error::xbits exited rc=$rc"; cat /tmp/xbits-hook.err || true; exit 1
+          fi
+          if grep -Eq 'bad hook event|hook accept error|hook read error|panicked' /tmp/xbits-hook.err; then
+            echo "::error::engine stderr anomalies"; cat /tmp/xbits-hook.err; exit 1
+          fi
 
       - name: Start Zeek with xbits listener
         run: |
@@ -477,9 +511,7 @@ jobs:
             exit 1
           fi
           for i in $(seq 1 100); do
-            if [ -f 测试用例/zeek_out/xbits-live/xbits_correlation.log ] \
-              && grep -q '"signature_id":9103001' \
-                测试用例/zeek_out/xbits-live/xbits_correlation.log; then
+            if [ -f 测试用例/zeek_out/xbits-live/xbits_correlation.log ]; then
               break
             fi
             sleep 0.2
@@ -491,9 +523,11 @@ jobs:
           cat 测试用例/zeek_out/xbits-live/docker.log 2>/dev/null || true
           cat 测试用例/out/suricata/xbits-web/eve.json 2>/dev/null || true
           cat 测试用例/zeek_out/xbits-live/xbits_correlation.log 2>/dev/null || true
-          python xbits/test/assert_xbits.py \
+          # 轮询到满足条件的 JSON 行（超时即失败），并校验字段集合
+          python3 xbits/test/assert_xbits.py \
             --log 测试用例/zeek_out/xbits-live/xbits_correlation.log \
-            --signature-id 9103001
+            --signature-id 9103001 --wait-timeout 45 \
+            --require-fields community_id,src,dst,reason,related_sids
 
       - name: Run DNS, recon and backdoor scenarios through xbits
         run: |
@@ -534,21 +568,20 @@ jobs:
               return 1
             fi
             for i in $(seq 1 100); do
-              if [ -f "$out/xbits_correlation.log" ] \
-                && grep -q "\"signature_id\":$sid" "$out/xbits_correlation.log"; then
-                break
-              fi
+              [ -f "$out/xbits_correlation.log" ] && break
               sleep 0.2
             done
 
             docker logs "$container" > "$out/docker-$scenario.log" 2>&1 || true
             docker stop "$container" >/dev/null 2>&1 || true
             docker rm -f "$container" >/dev/null 2>&1 || true
+            # 文件存在后再轮询到满足条件的 JSON 行；超时即失败并打印原始日志
             cp "$out/xbits_correlation.log" "$out/${scenario}_correlation.log"
             cat "$out/${scenario}_correlation.log"
-            python xbits/test/assert_xbits.py \
+            python3 xbits/test/assert_xbits.py \
               --log "$out/${scenario}_correlation.log" \
-              --signature-id "$sid"
+              --signature-id "$sid" --wait-timeout 45 \
+              --require-fields community_id,src,dst,reason,related_sids
           }
 
           run_case dns 测试用例/suricata-dns-xbits.yaml \

@@ -12,10 +12,12 @@
 """
 from __future__ import annotations
 
-import ipaddress
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ipnorm import canonical_ip  # noqa: E402
 
 MODULE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CUSTOM_DIR = os.path.join(MODULE_ROOT, "custom")
@@ -56,10 +58,8 @@ def load_header(path: str, default: list[str]) -> list[str]:
 
 def validate(kind: str, value: str) -> str | None:
     if kind in ("ip", "public_dns"):
-        try:
-            return str(ipaddress.ip_address(value.strip()))
-        except ValueError:
-            return None
+        # V-23：与 refresh/query 共用同一 canonical_ip（IPv6 规范压缩式；zone 拒绝）
+        return canonical_ip(value)
     v = value.strip().lower().lstrip(".")
     return v if RX_DOMAIN.match(v) else None
 

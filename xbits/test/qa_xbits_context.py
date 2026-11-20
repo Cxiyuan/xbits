@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 """Central analysis plane correlation tests.
 
-Covers four required behaviours without requiring Docker:
+Covers the required behaviours without requiring Docker:
   * positive: Zeek context + Suricata alert -> high-confidence alert
-  * missing-context: Suricata alert alone -> no high-confidence alert
-  * benign-context: normal URI context -> alert suppressed
+  * missing-context: Suricata alert alone -> NO real correlation alert
+  * benign-context: normal URI context -> NO real correlation alert
   * reverse-order: Suricata alert first, Zeek context later -> still correlated
   * app-id alert: XbitsAlert::alert reaches xbits through normalization
+
+两点修复（qa/QA_REPORT.md V-18 / TS-08）：
+
+1. 负例旁必须有"必须产出"的对照：missing/benign 两个负例都会同时投递一条
+   一定命中的 app-id 告警（xb-zeek-appid-scanner）。断言是"输出恰好等于这条对照
+   告警，且没有真实的 SQLi 关联告警"，而不是"len(got) == 0" —— 后者与"引擎崩了/
+   规则没加载"同形，无法区分。
+2. 固定 `time.sleep(0.25)` 换成"轮询到期望条数或超时"：不再靠墙钟猜异步写盘。
+   （require_context 规则等不到上下文时会在 60s TTL 后产出 degraded=context-missing
+   的 fail-closed 告警；本测试窗口远小于 60s，因此这里断言的是"没有真实关联告警"，
+   若出现任何输出都只能是那条对照告警。）
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import socket
 import subprocess
@@ -22,6 +32,9 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+CONTROL_RULE = "xb-zeek-appid-scanner"
+REAL_RULE = "xb-suricata-web-sqli"
 
 
 def wait_socket(path: Path, timeout: float = 10.0) -> None:
@@ -55,7 +68,19 @@ def read_alerts(path: Path) -> list[dict]:
     return out
 
 
-def run_case(xbits: Path, rules: Path, name: str, events: list[dict]) -> tuple[bool, str]:
+def wait_alerts(path: Path, expect_count: int, timeout: float = 8.0) -> list[dict]:
+    """轮询到条数达到期望（用于"必须产出"的对照），超时返回当前结果由调用方判定。"""
+    deadline = time.time() + timeout
+    got: list[dict] = []
+    while time.time() < deadline:
+        got = read_alerts(path)
+        if len(got) >= expect_count:
+            return got
+        time.sleep(0.05)
+    return got
+
+
+def run_case(xbits: Path, rules: Path, name: str, events: list[dict], expect_count: int) -> tuple[bool, str]:
     work = Path(tempfile.mkdtemp(prefix="xbits-context-"))
     engine = None
     try:
@@ -71,8 +96,7 @@ def run_case(xbits: Path, rules: Path, name: str, events: list[dict]) -> tuple[b
         )
         wait_socket(sock)
         send_events(sock, events)
-        time.sleep(0.25)
-        got = read_alerts(alerts)
+        got = wait_alerts(alerts, expect_count)
         return True, json.dumps(got, ensure_ascii=False)
     except Exception as exc:  # noqa: BLE001
         return False, f"{name}: {exc}"
@@ -84,6 +108,10 @@ def run_case(xbits: Path, rules: Path, name: str, events: list[dict]) -> tuple[b
             except subprocess.TimeoutExpired:
                 engine.kill()
         shutil.rmtree(work, ignore_errors=True)
+
+
+def rule_ids(got: list[dict]) -> list[str]:
+    return [row.get("rule_id") for row in got]
 
 
 def main() -> int:
@@ -108,22 +136,35 @@ def main() -> int:
         "src": "203.0.113.9", "dst": "10.0.0.80",
         "sport": 40001, "dport": 80, "proto": "TCP",
     }
+    # 对照告警：不依赖任何上下文，必定产出一条输出（证明引擎活着、规则已加载）
     appid_alert = {
         "source": "zeek", "kind": "alert", "event": "XbitsAlert::alert",
         "alert_kind": "scanner", "alert_name": "gobuster", "severity": "high",
         "src": "10.1.0.11", "desc": "dir_brute",
     }
 
+    def no_real_alert(got: list[dict]) -> bool:
+        return REAL_RULE not in rule_ids(got)
+
+    def only_control(got: list[dict]) -> bool:
+        return len(got) == 1 and got[0].get("rule_id") == CONTROL_RULE
+
     cases = [
-        ("positive-context", [zeek_http, suricata_alert], lambda got: len(got) == 1 and got[0].get("confidence", 0) >= 80),
-        ("missing-context", [suricata_alert], lambda got: len(got) == 0),
-        ("benign-context", [{**zeek_http, "uri": "/healthz"}, suricata_alert], lambda got: len(got) == 0),
-        ("reverse-order", [suricata_alert, zeek_http], lambda got: len(got) == 1 and got[0].get("confidence", 0) >= 80),
-        ("appid-alert", [appid_alert], lambda got: len(got) == 1 and got[0].get("alert_kind") == "scanner"),
+        # name, events, expect_count (用于轮询), assertion
+        ("positive-context", [zeek_http, suricata_alert], 1,
+         lambda got: len(got) == 1 and got[0].get("rule_id") == REAL_RULE and got[0].get("confidence", 0) >= 80),
+        ("missing-context", [suricata_alert, appid_alert], 1,
+         lambda got: only_control(got) and no_real_alert(got)),
+        ("benign-context", [{**zeek_http, "uri": "/healthz"}, appid_alert, suricata_alert], 1,
+         lambda got: only_control(got) and no_real_alert(got)),
+        ("reverse-order", [suricata_alert, zeek_http], 1,
+         lambda got: len(got) == 1 and got[0].get("rule_id") == REAL_RULE and got[0].get("confidence", 0) >= 80),
+        ("appid-alert", [appid_alert], 1,
+         lambda got: len(got) == 1 and got[0].get("rule_id") == CONTROL_RULE and got[0].get("confidence", 0) >= 30),
     ]
     failed = []
-    for name, events, assertion in cases:
-        ok, detail = run_case(xbits, rules, name, events)
+    for name, events, expect_count, assertion in cases:
+        ok, detail = run_case(xbits, rules, name, events, expect_count)
         if not ok:
             failed.append(detail)
             print(f"{name}: FAIL {detail}", file=sys.stderr)
@@ -139,7 +180,7 @@ def main() -> int:
         for f in failed:
             print(" -", f, file=sys.stderr)
         return 1
-    print("XBITS CONTEXT: PASS (positive/negative/missing/reverse/app-id)")
+    print("XBITS CONTEXT: PASS (positive/missing/benign/reverse/app-id; negatives carry a must-fire control)")
     return 0
 
 

@@ -32,6 +32,8 @@ CLI
   --all-engines            尝试启用所有可在 PATH 找到的外部命令
 
 输出（stdout 单行 JSON）：见 triage/README.md。
+- engines[tool]=bool 为向后兼容摘要（present and ok）；结构化三态在 `engine_status[tool] = {present, ok, error}`；
+  顶层 `degraded`/`engine_errors` 表示"有引擎执行失败，证据不完整"，与"未检出"严格区分。
 """
 from __future__ import annotations
 
@@ -132,6 +134,19 @@ def _which(cmd: str | None) -> str | None:
     if not cmd:
         return None
     return shutil.which(cmd)
+
+
+# ---------------- 引擎状态：present/ok/error 三态（V-20） ----------------
+# engines[tool] = bool 只是向后兼容摘要（present and ok），不再承担"执行成功"的语义；
+# 结构化状态统一写 engine_status[tool] = {"present", "ok", "error"}：
+#   present=False            组件未安装/未启用（可选缺失，不算"证据不完整"）
+#   present=True, ok=True    本次真实执行成功（含"执行了且未检出"）
+#   present=True, ok=False   执行失败（rc!=0 / 超时 / 解析失败 / 库在但用不了）→ 计入 degraded
+def _set_engine(engines: dict, status: dict, name: str, *,
+                present: bool, ok: bool, error: str | None = None) -> None:
+    status[name] = {"present": bool(present), "ok": bool(ok),
+                    "error": (error[:200] if error else None)}
+    engines[name] = bool(present and ok)
 
 
 def _hash_stream(path: str) -> dict:
@@ -243,13 +258,12 @@ def _scan_patterns(text: str, patterns, findings: list, scope: str) -> None:
 
 
 # ---------------- 可选：PE 结构分析（pefile） ----------------
-def _pe_scan(path: str, data: bytes, engines: dict, findings: list, info: dict) -> None:
+def _pe_scan(path: str, data: bytes, engines: dict, status: dict, findings: list, info: dict) -> None:
     try:
         import pefile  # type: ignore
     except Exception:
-        engines["pefile"] = False
+        _set_engine(engines, status, "pefile", present=False, ok=False)
         return
-    engines["pefile"] = True
     try:
         pe = pefile.PE(data=data, fast_load=True)
         # PE 数据目录索引（PE 规范固定）：EXPORT=0 IMPORT=1 RESOURCE=2 DEBUG=6 TLS=9 LOAD_CONFIG=10
@@ -257,9 +271,12 @@ def _pe_scan(path: str, data: bytes, engines: dict, findings: list, info: dict) 
             pe.parse_data_directories(directories=[1, 0, 2, 6, 9, 10])
         except Exception:
             pass
-    except Exception as exc:  # 非有效 PE / 解析失败：降级为字符串启发
+    except Exception as exc:  # 非有效 PE / 解析失败：降级为字符串启发（如实记 failed，不与"未检出"同形）
+        _set_engine(engines, status, "pefile", present=True, ok=False,
+                    error=f"parse-failed: {exc}")
         info["pe_error"] = str(exc)[:200]
         return
+    _set_engine(engines, status, "pefile", present=True, ok=True)
 
     sections = []
     for s in pe.sections:
@@ -311,12 +328,17 @@ def _pe_scan(path: str, data: bytes, engines: dict, findings: list, info: dict) 
         "imphash": imphash,
         "authentihash": authentihash,
     }
-    # 数字签名存在性（仅探测是否带 Authenticode 证书表，不校验证书链信任）
+    # 数字签名：区分"存在性探测"与"可信验证"（V-22）。
+    # 我们只读证书表是否非空（signed_present）；signature_verified 恒 False——本工具不做
+    # 证书链/信任校验，绝不允许凭"证书表非空"降级 verdict（恶意 PE 可伪造证书表洗白）。
     try:
         sec_dir = pe.OPTIONAL_HEADER.DATA_DIRECTORY[4]  # IMAGE_DIRECTORY_ENTRY_SECURITY
-        info["pe"]["signed"] = bool(sec_dir.VirtualAddress and sec_dir.Size)
+        info["pe"]["signed_present"] = bool(sec_dir.VirtualAddress and sec_dir.Size)
     except Exception:
-        info["pe"]["signed"] = False
+        info["pe"]["signed_present"] = False
+    info["pe"]["signature_verified"] = False
+    # 兼容旧消费方（只读布尔）；语义 = signed_present，绝非"可信"
+    info["pe"]["signed"] = info["pe"]["signed_present"]
 
     # 危险导入判定
     seen = set()
@@ -337,14 +359,13 @@ def _pe_scan(path: str, data: bytes, engines: dict, findings: list, info: dict) 
 
 
 # ---------------- 可选：ELF 结构分析（pyelftools） ----------------
-def _elf_scan(path: str, data: bytes, engines: dict, findings: list, info: dict) -> None:
+def _elf_scan(path: str, data: bytes, engines: dict, status: dict, findings: list, info: dict) -> None:
     try:
         from elftools.elf.elffile import ELFFile  # type: ignore
         from elftools.elf.dynamic import DynamicSection  # type: ignore
     except Exception:
-        engines["pyelftools"] = False
+        _set_engine(engines, status, "pyelftools", present=False, ok=False)
         return
-    engines["pyelftools"] = True
     try:
         with open(path, "rb") as fh:
             elf = ELFFile(fh)
@@ -368,8 +389,11 @@ def _elf_scan(path: str, data: bytes, engines: dict, findings: list, info: dict)
                 "statically_linked": not has_dynamic,
             }
     except Exception as exc:
+        _set_engine(engines, status, "pyelftools", present=True, ok=False,
+                    error=f"parse-failed: {exc}")
         info["elf_error"] = str(exc)[:200]
         return
+    _set_engine(engines, status, "pyelftools", present=True, ok=True)
 
     if info.get("elf", {}).get("statically_linked"):
         findings.append({"id": "elf.static", "severity": "low",
@@ -380,8 +404,12 @@ def _elf_scan(path: str, data: bytes, engines: dict, findings: list, info: dict)
 _YARA_CACHE: dict = {}
 
 
-def _compiled_yara_rules(yara_mod, rules_dir: str) -> list:
-    """编译目录（递归含子目录）下所有 YARA 规则；带 mtime 缓存；兼容非 ASCII 路径。"""
+def _compiled_yara_rules(yara_mod, rules_dir: str) -> tuple[list, int, list[str]]:
+    """编译目录（递归含子目录）下所有 YARA 规则；带 mtime 缓存；兼容非 ASCII 路径。
+
+    返回 (compiled, failed_count, failed_paths)——编译失败必须计数（V-19/V-20），
+    不允许"规则全编不出来 = 没有命中 = 干净"。
+    """
     try:
         files = []
         for dp, _dirs, fnames in os.walk(rules_dir):
@@ -395,13 +423,14 @@ def _compiled_yara_rules(yara_mod, rules_dir: str) -> list:
                         continue
         files.sort()
     except OSError:
-        return []
+        return [], 0, []
     key = os.path.abspath(rules_dir)
     sig = tuple((n, m, s) for (n, m, s) in files)
     cached = _YARA_CACHE.get(key)
     if cached and cached[0] == sig:
-        return cached[1]
-    compiled = []
+        return cached[1], cached[2], cached[3]
+    compiled: list = []
+    failed: list[str] = []
     for fp, _m, _s in files:
         r = None
         try:
@@ -415,25 +444,40 @@ def _compiled_yara_rules(yara_mod, rules_dir: str) -> list:
                 r = None
         if r is not None:
             compiled.append(r)
-    _YARA_CACHE[key] = (sig, compiled)
-    return compiled
+        else:
+            failed.append(os.path.basename(fp))
+    _YARA_CACHE[key] = (sig, compiled, len(failed), failed)
+    return compiled, len(failed), failed
 
 
-def _yara_scan(path: str, rules_dir: str | None, engines: dict, findings: list) -> None:
+def _yara_scan(path: str, rules_dir: str | None, engines: dict, status: dict,
+               findings: list, info: dict) -> None:
     try:
         import yara  # type: ignore
     except Exception:
-        engines["yara"] = False
+        _set_engine(engines, status, "yara", present=False, ok=False)
         return
-    engines["yara"] = True
     if not rules_dir or not os.path.isdir(rules_dir):
+        # 库在但没有规则目录：如实回显"未配置规则"，不得假装"扫描过"
+        _set_engine(engines, status, "yara", present=True, ok=False,
+                    error=f"rules-dir-missing: {rules_dir or '(none)'}")
         return
+    match_errors = 0
     try:
         with open(path, "rb") as fh:
             target = fh.read(MAX_ANALYZE_BYTES)
-    except OSError:
+    except OSError as exc:
+        _set_engine(engines, status, "yara", present=True, ok=False,
+                    error=f"read-failed: {exc}")
         return
-    for rules in _compiled_yara_rules(yara, rules_dir):
+    compiled, failed_count, failed_paths = _compiled_yara_rules(yara, rules_dir)
+    if failed_count:
+        info["yara_rules_failed"] = sorted(failed_paths)
+    if not compiled:
+        _set_engine(engines, status, "yara", present=True, ok=False,
+                    error=f"no-rules-compiled (failed={failed_count})")
+        return
+    for rules in compiled:
         try:
             matches = rules.match(data=target)  # 用 data 匹配，规避非 ASCII 路径
         except Exception:
@@ -441,36 +485,67 @@ def _yara_scan(path: str, rules_dir: str | None, engines: dict, findings: list) 
                 matches = rules.match(path)
             except Exception:
                 matches = []
+                match_errors += 1
         for match in matches:
             name = getattr(match, "rule", str(match))
-            sev = "critical" if any(t in name.lower() for t in ("rat", "ransom", "webshell", "backdoor", "trojan", "malware", "shellcode")) else "high"
+            # 严重度优先取规则 meta.severity（V-19），缺失时才按家族名保守推断
+            meta = getattr(match, "meta", None) or {}
+            sev = str(meta.get("severity", "")).lower()
+            if sev not in ("critical", "high", "medium", "low"):
+                sev = "critical" if any(t in name.lower() for t in
+                                        ("rat", "ransom", "webshell", "backdoor", "trojan",
+                                         "malware", "shellcode")) else "high"
             findings.append({"id": f"yara.{name}", "severity": sev,
                              "detail": f"YARA 命中规则 {name}", "weight": 45})
+    if match_errors:
+        info["yara_match_errors"] = match_errors
+        _set_engine(engines, status, "yara", present=True, ok=False,
+                    error=f"match-errors: {match_errors}")
+    else:
+        _set_engine(engines, status, "yara", present=True, ok=True)
+    info.setdefault("yara_rules", {})["loaded"] = len(compiled)
+    info["yara_rules"]["failed"] = failed_count
 
 
 # ---------------- 可选：Office 宏（oletools） ----------------
-def _office_scan(path: str, data: bytes, engines: dict, findings: list) -> None:
+def _office_scan(path: str, data: bytes, engines: dict, status: dict, findings: list, info: dict) -> None:
     try:
         from oletools.olevba import VBA_Parser  # type: ignore
-        engines["oletools"] = True
-        try:
-            vba = VBA_Parser(path, data=data)
-            if vba.detect_vba_macros():
-                for _s, _st, _v, code in vba.extract_macros():
-                    if re.search(r"(AutoOpen|CreateObject|Shell|WScript|XMLHTTP|powershell|URLDownload)",
-                                 code, re.IGNORECASE):
-                        findings.append({"id": "office.suspicious_macro", "severity": "high",
-                                         "detail": "Office 宏含可疑调用(AutoOpen/CreateObject/Shell/HTTP)",
-                                         "weight": 45})
-                        break
-            vba.close()
-        except Exception:
-            pass
     except Exception:
-        engines["oletools"] = False
+        _set_engine(engines, status, "oletools", present=False, ok=False)
         if data.startswith(b"\xd0\xcf\x11\xe0"):
             findings.append({"id": "office.macro_capable", "severity": "low",
                              "detail": "OLE 复合文档（可含宏；未安装 oletools 无法深入分析）", "weight": 10})
+        return
+    try:
+        vba = VBA_Parser(path, data=data)
+    except Exception as exc:
+        # 库在但解析失败（加密文档/损坏 OLE）：必须与"无宏"区分（V-20）
+        _set_engine(engines, status, "oletools", present=True, ok=False,
+                    error=f"parse-failed: {exc}")
+        info["oletools_error"] = str(exc)[:200]
+        if data.startswith(b"\xd0\xcf\x11\xe0"):
+            findings.append({"id": "office.analysis_failed", "severity": "low",
+                             "detail": "OLE 文档宏分析失败（无法判定是否有宏；不等于无宏）", "weight": 10})
+        return
+    try:
+        hit = False
+        if vba.detect_vba_macros():
+            for _s, _st, _v, code in vba.extract_macros():
+                if re.search(r"(AutoOpen|CreateObject|Shell|WScript|XMLHTTP|powershell|URLDownload)",
+                             code, re.IGNORECASE):
+                    hit = True
+                    findings.append({"id": "office.suspicious_macro", "severity": "high",
+                                     "detail": "Office 宏含可疑调用(AutoOpen/CreateObject/Shell/HTTP)",
+                                     "weight": 45})
+                    break
+        vba.close()
+        _set_engine(engines, status, "oletools", present=True, ok=True)
+        info.setdefault("oletools", {})["macro_analysis"] = "suspicious" if hit else "clean"
+    except Exception as exc:
+        _set_engine(engines, status, "oletools", present=True, ok=False,
+                    error=f"scan-failed: {exc}")
+        info["oletools_error"] = str(exc)[:200]
 
 
 def _pdf_scan(data: bytes, findings: list) -> None:
@@ -478,26 +553,28 @@ def _pdf_scan(data: bytes, findings: list) -> None:
 
 
 # ---------------- 可选：模糊哈希（ssdeep / tlsh） ----------------
-def _fuzzy_hash(path: str, engines: dict, info: dict) -> None:
+def _fuzzy_hash(path: str, engines: dict, status: dict, info: dict) -> None:
     try:
         import ssdeep  # type: ignore
         try:
             info.setdefault("fuzzy", {})["ssdeep"] = ssdeep.hash_from_file(path)
-            engines["ssdeep"] = True
-        except Exception:
-            engines["ssdeep"] = False
+            _set_engine(engines, status, "ssdeep", present=True, ok=True)
+        except Exception as exc:
+            _set_engine(engines, status, "ssdeep", present=True, ok=False,
+                        error=f"hash-failed: {exc}")
     except Exception:
-        engines["ssdeep"] = False
+        _set_engine(engines, status, "ssdeep", present=False, ok=False)
     try:
         import tlsh  # type: ignore
         try:
             with open(path, "rb") as fh:
                 info.setdefault("fuzzy", {})["tlsh"] = tlsh.hash(fh.read(MAX_ANALYZE_BYTES))
-            engines["tlsh"] = True
-        except Exception:
-            engines["tlsh"] = False
+            _set_engine(engines, status, "tlsh", present=True, ok=True)
+        except Exception as exc:
+            _set_engine(engines, status, "tlsh", present=True, ok=False,
+                        error=f"hash-failed: {exc}")
     except Exception:
-        engines["tlsh"] = False
+        _set_engine(engines, status, "tlsh", present=False, ok=False)
 
 
 def _load_hash_intel(path: str | None) -> set[str]:
@@ -578,18 +655,23 @@ def _run(cmd_list, timeout=DEFAULT_TIMEOUT) -> tuple[int, str, str]:
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def _capa_scan(path: str, cmd: str | None, engines: dict, findings: list, info: dict) -> None:
+def _capa_scan(path: str, cmd: str | None, engines: dict, status: dict,
+               findings: list, info: dict) -> None:
     if not cmd:
-        engines["capa"] = False
+        _set_engine(engines, status, "capa", present=False, ok=False)
         return
     exe = _which(cmd.split()[0])
     if not exe:
-        engines["capa"] = False
+        _set_engine(engines, status, "capa", present=False, ok=False)
         return
-    engines["capa"] = True
     try:
         args = cmd.split() + ["-j", path]
         rc, out, err = _run(args)
+        if rc != 0:
+            # rc!=0（规则缺失/样本不支持/内部错误）≠ "未检出"（V-20）
+            _set_engine(engines, status, "capa", present=True, ok=False,
+                        error=f"exit={rc}: {(err or out or '').strip()[:150]}")
+            return
         data = json.loads(out) if out.strip() else {}
         rules = data.get("rules", {}) if isinstance(data, dict) else {}
         caps = list(rules.keys())
@@ -602,19 +684,24 @@ def _capa_scan(path: str, cmd: str | None, engines: dict, findings: list, info: 
                 findings.append({"id": "capa." + re.sub(r"\W+", "_", cap)[:60],
                                  "severity": "high",
                                  "detail": f"capa 能力: {cap}", "weight": 22})
+        _set_engine(engines, status, "capa", present=True, ok=True)
+    except subprocess.TimeoutExpired:
+        _set_engine(engines, status, "capa", present=True, ok=False,
+                    error=f"timeout after {DEFAULT_TIMEOUT}s")
     except Exception as exc:
-        info["capa_error"] = str(exc)[:200]
+        _set_engine(engines, status, "capa", present=True, ok=False,
+                    error=f"run-failed: {exc}")
 
 
-def _clamav_scan(path: str, cmd: str | None, engines: dict, findings: list, info: dict) -> None:
+def _clamav_scan(path: str, cmd: str | None, engines: dict, status: dict,
+                 findings: list, info: dict) -> None:
     if not cmd:
-        engines["clamav"] = False
+        _set_engine(engines, status, "clamav", present=False, ok=False)
         return
     exe = _which(cmd.split()[0])
     if not exe:
-        engines["clamav"] = False
+        _set_engine(engines, status, "clamav", present=False, ok=False)
         return
-    engines["clamav"] = True
     try:
         args = cmd.split() + ["--no-summary", path]
         rc, out, err = _run(args, timeout=DEFAULT_TIMEOUT)
@@ -628,52 +715,92 @@ def _clamav_scan(path: str, cmd: str | None, engines: dict, findings: list, info
             info["clamav"] = {"signature": sig}
             findings.append({"id": "clamav.detected", "severity": "critical",
                              "detail": f"ClamAV 命中: {sig}", "weight": 80})
-        else:
+            _set_engine(engines, status, "clamav", present=True, ok=True)
+        elif rc == 0:
+            # 真正的"扫描完成且未检出"
             info["clamav"] = {"signature": None}
+            _set_engine(engines, status, "clamav", present=True, ok=True)
+        else:
+            # rc!=0：病毒库缺失/过期/IO 错误（clamscan 约定 2=错误）——不是"未检出"
+            info["clamav"] = {"signature": None, "error": f"exit={rc}: {text.strip()[:150]}"}
+            _set_engine(engines, status, "clamav", present=True, ok=False,
+                        error=f"exit={rc}: {text.strip()[:150]}")
+    except subprocess.TimeoutExpired:
+        info["clamav"] = {"signature": None, "error": f"timeout after {DEFAULT_TIMEOUT}s"}
+        _set_engine(engines, status, "clamav", present=True, ok=False,
+                    error=f"timeout after {DEFAULT_TIMEOUT}s")
     except Exception as exc:
         info["clamav_error"] = str(exc)[:200]
+        _set_engine(engines, status, "clamav", present=True, ok=False,
+                    error=f"run-failed: {exc}")
 
 
 def _semgrep_scan(path: str, category: str, cmd: str | None, config: str | None,
-                   engines: dict, findings: list, info: dict) -> None:
+                  engines: dict, status: dict, findings: list, info: dict) -> None:
     if not cmd or not config or category not in ("script", "text"):
-        engines["semgrep"] = False
+        _set_engine(engines, status, "semgrep", present=False, ok=False)
         return
     exe = _which(cmd.split()[0])
     if not exe:
-        engines["semgrep"] = False
+        _set_engine(engines, status, "semgrep", present=False, ok=False)
         return
-    engines["semgrep"] = True
     try:
         args = cmd.split() + ["--json", "--config", config, path]
         rc, out, err = _run(args)
+        if rc != 0 and not out.strip():
+            # 无输出且非零：配置错/引擎崩溃（semgrep 命中时也可能 rc=1，故以有无输出区分）
+            _set_engine(engines, status, "semgrep", present=True, ok=False,
+                        error=f"exit={rc}: {(err or '').strip()[:150]}")
+            return
         data = json.loads(out) if out.strip() else {}
         results = data.get("results", []) if isinstance(data, dict) else []
+        errors = data.get("errors", []) if isinstance(data, dict) else []
         info["semgrep"] = {"result_count": len(results)}
+        if errors:
+            info["semgrep"]["errors"] = [str(e)[:120] for e in errors[:5]]
         for r in results[:50]:
             rule_id = r.get("check_id", "semgrep")
             findings.append({"id": "semgrep." + re.sub(r"\W+", "_", rule_id)[:60],
                              "severity": "high", "detail": f"semgrep 命中: {rule_id}",
                              "weight": 25})
+        if rc == 0 or out.strip():
+            # 有 JSON 输出即视为真实执行（semgrep 对命中惯例 rc=1）
+            _set_engine(engines, status, "semgrep", present=True, ok=True)
+        else:
+            _set_engine(engines, status, "semgrep", present=True, ok=False,
+                        error=f"exit={rc} no-output")
+    except subprocess.TimeoutExpired:
+        _set_engine(engines, status, "semgrep", present=True, ok=False,
+                    error=f"timeout after {DEFAULT_TIMEOUT}s")
     except Exception as exc:
-        info["semgrep_error"] = str(exc)[:200]
+        _set_engine(engines, status, "semgrep", present=True, ok=False,
+                    error=f"run-failed: {exc}")
 
 
-def _binwalk_scan(path: str, category: str, cmd: str | None, engines: dict, info: dict) -> None:
+def _binwalk_scan(path: str, category: str, cmd: str | None, engines: dict,
+                  status: dict, info: dict) -> None:
     if not cmd or category not in ("binary", "archive"):
-        engines["binwalk"] = False
+        _set_engine(engines, status, "binwalk", present=False, ok=False)
         return
     exe = _which(cmd.split()[0])
     if not exe:
-        engines["binwalk"] = False
+        _set_engine(engines, status, "binwalk", present=False, ok=False)
         return
-    engines["binwalk"] = True
     try:
         rc, out, err = _run(cmd.split() + [path])
+        if rc != 0:
+            _set_engine(engines, status, "binwalk", present=True, ok=False,
+                        error=f"exit={rc}: {(err or out or '').strip()[:150]}")
+            return
         sigs = [ln.strip() for ln in (out or "").splitlines() if re.match(r"^\d+", ln.strip())]
         info["binwalk"] = {"embedded": sigs[:30], "count": len(sigs)}
+        _set_engine(engines, status, "binwalk", present=True, ok=True)
+    except subprocess.TimeoutExpired:
+        _set_engine(engines, status, "binwalk", present=True, ok=False,
+                    error=f"timeout after {DEFAULT_TIMEOUT}s")
     except Exception as exc:
-        info["binwalk_error"] = str(exc)[:200]
+        _set_engine(engines, status, "binwalk", present=True, ok=False,
+                    error=f"run-failed: {exc}")
 
 
 def _external_opts(opts: dict) -> dict:
@@ -705,7 +832,11 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
     category = ftype["category"]
     findings: list[dict] = []
     info: dict = {}
-    engines: dict = {"magic_builtin": True, "magic_lib": ftype.get("mime") not in (None, "application/octet-stream")}
+    # engines[tool] = bool 向后兼容摘要（present and ok）；
+    # 结构化三态在 engine_status：{present, ok, error}（见 _set_engine 注释）。
+    engines: dict = {"magic_builtin": True,
+                     "magic_lib": ftype.get("mime") not in (None, "application/octet-stream")}
+    engine_status: dict = {}
     ext_opts = _external_opts(opts)
 
     text = head.decode("latin-1", "replace")
@@ -714,14 +845,14 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
     if category == "binary":
         _scan_patterns(text, BINARY_SUSPICIOUS, findings, "binary")
         if head.startswith(b"MZ"):
-            _pe_scan(path, head, engines, findings, info)
+            _pe_scan(path, head, engines, engine_status, findings, info)
         elif head.startswith(b"\x7fELF"):
-            _elf_scan(path, head, engines, findings, info)
+            _elf_scan(path, head, engines, engine_status, findings, info)
     if category == "document":
         if head.startswith(b"%PDF"):
             _pdf_scan(head, findings)
         if head.startswith(b"\xd0\xcf\x11\xe0"):
-            _office_scan(path, head, engines, findings)
+            _office_scan(path, head, engines, engine_status, findings, info)
 
     # 可选组件
     eff_rules_dir = rules_dir or opts.get("rules_dir")
@@ -729,13 +860,22 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
         default_rules = os.path.join(_SCRIPT_DIR, "rules")
         if os.path.isdir(default_rules):
             eff_rules_dir = default_rules
-    _yara_scan(path, eff_rules_dir, engines, findings)
-    _fuzzy_hash(path, engines, info)
+    _yara_scan(path, eff_rules_dir, engines, engine_status, findings, info)
+    _fuzzy_hash(path, engines, engine_status, info)
     if category == "binary":
-        _capa_scan(path, ext_opts["capa_cmd"], engines, findings, info)
-    _clamav_scan(path, ext_opts["clamscan_cmd"], engines, findings, info)
-    _semgrep_scan(path, category, ext_opts["semgrep_cmd"], ext_opts["semgrep_config"], engines, findings, info)
-    _binwalk_scan(path, category, ext_opts["binwalk_cmd"], engines, info)
+        _capa_scan(path, ext_opts["capa_cmd"], engines, engine_status, findings, info)
+    else:
+        # capa/binwalk 只对 binary/archive 有意义；其他类别显式记"不适用"，
+        # 保证每个工具的 engine_status 键都存在（消费方不用猜）。
+        _set_engine(engines, engine_status, "capa", present=False, ok=False,
+                    error=f"not-applicable for category '{category}'")
+    _clamav_scan(path, ext_opts["clamscan_cmd"], engines, engine_status, findings, info)
+    _semgrep_scan(path, category, ext_opts["semgrep_cmd"], ext_opts["semgrep_config"],
+                  engines, engine_status, findings, info)
+    _binwalk_scan(path, category, ext_opts["binwalk_cmd"], engines, engine_status, info)
+    if category not in ("binary", "archive"):
+        _set_engine(engines, engine_status, "binwalk", present=False, ok=False,
+                    error=f"not-applicable for category '{category}'")
 
     # ---- hash 情报：单一判定来源（语义见 _payload_threat_hashes 上方注释）----
     # 优先级：payload 情报 > xbits(--stdin) 无情报即视为无命中 > 显式 --hash-intel > 独立 CLI 默认本地名单。
@@ -811,14 +951,17 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
     severities = {f["severity"] for f in findings}
     strong_prefixes = ("yara.", "clamav.", "capa.", "semgrep.", "intel.")
     has_strong = any(f["id"].startswith(strong_prefixes) for f in findings)
-    signed = bool(info.get("pe", {}).get("signed"))
-    if signed and not has_strong:
-        # 已签名 + 只有启发式（导入/字符串/熵）命中：按合法二进制处理，
+    # V-22：只有"可信验证过的签名"才允许降级。本工具不做证书链/信任校验
+    # （signature_verified 恒 False），因此证书表存在（signed_present）绝不构成
+    # 洗白依据——恶意 PE 追加任意 Authenticode blob 不得改变 verdict。
+    signature_verified = bool(info.get("pe", {}).get("signature_verified"))
+    if signature_verified and not has_strong:
+        # 已可信验证 + 只有启发式（导入/字符串/熵）命中：按合法二进制处理，
         # 避免把 kernel32.dll 等系统 DLL 误判为恶意（其导入表天然含注入类 API）。
         verdict = "clean"
         score = min(score, 20)
         findings.append({"id": "pe.signed_dampened", "severity": "low",
-                         "detail": "已签名且仅启发式命中，按合法二进制处理", "weight": 0})
+                         "detail": "签名可信验证通过且仅启发式命中，按合法二进制处理", "weight": 0})
     else:
         if "critical" in severities or score >= 60:
             verdict = "malicious"
@@ -831,13 +974,22 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
         if verdict == "clean" and score >= 25:
             verdict = "suspicious"
 
+    # V-20：外部引擎/解析失败 ≠ "未检出"。degraded 透出"证据不完整"，
+    # 供 xbits/消费方对 completed 文档降低置信度，而不是当作干净。
+    engine_errors = {k: v["error"] for k, v in engine_status.items()
+                     if v.get("present") and not v.get("ok")}
+    degraded = bool(engine_errors)
+
     evidence = [f"{f['id']}[{f['severity']}]" for f in findings]
     evidence.append(f"sha256={file_meta['sha256']}")
     evidence.append(f"category={category}")
     if info.get("pe", {}).get("imphash"):
         evidence.append(f"imphash={info['pe']['imphash']}")
     if "pe" in info:
-        evidence.append(f"signed={info['pe'].get('signed')}")
+        evidence.append(f"signed_present={info['pe'].get('signed_present')}")
+        evidence.append(f"signature_verified={info['pe'].get('signature_verified')}")
+    if degraded:
+        evidence.append("degraded=true")
 
     return {
         "ok": True,
@@ -846,6 +998,8 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
         "type": ftype,
         "verdict": verdict,
         "score": score,
+        "degraded": degraded,
+        "engine_errors": engine_errors,
         "entropy": entropy,
         "printable_ratio": round(printable, 3),
         "strings_sample": strings[:40],
@@ -853,6 +1007,7 @@ def analyze(path: str, rules_dir: str | None = None, opts: dict | None = None) -
         "evidence": evidence,
         "info": info,
         "engines": engines,
+        "engine_status": engine_status,
     }
 
 

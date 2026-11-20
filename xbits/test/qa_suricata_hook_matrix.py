@@ -7,21 +7,30 @@ official-image-based `xbits-suricata` container:
   1. normal Suricata EVE file output (ground truth)
   2. the xbits Suricata EVE-filetype hook -> xbits central engine
 
-Assertions are intentionally strict:
-  * engine SID multiset == EVE SID multiset (no lost / duplicated alerts)
-  * engine SID set == case.require (no unexpected extra rule)
-  * engine SID set is disjoint from case.forbid
+断言分三层（都必须是真语义断言，不接受"能加载/出现子串"）：
 
-The rule coverage gate (`qa_rule_coverage.py`) separately proves every SID in
-every .rules file is named by at least one case.  Together these two checks
-remove the usual blind spots: a rule that never fires, a rule that fires but
-is not forwarded, and an alert that is forwarded twice.
+  * 转发完整性：engine SID multiset == EVE SID multiset（丢/重复都失败）。
+  * 用例断言：require ⊆ engine、forbid ∩ engine = ∅。
+  * 范围断言（本文件修复 V-17 的核心）：
+      - `match: exact` 的用例：**本场景规则集内**的命中必须精确等于 require
+        （`set(engine) & cat_sids == require`）。负例（require 为空）与 web 全量用例
+        使用该模式。
+      - 其余用例：require 之外、forbid 之外的"场景内未声明命中"必须打印
+        `::warning::`，不得只拼进 OK 文案。
+      - 跨场景命中（命中别的规则目录的 SID，如 web 用例命中后门命令参数规则）
+        一律打印 `::warning::`；若用例用 `known_extra` + `known_extra_reason`
+        显式登记，则视为已知重叠，不再重复告警（但仍会打印）。
+  * `--strict-warnings` 把上述 warning 升级为失败；CI 用 warning 模式收集一轮
+    真实数据后再开（TODO 见 qa/QA_REPORT.md C8 跟踪项）。
+
+The rule coverage gate (`qa_rule_coverage.py`) separately covers the 4 scenario
+rule dirs and prints its own honest covered/excluded numbers.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,28 +41,42 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+SID_RE = re.compile(r"\bsid\s*:\s*(\d+)")
+
 CATEGORIES = [
     {
         "name": "dns",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "DNS隧道与带外检测",
         "cases": ROOT / "测试用例" / "cases.json",
         "pcap_dir": ROOT / "测试用例" / "pcap",
     },
     {
         "name": "recon",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "侦察与攻击工具指纹",
         "cases": ROOT / "测试用例" / "recon_cases.json",
         "pcap_dir": ROOT / "测试用例" / "recon_pcap",
     },
     {
         "name": "web",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "Web漏洞利用",
         "cases": ROOT / "测试用例" / "web_cases.json",
         "pcap_dir": ROOT / "测试用例" / "web_pcap",
     },
     {
         "name": "backdoor",
+        "rule_dir": ROOT / "规则检测" / "suricata" / "后门通信",
         "cases": ROOT / "测试用例" / "backdoor_cases.json",
         "pcap_dir": ROOT / "测试用例" / "backdoor_pcap",
     },
 ]
+
+
+def category_sids(rule_dir: Path) -> set[int]:
+    sids: set[int] = set()
+    for path in sorted(rule_dir.rglob("*.rules")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        sids.update(int(x) for x in SID_RE.findall(text))
+    return sids
 
 
 def wait_for_socket(path: Path, timeout: float = 15.0) -> None:
@@ -63,6 +86,25 @@ def wait_for_socket(path: Path, timeout: float = 15.0) -> None:
             return
         time.sleep(0.05)
     raise RuntimeError(f"xbits hook socket did not appear: {path}")
+
+
+def wait_drain(path: Path, stable: float = 0.3, timeout: float = 5.0) -> None:
+    """等 engine 输出不再增长（替代固定 sleep）。
+
+    hook 端是异步写盘：进程 terminate 之前必须确认最后一次收割已经落盘，
+    否则会把"还没来得及写"误判成"丢告警"。
+    """
+    deadline = time.time() + timeout
+    last = -1
+    last_change = time.time()
+    while time.time() < deadline:
+        size = path.stat().st_size if path.exists() else 0
+        if size != last:
+            last = size
+            last_change = time.time()
+        elif time.time() - last_change >= stable:
+            return
+        time.sleep(0.05)
 
 
 def run(cmd: list[str], timeout: int = 120) -> subprocess.CompletedProcess:
@@ -104,6 +146,72 @@ def read_eve_sids(path: Path) -> Counter:
         if isinstance(sid, int):
             sids[sid] += 1
     return sids
+
+
+def evaluate_case(
+    case: str,
+    spec: dict,
+    cat_sids: set[int],
+    eve: Counter,
+    engine: Counter,
+    engine_err: str,
+    default_exact: bool = False,
+) -> tuple[list[str], list[str], list[str]]:
+    """纯函数：返回 (failures, warnings, notes)。便于本地无 docker 自测。
+
+    exact 的默认值由 main() 按用例语义给出：负例（require 为空）与 web 全量用例
+    默认 exact；用例 JSON 里显式写 `match: exact|subset` 可覆盖默认值。
+    """
+    failures: list[str] = []
+    warnings: list[str] = []
+    notes: list[str] = []
+
+    require = {int(x) for x in spec.get("require", [])}
+    forbid = {int(x) for x in spec.get("forbid", [])}
+    known_extra = {int(x) for x in spec.get("known_extra", [])}
+    exact = spec["match"] == "exact" if "match" in spec else default_exact
+
+    if eve != engine:
+        failures.append(f"hook lost/duplicated alerts: EVE={dict(eve)} engine={dict(engine)}")
+    if not require <= set(engine):
+        failures.append(f"missing required sids: {sorted(require - set(engine))}")
+    if forbid & set(engine):
+        failures.append(f"forbidden sids fired: {sorted(forbid & set(engine))}")
+    if known_extra and not (spec.get("known_extra_reason") or "").strip():
+        failures.append("known_extra 必须同时提供 known_extra_reason（登记已知重叠的理由）")
+
+    hits = set(engine)
+    in_scope = hits & cat_sids
+    out_scope = hits - cat_sids
+
+    if exact:
+        if in_scope != require:
+            failures.append(
+                "exact-in-scope mismatch: "
+                f"scope_hits={sorted(in_scope)} require={sorted(require)}"
+            )
+    else:
+        unasserted_in_scope = in_scope - require - forbid
+        if unasserted_in_scope:
+            warnings.append(
+                f"本场景内未声明命中（未在 require/forbid 里）: {sorted(unasserted_in_scope)}"
+            )
+
+    unexplained_out = out_scope - known_extra
+    if unexplained_out:
+        warnings.append(
+            "跨场景命中（属于其它规则目录，用 known_extra+reason 登记或修掉）: "
+            f"{sorted(unexplained_out)}"
+        )
+    if known_extra:
+        notes.append(f"known_extra={sorted(known_extra)} reason={spec.get('known_extra_reason')}")
+        stale = known_extra - hits
+        if stale:
+            warnings.append(f"known_extra 登记项未再出现（需清理）: {sorted(stale)}")
+
+    if any(tag in engine_err for tag in ("bad hook event", "hook accept error", "hook read error")):
+        failures.append(f"engine stderr: {engine_err[-500:]}")
+    return failures, warnings, notes
 
 
 def run_case(
@@ -180,8 +288,8 @@ def run_case(
         if hook.returncode != 0:
             return False, f"{case}: hook run failed rc={hook.returncode}\n{hook.stderr[-2000:]}"
 
-        # Give the listener a moment to drain the final records.
-        time.sleep(0.1)
+        # 轮询到 engine 输出稳定，而不是固定 sleep。
+        wait_drain(engine_out)
     finally:
         engine.terminate()
         try:
@@ -202,13 +310,77 @@ def run_case(
     )
 
 
+def self_test() -> int:
+    """本地（无 docker）验证 evaluate_case 的判定语义。"""
+    cat = {9103001, 9103008, 9103013, 9103015, 9103018, 9103101, 9103102, 9103103, 9103104}
+    web_exact = {"require": [9103015], "forbid": [9103001, 9103008, 9103013, 9103018], "match": "exact"}
+    ok_engine = Counter({9103015: 1})
+    checks: list[tuple[str, bool]] = []
+
+    f, w, _ = evaluate_case("c", web_exact, cat, ok_engine, ok_engine, "")
+    checks.append(("exact 命中恰好等于 require → 无失败", not f and not w))
+
+    extra_in = Counter({9103015: 1, 9103101: 1})
+    f, w, _ = evaluate_case("c", web_exact, cat, extra_in, extra_in, "")
+    checks.append(("exact 场景内多命中 → 失败", bool(f) and any("exact-in-scope" in x for x in f)))
+
+    subset = {"require": [9103015]}
+    f, w, _ = evaluate_case("c", subset, cat, extra_in, extra_in, "")
+    checks.append(
+        ("subset 场景内未声明命中 → warning 而非失败", not f and any("未声明命中" in x for x in w))
+    )
+
+    cross = Counter({9103015: 1, 9104002: 1})
+    f, w, _ = evaluate_case("c", subset, cat, cross, cross, "")
+    checks.append(("跨场景命中 → warning", not f and any("跨场景" in x for x in w)))
+
+    known = {"require": [9103015], "known_extra": [9104002], "known_extra_reason": "web_cmdi 与后门命令参数规则真实重叠"}
+    f, w, _ = evaluate_case("c", known, cat, cross, cross, "")
+    checks.append(("已登记 known_extra → 不再告警", not f and not any("跨场景" in x for x in w)))
+
+    no_reason = {"require": [9103015], "known_extra": [9104002]}
+    f, _, _ = evaluate_case("c", no_reason, cat, cross, cross, "")
+    checks.append(("known_extra 缺 reason → 失败", any("known_extra_reason" in x for x in f)))
+
+    lost = Counter({9103015: 1})
+    f, _, _ = evaluate_case("c", subset, cat, Counter({9103015: 2}), lost, "")
+    checks.append(("丢告警（EVE 2 engine 1）→ 失败", any("lost/duplicated" in x for x in f)))
+
+    f, _, _ = evaluate_case("c", subset, cat, ok_engine, ok_engine, "bad hook event: x")
+    checks.append(("engine stderr 异常 → 失败", any("stderr" in x for x in f)))
+
+    neg = {"require": [], "forbid": [9103001]}
+    neg_hit = Counter({9103101: 1})
+    f, _, _ = evaluate_case("c", neg, cat, neg_hit, neg_hit, "", default_exact=True)
+    checks.append(("负例默认 exact：本场景内任何命中 → 失败", bool(f)))
+
+    f, _, _ = evaluate_case("c", neg, cat, Counter(), Counter(), "", default_exact=True)
+    checks.append(("负例默认 exact：零命中 → 通过", not f))
+
+    bad = 0
+    for name, ok in checks:
+        print(("PASS " if ok else "FAIL ") + name)
+        bad += 0 if ok else 1
+    print(f"\nSELF-TEST: {'PASS' if bad == 0 else 'FAIL'} ({len(checks) - bad}/{len(checks)})")
+    return 0 if bad == 0 else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", default="xbits-suricata")
     parser.add_argument("--xbits", default=str(ROOT / "xbits" / "target" / "release" / "xbits"))
     parser.add_argument("--rules", default=str(ROOT / "xbits" / "rules" / "qa-all.json"))
     parser.add_argument("--categories", default="dns,recon,web,backdoor")
+    parser.add_argument(
+        "--strict-warnings",
+        action="store_true",
+        help="把 ::warning::（未声明命中/跨场景命中）升级为失败；CI 先用默认 warning 模式收集实数",
+    )
+    parser.add_argument("--self-test", action="store_true", help="本地验证判定语义，不需要 docker")
     args = parser.parse_args()
+
+    if args.self_test:
+        return self_test()
 
     image = args.image
     xbits = Path(args.xbits)
@@ -216,14 +388,22 @@ def main() -> int:
     wanted = {x.strip() for x in args.categories.split(",") if x.strip()}
 
     failures: list[str] = []
+    warnings: list[str] = []
+    exact_cases = 0
     total_cases = 0
     for cat in CATEGORIES:
         if cat["name"] not in wanted:
             continue
+        cat_sids = category_sids(Path(cat["rule_dir"]))
         cases = json.loads(Path(cat["cases"]).read_text(encoding="utf-8-sig"))
         pcap_dir = Path(cat["pcap_dir"])
         for case, spec in sorted(cases.items()):
             total_cases += 1
+            require = {int(x) for x in spec.get("require", [])}
+            # 负例（require 为空：整场景规则集都必须沉默）与 web 全量用例默认精确相等；
+            # 其它正例的 forbid 只列了已知风险 SID，不能声称穷举，故默认 subset + warning。
+            default_exact = (not require) or cat["name"] == "web"
+            exact_cases += 1 if (spec.get("match") == "exact" or ("match" not in spec and default_exact)) else 0
             pcap = pcap_dir / f"{case}.pcap"
             if not pcap.is_file():
                 failures.append(f"{cat['name']}/{case}: missing pcap {pcap}")
@@ -241,36 +421,44 @@ def main() -> int:
             observed = json.loads(detail)
             eve = Counter({int(k): v for k, v in observed["eve"].items()})
             engine = Counter({int(k): v for k, v in observed["engine"].items()})
-            require = {int(x) for x in spec.get("require", [])}
-            forbid = {int(x) for x in spec.get("forbid", [])}
-
-            problems = []
-            if eve != engine:
-                problems.append(f"hook lost/duplicated alerts: EVE={dict(eve)} engine={dict(engine)}")
-            if not require <= set(engine):
-                problems.append(f"missing required sids: missing={sorted(require - set(engine))}")
-            if forbid & set(engine):
-                problems.append(f"forbidden sids fired: {sorted(forbid & set(engine))}")
-            bad_err = observed["engine_err"]
-            if "bad hook event" in bad_err or "hook accept error" in bad_err or "hook read error" in bad_err:
-                problems.append(f"engine stderr: {bad_err[-500:]}")
-
-            if problems:
-                failures.append(f"{cat['name']}/{case}: " + "; ".join(problems))
-                print(f"{cat['name']}/{case}: FAIL " + "; ".join(problems), file=sys.stderr)
+            case_failures, case_warnings, notes = evaluate_case(
+                case, spec, cat_sids, eve, engine, observed["engine_err"], default_exact=default_exact
+            )
+            label = f"{cat['name']}/{case}"
+            for note in notes:
+                print(f"{label}: note {note}")
+            for warning in case_warnings:
+                warnings.append(f"{label}: {warning}")
+                print(f"::warning::{label}: {warning}")
+            if case_failures:
+                failures.extend(f"{label}: {p}" for p in case_failures)
+                print(f"{label}: FAIL " + "; ".join(case_failures), file=sys.stderr)
             else:
-                extra = sorted(set(engine) - require)
-                extra_text = f" extra={extra}" if extra else ""
-                print(
-                    f"{cat['name']}/{case}: OK eve={sorted(eve)} engine={sorted(engine)}{extra_text}"
-                )
+                print(f"{label}: OK eve={sorted(eve)} engine={sorted(engine)}")
 
     if failures:
-        print(f"\nSURICATA HOOK MATRIX: FAIL ({len(failures)} failures, {total_cases} cases)", file=sys.stderr)
-        for f in failures:
-            print(" -", f, file=sys.stderr)
+        print(
+            f"\nSURICATA HOOK MATRIX: FAIL ({len(failures)} failures, {total_cases} cases)",
+            file=sys.stderr,
+        )
+        for item in failures:
+            print(" -", item, file=sys.stderr)
         return 1
-    print(f"\nSURICATA HOOK MATRIX: PASS ({total_cases} cases, EVE == engine exactly)")
+
+    if args.strict_warnings and warnings:
+        print(
+            f"\nSURICATA HOOK MATRIX: FAIL (--strict-warnings: {len(warnings)} warnings)",
+            file=sys.stderr,
+        )
+        for item in warnings:
+            print(" -", item, file=sys.stderr)
+        return 1
+
+    print(
+        f"\nSURICATA HOOK MATRIX: PASS ({total_cases} cases, EVE == engine exactly; "
+        f"{exact_cases} cases use in-scope exact equality; "
+        f"{len(warnings)} warnings not asserted as failures — run with --strict-warnings to gate)"
+    )
     return 0
 
 

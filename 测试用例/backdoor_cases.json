@@ -192,11 +192,15 @@
                                      ]
                      },
     "c2_periodic":  {
+                        "note":  "C2 周期性信标（10 次 GET /api/beacon，5s 间隔）的检出由 Zeek 行为脚本 backdoor_c2_score.zeek 断言（见 assert_zeek.py --scenario backdoor-c2）。Suricata 侧不断言命中：9110xxx 信标规则要求 path 为 / 且带 a/f/t/p 或全单字母参数，本 PCAP 是 /api/beacon + 正常浏览器头，故 9110xxx 不应命中；forbid 里的 9104xxx 是方向护栏（WebShell 规则是 EXTERNAL->HOME，本流量是内网->C2）。空 require 是有意的负例，不是漏写。",
+                        "forbid":  [
+                                        9104001,
+                                        9104002,
+                                        9104003,
+                                        9104004
+                                   ],
                         "require":  [
 
-                                    ],
-                        "forbid":  [
-
-                                   ]
+                                    ]
                     }
 }

@@ -23,7 +23,7 @@ Suricata 解包/文件追踪
 | 组件 | 类型 | 能力 | 开关 |
 |---|---|---|---|
 | python-magic | py 库(自动) | 权威 MIME/魔数 | 装了即用 |
-| **pefile** | py 库(自动) | PE 结构：导入/导出、节区熵、编译时间、**imphash/authentihash**、数字签名探测、危险导入映射（注入/反调试/下载/持久化/加解密） | 装了即用 |
+| **pefile** | py 库(自动) | PE 结构：导入/导出、节区熵、编译时间、**imphash/authentihash**、证书表存在性探测（不做信任校验，见签名语义）、危险导入映射（注入/反调试/下载/持久化/加解密） | 装了即用 |
 | **pyelftools** | py 库(自动) | ELF 结构：机器/类型/入口、NEEDED 依赖、静态链接判定 | 装了即用 |
 | yara-python | py 库(自动) | 家族/行为规则 | `--rules-dir DIR` |
 | oletools | py 库(自动) | Office 宏深度解析 | 装了即用 |
@@ -59,14 +59,33 @@ python3 triage/triage.py --stdin --all-engines --rules-dir triage/rules --semgre
   "type": {"category":"binary","magic":"PE executable (MZ)","ext":"exe","mime":"..."},
   "verdict": "malicious|suspicious|clean|unknown",
   "score": 0,
+  "degraded": false,
+  "engine_errors": {},
   "findings": [{"id":"pe.inject_write","severity":"critical","weight":40,"detail":"..."}],
   "evidence": ["pe.inject_write[critical]","sha256=...","category=binary","imphash=..."],
-  "info": {"pe": {"machine","sections","imports","imphash","authentihash","signed",...},
+  "info": {"pe": {"machine","sections","imports","imphash","authentihash",
+                  "signed_present","signature_verified",...},
            "elf": {"machine","type","entry","needed","statically_linked"},
            "fuzzy": {"ssdeep","tlsh"}},
-  "engines": {"pefile":true,"pyelftools":true,"yara":false,"capa":false,...}
+  "engines": {"pefile":true,"pyelftools":true,"yara":false,"capa":false,...},
+  "engine_status": {"pefile":{"present":true,"ok":true,"error":null}, ...}
 }
 ```
+
+**引擎状态 schema（V-20）**：`engines[tool]=bool` 只是向后兼容摘要（= `present and ok`）；
+结构化三态在 `engine_status[tool] = {present, ok, error}`：
+- `present=false`：组件未安装/未启用/对该类别不适用（可选缺失，不算失败）；
+- `present=true, ok=true`：本次真实执行成功（含"执行了且未检出"）；
+- `present=true, ok=false`：执行失败（rc!=0 / 超时 / 解析失败 / 目录或规则缺失）→ 计入顶层
+  `degraded=true` 与 `engine_errors`。**"执行失败"与"扫描通过未检出"严格不同形**。
+
+**签名语义（V-22）**：`info.pe.signed_present` 仅表示 Authenticode 证书表非空（存在性探测，
+可被伪造）；`info.pe.signature_verified` 才表示可信验证——本工具不做证书链/信任校验，
+`signature_verified` 恒为 `false`，因此**证书表存在绝不触发 verdict 降级**（旧 `signed` 字段
+保留仅为兼容，值 = `signed_present`，旧"已签名判 clean"的洗白路径已移除）。
+
+**hash 情报**：`info.intel_source` ∈ `xbits-payload | xbits-payload(none) | local-file | none`、
+`info.intel_hit`、`engines.hash_intel{source,hit}`，见上文"单一判定来源"。
 
 类别 `category`：`binary | script | document | archive | text | other`。
 xbits 默认只对 `binary,script,document,archive` 做 triage（文本/图片等常见噪声跳过）。

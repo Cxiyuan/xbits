@@ -18,16 +18,20 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import ipaddress
 import json
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ipnorm import canonical_ip  # noqa: E402
 
 MODULE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CUSTOM_DIR = os.path.join(MODULE_ROOT, "custom")
 DATA_DIR = os.path.join(MODULE_ROOT, "data")
 
 RX_DOMAIN = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+
 
 # custom 文件名 -> (data 输出名, 校验函数, 语义类型)
 FILES = {
@@ -44,15 +48,12 @@ def norm_domain(v: str) -> str | None:
 
 
 def norm_ip(v: str) -> str | None:
-    v = v.strip()
-    try:
-        return ipaddress.ip_address(v).exploded.lower() if ":" in v else v
-    except ValueError:
-        return None
+    # V-23：与 add.py/query.py 共用 canonical_ip（IPv6 规范压缩式；zone 拒绝）
+    return canonical_ip(v)
 
 
-def read_custom(fname: str, kind: str) -> tuple[list, list]:
-    path = os.path.join(CUSTOM_DIR, fname)
+def read_custom(fname: str, kind: str, custom_dir: str | None = None) -> tuple[list, list]:
+    path = os.path.join(custom_dir or CUSTOM_DIR, fname)
     if not os.path.isfile(path):
         return [], []
     out, bad = [], []

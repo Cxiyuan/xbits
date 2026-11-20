@@ -577,3 +577,117 @@
 **第七轮结论**：R6-1 **已真实闭合**（四个发射点都配对自身事件、hook 两分支按 pair 投递、单测锁定，且行为变化对抑制链路是修正而非回退）；README §10 如实记录 6 项已知限制、未冒充已修；R5-1/R5-2/R5-3、R4-1/R4-2、C1 均未回退。仅剩 R7-1/R7-2 两个低项。
 
 **第七轮复核边界**：未运行 `cargo test`/CI；R6-1 结论为静态代码 + 单测断言核对；"flow_id 必然携带"基于 `HookEvent` 整体搬移的代码路径判断，未运行验证。
+
+---
+
+# 第八轮：C8（测试与 CI 断言真实化）/ C9（Python 三态·签名·IPv6）复核
+
+> 对象：t25（C8）、t26（C9）。只读：未改源码、未推送、未跑 CI、未运行 cargo；**跑了 Python 单测与只读门禁**（DSH 内置 Python 3.12.14），并用系统临时目录做了对抗用例。工作树 `git diff --stat` 共 17 个文件；**`xbits/src` 无改动**（`git diff --stat -- xbits/src` 为空），因此 C1/C2/C3/C4 的 Rust 断言与实现未被本轮触碰。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| C8-1 覆盖门禁如实化 | **Verified** | 实跑输出 `covered 74/17477 (0.4%) \| excluded 11 dirs / 17403 SIDs` + 每目录排除原因；未分类目录/列表腐烂都 FAIL |
+| C8-2 hook 矩阵口径 | **Verified（R8-1）** | exact = 场景内命中集合 == require（负例与 web 默认 exact）；subset 的未声明/跨场景命中 → `::warning::`；`--strict-warnings` 可升级；CI 目前仍 warning 模式 |
+| C8-3 CI 弱断言替换 | **Verified** | 5 处 sleep+grep+kill||true 断言改为 `assert_hook_output.py` 轮询+字段+exit/stderr 校验；stdin 回声测试改 `assert_xbits` 精确计数 |
+| C8-4 双空用例 | **Verified（R8-2）** | `assert_suricata.py` 双空直接 FAIL（对抗实测 exit 1）；4 个 cases 文件 104 个用例均无双重空；c2_periodic 补 forbid+note |
+| C8-5 pefile/YARA 值断言 | **Verified** | PE 断言 machine/subsystem/sections/import_count；ELF 断言 machine/type/entry/statically_linked；YARA 正例必中+负例不中；缺依赖时断言 engines=false 并 skip，CI 双跑 0/1 |
+| C9-1 engines 三态 | **Verified（R8-3/R8-4）** | 10 个工具全部走 `_set_engine(present, ok, error)`；rc!=0/超时/解析失败 → present=True ok=False → `degraded=true`；局部 yara 编译失败与 semgrep JSON errors 仍只记录 |
+| C9-2 signed 拆分 | **Verified** | `signed_present` 存在性 / `signature_verified` 恒 False；降级闸门改用 `signature_verified`（不可达）；测试断言伪证书不洗白 |
+| C9-3 canonical_ip | **Verified** | `allowlist/tools/ipnorm.py` 单一实现；add/refresh/query 全部 import；8 个 IPv6/zone 用例通过 |
+| 回归（C1/C2/C3/C4/C7） | **Verified** | Rust 零改动；C7 门禁实跑 PASS；4 个 cases 文件无双重空 |
+
+## 逐项证据
+
+### C8-1 覆盖门禁 —— **Verified**
+
+- 实跑（只读）：`python xbits/test/qa_rule_coverage.py` → exit 0，逐目录行 `dns/recon/web/backdoor rule_sids=named_by_cases / cases / pcaps`，随后
+  `covered 74/17477 unique SIDs (0.4%) | excluded 11 dirs / 17403 SIDs`，再逐条打印 11 个排除目录的 `files/sids` 与原因；PASS 文案为 "74 of 17477 … excluded by policy … not silently ignored"（`qa_rule_coverage.py:168-187`）。
+- 反隐藏：`on_disk - covered - excluded` 非空 → FAIL（`:98-106`）；`EXCLUDED_RULE_DIRS` 中登记但磁盘不存在 → FAIL（`:100,107-108`）；每类还检查 `uncovered/unknown sid`、`missing/extra pcap`（`:133-151`）。
+- 口径对照：`COVERED_CATEGORIES` 4 项（`:26-51`）、`EXCLUDED_RULE_DIRS` 11 项（`:54-67`）与磁盘目录一一对应；CI 步骤名改为 "Rule coverage gate (asserted sids exercised; excluded dirs printed with reasons)"（`xbits-images.yml:130-131`），不再出现 "all sids"。
+
+### C8-2 hook 矩阵 —— **Verified（含 R8-1）**
+
+- 判定核心 `evaluate_case()`（`qa_suricata_hook_matrix.py:151-212`）：
+  - 基础不变量：`require ⊆ engine`、`forbid ∩ engine = ∅`（`:176-179`）；
+  - `exact`：`set(engine) & 场景SIDs == require`（`:187-192`）；
+  - `subset`：场景内未声明命中与跨场景命中分别进 warnings（`:194-210`），PASS 文案带 warning 数量（`:458-460`）；
+  - `known_extra` 必须带 `known_extra_reason`，否则失败（`:180-181`），且登记项消失也告警（`:208-210`）；
+  - 丢告警（EVE≠engine）与 engine stderr 异常仍失败（self-test `:346-350`）。
+- 实跑 `--self-test` → **PASS 10/10**（含"exact 多命中→失败""subset→warning""跨场景→warning""负例默认 exact""丢告警→失败"）。
+- 默认 exact 的分配：负例（`require` 空）与 `web` 全量默认 exact，其余正例 subset（`:403-406`）——理由写在注释与文件头（forbid 未穷举）。
+- CI 以默认 warning 模式运行（`xbits-images.yml:201-206` 未传 `--strict-warnings`）→ **R8-1**。
+
+### C8-3 CI 弱断言替换 —— **Verified**
+
+- 已替换（grep 全 workflow：断言处无 `sleep 1`+`grep -q 子串`+`kill … || true` 组合）：
+  - `xbits-ci.yml:124-137`：`assert_hook_output.py --file … --timeout 30 --rule-id … --reason … --allow-zero-signature-id --require-fields rule_id,reason,src,dst,proto`，随后断言退出码 ∈ {0,143}、并 grep stderr 的 `bad hook event|hook accept error|hook read error|panicked` → 失败；
+  - `xbits-ci.yml:227-232`：stdin 回声测试改 `assert_xbits.py --source alert-json --expect-count 1 --require-fields signature_id,signature,src,dst,proto,community_id`（第 2 行 flow 不得产生输出 → 计数 1 即证）；
+  - `xbits-ci.yml:465-478`：live 链路 `assert_hook_output.py` + 退出码/stderr 检查；
+  - `xbits-images.yml:272-290`：suricata 与 zeek 两路 `assert_hook_output.py`（分别断言 `signature_id=9103001` 与 `--allow-zero-signature-id`）+ 退出码/stderr。
+- 新脚本 `assert_hook_output.py`：轮询到匹配条数或超时（`:82-99`）；每条匹配行校验必填字段非空（`:114-118`）、`signature_id` 必须 int（`:119-121`）、默认拒绝 0（`:122-123`）；文件缺失/无匹配 → exit 1。
+- 对抗实测（临时目录，非仓库）：zero sid 默认 **FAIL**；加 `--allow-zero-signature-id` **PASS**；`src=""` **FAIL**；无输出超时 **FAIL**。
+- 保留的 `sleep 0.1` 仅在 socket 出现等待循环（有 50/100 次上限，超时明确报错 `xbits-ci.yml:113-119`）与 teardown/log 收集；`kill||true` 只在清理阶段，不再承担断言。
+
+### C8-4 双空用例 —— **Verified（含 R8-2）**
+
+- `测试用例/assert_suricata.py:56-62`：`require` 与 `forbid` 都为空 → 直接 FAIL 并点名（文案说明"恒真"）；`note` 会被打印（`:55,86`）。
+- 对抗实测：合成双空用例 → `c1 FAIL reason=empty require/forbid`，exit 1；合成 `require=[9103001]` + 正确 eve → exit 0。
+- 用例数据：4 个 cases 文件共 23+29+34+18=104 个用例，`double-empty=[]`（脚本核对）；`backdoor_cases.json` 的 `c2_periodic` 已带 `forbid=[9104001..4]` 与 note（UTF-8 JSON 校验通过）。
+- 负例对照：`qa_xbits_context.py` 的 missing/benign 负例已改为"必须有对照告警 xb-zeek-appid-scanner 恰好 1 条 + 不得出现 real rule"，并用轮询替代 `sleep(0.25)`（diff 见 `:110-183`）。
+
+### C8-5 pefile/ELF/YARA 值断言 —— **Verified**
+
+- `triage/tests/test_triage.py`：`minimal_pe()`（`:43-77`）构造合法 PE（含 `.text` 节、Subsystem=3、Machine=I386），`test_pe_enhanced_path_asserts_parsed_fields`（`:178-194`）断言 **值**：`machine=="IMAGE_FILE_MACHINE_I386"`、`subsystem==3`、`sections==[".text"]`、`import_count==0`、`signed/signed_present/signature_verified` 全 False；`minimal_elf()`（`:78-90`）+ `:217-230` 断言 `machine=="x64"`、`type=="ET_EXEC"`、`entry==hex(0x400000)`、`statically_linked`。
+- 缺依赖防空绿：`EXPECT_ENHANCED` 为 1 时先断言依赖存在（`:28-40`）；未装时测试先断言 `engines[tool] is False` 再 skip（`:182-184`、`:221-223`）。CI 双跑 `XBITS_EXPECT_ENHANCED=0` 与 `=1`，增强步骤安装 pefile/pyelftools/yara-python（`xbits-ci.yml:295-302`）。
+- YARA：`validate_rules.py:67-101` 正例必须命中 `webshell_php_eval_superglobal`、负例不得命中任何规则；`total==0` 也失败（`:64-65`）；缺 yara → exit 2（`:27-38`），仅显式 `--allow-missing-yara` 才跳过。
+- 实跑（本机已装 yara）：`validated 6 rule files, 0 bad`；`positive hits: [webshell_common_markers, webshell_php_eval_superglobal]`；`negative hits: []`；exit 0。
+
+### C9-1 engines 三态 —— **Verified（含 R8-3/R8-4）**
+
+- 单一写入口 `_set_engine(engines, status, name, present, ok, error)`（`triage/triage.py:145-149`）：写 `engine_status[name]={present,ok,error}`，`engines[name]=present and ok`。
+- 全工具覆盖（grep `_set_engine(` 共 10 个工具）：pefile（`:265-279`）、pyelftools（`:367-396`）、yara（`:458-505`）、oletools（`:515-548`）、ssdeep/tlsh（`:561-577`）、capa（`:661-692`）、clamav（`:699-734`）、semgrep（`:741-776`）、binwalk（`:783-802`）；not-applicable 的 capa/binwalk 也写 `present=False` + 原因（`:869-878`）。
+- 失败与"未检出"不再同形：
+  - clamav：`FOUND`→ok=True；`rc==0`→ok=True（未检出）；`rc!=0`→ok=False + error（`:709-727`）；超时/异常→ok=False。
+  - capa/binwalk：rc!=0 直接 ok=False（`:670-674`、`:791-794`）；超时/异常 ok=False。
+  - semgrep：`rc!=0 且无输出`→ok=False；有 JSON→ok=True；超时/异常 ok=False（`:750-777`）。
+  - yara：规则目录缺失/读失败/无规则可编译/匹配异常→ok=False（`:460-503`）。
+  - oletools：解析失败→ok=False + `oletools_error` + `office.analysis_failed` 低危 finding（`:520-530`）；扫描异常→ok=False（`:545-548`）。
+- 顶层汇总：`engine_errors = {present and not ok}`，`degraded=bool(...)`（`:979-981`），输出 `degraded`/`engine_errors`/`engine_status` 并追加 `degraded=true` evidence（`:991-1010`）。
+- 单测实跑：`test_engine_status_schema_and_backcompat_summary`、`test_clamav_failure_is_degraded_not_clean`、`test_external_engine_true_only_after_real_success` 等 **26 tests OK (skipped=1)**。
+
+### C9-2 signed 语义 —— **Verified**
+
+- 字段：`info["pe"]["signed_present"]` 仅证书表非空；`signature_verified` 恒 False；旧 `signed` = `signed_present`（`:332-341`）。
+- 降级闸门：`if signature_verified and not has_strong:`（`:957-964`）——当前不可达，证书表存在**绝不**触发 clean/分数封顶；高危证据（`pe.inject_*` 等）不再被伪造 blob 洗白。
+- 测试 `test_signed_present_never_dampens_high_evidence`（`test_triage.py:290-305`）断言 `signature_verified is False` 且 verdict 不为 clean。
+- 文档：`triage/README.md:82-85` 已改写为两字段语义并说明旧 `signed` 仅兼容。
+
+### C9-3 canonical_ip —— **Verified**
+
+- 单一实现 `allowlist/tools/ipnorm.py:21-27`：空/含 `%`（含 `%25`）→ None；否则 `str(ipaddress.ip_address(v)).lower()`（IPv6 压缩式小写、IPv4 原样）。
+- 三处共用：`add.py:20,61-62`、`refresh.py:27,51-52`、`query.py:23,51-61,80-81`（加载与查询双侧同一归一）；旧 `str(ipaddress…)`/`exploded.lower()` 已删除。
+- 单测实跑 `allowlist/tests/test_allowlist.py` → **8 tests OK**（IPv6 小写/v4-mapped、zone 拒绝、add→data→query 三层一致、refresh 拒绝 zone 行）。
+- 文档：`allowlist/README.md:45-46`。
+
+### 回归（C1/C2/C3/C4/C7） —— **Verified**
+
+- **Rust 零改动**：`git diff --stat -- xbits/src` 为空 → C1（intel/min_confidence）、C2（pending/score）、C3（健康计数）、C4（file triage 三态）的实现与单测未被 C8/C9 触碰（这些模块在第五~七轮已逐项 Verified）。
+- **C7**：实跑 `xbits/test/qa_workflow_paths.py` → `CI PATHS: PASS`，exit 0；workflow 的 `paths` 与新增测试文件（`xbits/test/assert_hook_output.py`、`triage/tests/*`、`allowlist/**`）仍在覆盖内。
+- 未被放宽的抽查：`qa_xbits_context.py` 负例从 `len==0` 改为"only control + no real rule"，属**加强**；`assert_suricata.py` 从"双空恒真"改为 FAIL；`test_triage.py` 从"键存在"改为"值断言"——均为收紧而非放宽。
+
+## 本轮新发现（残留，均不阻塞 C8/C9 主结论）
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R8-1 | **medium/low** | `xbits-images.yml:201-206`、`qa_suricata_hook_matrix.py:448-450` | hook 矩阵 CI 仍用默认 warning 模式：subset 口径下"场景内未声明命中/跨场景命中"只告警不失败，`--strict-warnings` 未启用（代码里已写 TODO） | 收集一轮基线后把 CI 切到 `--strict-warnings`，或把当前 warnings 清单固化为 known_extra+reason |
+| R8-2 | **medium/low** | `测试用例/assert_suricata.py:52-88` | `forbid`-only 负例（如 c2_periodic 与 3 个 c2_negative_*）在"规则完全没加载"时也会通过（eve.json 存在但零告警）；目前靠 `suricata -T` 加载校验步骤间接兜底，用例本身无"必中对照" | 给负例加一条场景内必中控制 SID（或全局断言 suricata.log 的 loaded rules 数），与 `qa_xbits_context` 的 control 模式一致 |
+| R8-3 | medium/low | `triage/triage.py:473-507` | yara **部分**规则文件编译失败（`failed_count>0` 但仍有 compiled）时 `_set_engine(..., ok=True)`，`degraded` 不置位；只在 `info.yara_rules_failed/failed` 计数——检测覆盖面已缩小但顶层仍称证据完整 | `failed_count>0` 时置 `ok=False`（或至少 `degraded=true`），让消费方知道规则集不完整；新增单测 |
+| R8-4 | low | `triage/triage.py:755-768` | semgrep JSON 里的 `errors[]` 只写入 `info.semgrep.errors`，`ok=True`；若 semgrep 以 rc≠0 返回带 errors 的 JSON，会被当成"真实执行成功" | `errors` 非空时按失败计（ok=False/degraded），或明确区分 warning 级 errors 并计数 |
+| R8-5 | low | `triage/triage.py:145-149`、`triage/README.md:75-80` | `engines[tool]` 语义由"已安装"变为"present and ok"；Rust 侧不读该字段（`xbits.triage` 原样透传，`analysis.rs:1958`），但外部脚本若按旧语义读会误判"组件缺失" | 保留三态为主，外部消费统一读 `engine_status`；README 已说明，建议再加一行迁移提示 |
+| R8-6 | low | `xbits/test/assert_hook_output.py:48-51` | 坏 JSON 行被静默跳过，只有在匹配数不足时才失败；若告警行被截断，报错是"0 matched"而非"行损坏" | 统计 `json_errors` 并在 >0 时打印/失败（或至少 `::warning::`） |
+
+**第八轮结论**：C8 **已实质修好**（覆盖门禁不再自称全覆盖、hook 矩阵有了纯函数判定与自测、CI 弱断言换成轮询+字段校验、双空用例被拒绝、PE/ELF/YARA 从"存在/可编译"升级为"值/命中"）；C9 **已实质修好**（三态覆盖全部扫描器、失败与未检出不再同形、签名降级只认不可达的 `signature_verified`、IPv6 归一单一实现且三工具共用、单测全过）。剩余 6 项中 **R8-1/R8-2/R8-3** 建议下一轮处理（分别是"warning 未 gate""负例无对照""yara 局部失败不降级"），R8-4~R8-6 择机。
+
+**第八轮复核边界**：未运行 `cargo test`/CI、未跑 docker/pcap e2e；已实跑 Python 单测与只读门禁（结果见上）；对抗用例只写系统临时目录、不触仓库。CI 实际通过与否仍以 GitHub Actions 为准。
