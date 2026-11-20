@@ -826,6 +826,11 @@ impl Engine {
             if !rule.matches(ev) {
                 return false;
             }
+            // 与 make_alert_full 同口径：benign 与 min_confidence 也会让告警被丢弃，
+            // 这些事件不得登记关联等待（R13-2）。
+            if Self::benign(rule, context) {
+                return false;
+            }
             let key = self.group_key(ev, rule);
             let now = Instant::now();
             let accumulated = match self.scores.get(&key) {
@@ -835,6 +840,21 @@ impl Engine {
             .saturating_add(rule.score.max(1).saturating_add(intel_score_bonus));
             if accumulated < rule.threshold.max(1) {
                 return false;
+            }
+            if let Some(minimum) = rule.min_confidence {
+                // 采用最有把握的上界（情报加分 + 可能的关联加分）；上界都达不到门槛
+                // 才确定不会产出告警，避免误登记。
+                let mut best = Self::confidence(context).saturating_add(intel_score_bonus);
+                if ev
+                    .sid
+                    .and_then(|sid| self.success_rules.requests_for(sid))
+                    .is_some()
+                {
+                    best = best.saturating_add(CORRELATION_CONFIDENCE_BONUS);
+                }
+                if best.min(100) < minimum {
+                    return false;
+                }
             }
             !(ev.source.eq_ignore_ascii_case("suricata")
                 && rule.require_context
@@ -1628,6 +1648,46 @@ mod tests {
         assert!(alerts[0].correlated.is_none());
         assert_eq!(eng.correlation_pairs(), 0);
         assert_eq!(eng.correlations_len(), 1);
+    }
+
+    #[test]
+    fn correlation_wait_not_registered_for_benign_or_below_min_confidence() {
+        let rules = SuccessRules::parse(success_json()).unwrap();
+        let mut benign_rule = correlation_rule_for(14030019);
+        benign_rule.benign_uri_contains = vec!["/healthz".into()];
+        let mut eng = Engine::new(vec![benign_rule]).with_success_rules(rules);
+
+        let context = HookEvent {
+            source: "zeek".into(),
+            kind: "event".into(),
+            event: Some("http_request".into()),
+            src: Some("203.0.113.9".into()),
+            dst: Some("10.0.0.80".into()),
+            sport: Some(40001),
+            dport: Some(80),
+            uri: Some("/healthz".into()),
+            ..Default::default()
+        };
+        let _ = eng.process_alerts(&context);
+        let request = corr_event(14030019, "1:cidBenign=");
+        let alerts = eng.process_alerts(&request);
+        assert!(alerts.is_empty(), "benign 上下文必须丢弃告警");
+        assert_eq!(
+            eng.correlations_len(),
+            0,
+            "被 benign 过滤的事件不得登记关联等待（R13-2）"
+        );
+
+        let mut strict_rule = correlation_rule_for(14030019);
+        strict_rule.min_confidence = Some(101);
+        let mut eng2 = Engine::new(vec![strict_rule])
+            .with_success_rules(SuccessRules::parse(success_json()).unwrap());
+        assert!(eng2.process_alerts(&corr_event(14030019, "1:cidMin=")).is_empty());
+        assert_eq!(
+            eng2.correlations_len(),
+            0,
+            "低于 min_confidence 的事件不得登记关联等待（R13-2）"
+        );
     }
 
     #[test]

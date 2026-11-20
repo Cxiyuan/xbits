@@ -257,7 +257,7 @@ def build_pairs() -> dict[str, dict[str, list]]:
     #    content:"FindProxyForURL"; content:"import";
     #    pcre:"/^import\s+[a-zA-Z0-9\x2e_]+\x3b/im" —— 必须有一行以 import 开头 + token + ';'
     pac_ok = b'function FindProxyForURL(url, host) {\nimport proxy.config;\nreturn "DIRECT";\n}\n'
-    pac_bad = b'function FindProxyForURL(url, host) {\n// no import here\nreturn "DIRECT";\n}\n'
+    pac_bad = b'function FindProxyForURL(url, host) {\n// proxy config omitted\nreturn "DIRECT";\n}\n'
     pairs["pac_10010504"] = {
         "pos": wrap("", _response(pac_ok), 40015, "GET", "/wpad.dat", {"User-Agent": UA_NORMAL}, b"", 1.4),
         "neg": wrap("", _response(pac_bad), 40016, "GET", "/wpad.dat", {"User-Agent": UA_NORMAL}, b"", 1.5),
@@ -294,6 +294,24 @@ def generate(out_dir: Path) -> int:
 
 CONFIG_PATH = ROOT / "docker" / "suricata-converter-pcap.yaml"
 PROBE_CONFIG_PATH = ROOT / "docker" / "probe-rules-validate.yaml"
+RULE_ROOT = ROOT / "规则检测" / "suricata"
+# R13-1：规则原文 → 夹具字节的运行时断言字段（见 check_rule_pcap_bytes）
+CONTENT_RE = re.compile(r'content\s*:\s*"((?:[^"\\]|\\.)*)"', re.I)
+PCRE_RE = re.compile(r'pcre\s*:\s*"?(/[^\s;"]+)"?', re.I)
+SID_FIELD_RE = re.compile(r"\bsid\s*:\s*(\d+)")
+FLOW_RE = re.compile(r"\bflow\s*:\s*[^;)]*", re.I)
+BUFFER_TOKENS = (
+    "http.uri.raw", "http_raw_uri", "http.uri", "http_uri", "http.stat_code", "http_stat_code",
+    "http.request_header", "http.response_header", "http.header", "http_header",
+    "http.method", "http_method", "file.data", "file_data",
+    "http.user_agent", "http_user_agent", "http.cookie", "http_cookie",
+)
+BUFFER_ALIAS = {
+    "http_raw_uri": "http.uri.raw", "http_uri": "http.uri", "http_stat_code": "http.stat_code",
+    "http.request_header": "http.header", "http.response_header": "http.header",
+    "http_header": "http.header", "http_method": "http.method", "file_data": "payload",
+    "http_user_agent": "http.user_agent", "http_cookie": "http.cookie",
+}
 RULE_ROOT = ROOT / "规则检测" / "suricata"
 SCENARIO_DIRS = ("DNS隧道与带外检测", "Web漏洞利用", "侦察与攻击工具指纹", "后门通信")
 
@@ -441,6 +459,215 @@ def check_config_vars(
     return failures, notes, stats
 
 
+# ---------------------------------------------------------------------------
+# R13-1：规则原文 ↔ PCAP 字节的运行时断言（不打印自证，失败点名 SID/字段）
+# ---------------------------------------------------------------------------
+
+
+def find_rule_by_sid(rule_root: Path, sid: int) -> tuple[Path | None, int, str]:
+    """在规则产物里按 SID 定位原文（支持跨行的场景规则：sid: 单独一行）。
+
+    返回 (path, 起始行号, 规则全文)；重复 SID 由 qa_converter_semantics 守卫。
+    """
+    for path in sorted(rule_root.rglob("*.rules")):
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        start = -1
+        buf: list[str] = []
+        for ln, raw in enumerate(lines, 1):
+            stripped = raw.strip()
+            if stripped.lower().startswith(("alert", "drop", "reject", "pass")):
+                start = ln
+                buf = [stripped]
+                # 不 continue：单行规则的 sid 就在本行，需要立刻检查
+            else:
+                if start < 0:
+                    continue
+                if stripped:
+                    buf.append(stripped)
+            m = SID_FIELD_RE.search(stripped)
+            if m and int(m.group(1)) == sid:
+                return path, start, " ".join(buf)
+            if stripped.endswith(")") or (m and SID_FIELD_RE.search(stripped)):
+                start = -1
+                buf = []
+    return None, 0, ""
+
+
+def decode_snort_content(raw: str) -> bytes:
+    """把 Suricata content 值解成字节：|hex| 逐字节展开，其余按 latin-1（含 \\" 转义）。"""
+    out = bytearray()
+    i = 0
+    while i < len(raw):
+        if raw[i] == "|":
+            j = raw.find("|", i + 1)
+            if j < 0:
+                out.extend(b"|")
+                i += 1
+                continue
+            digits = re.sub(r"\s+", "", raw[i + 1 : j])
+            out.extend(bytes.fromhex(digits))
+            i = j + 1
+            continue
+        if raw[i] == "\\" and i + 1 < len(raw) and raw[i + 1] in ('"', "\\"):
+            out.extend(raw[i + 1].encode("latin-1"))
+            i += 2
+            continue
+        out.extend(raw[i].encode("latin-1"))
+        i += 1
+    return bytes(out)
+
+
+def extract_rule_expectations(rule_line: str) -> dict:
+    """从规则原文抽取可比对字段：buffer / flow 方向 / content 字节 / pcre 列表。"""
+    low = rule_line.lower()
+    flow_m = FLOW_RE.search(low)
+    flow_text = flow_m.group(0) if flow_m else ""
+    direction = "server_to_client" if ("to_client" in flow_text or "from_server" in flow_text) else "client_to_server"
+    buffer = "payload"
+    for token in BUFFER_TOKENS:
+        if token in low:
+            buffer = BUFFER_ALIAS.get(token, token)
+            break
+    contents = [decode_snort_content(x) for x in CONTENT_RE.findall(rule_line)]
+    pcre_list = []
+    for raw in PCRE_RE.findall(rule_line):
+        m = re.match(r"^/(.*)/([a-zA-Z]*)$", raw)
+        if not m:
+            continue
+        flags = 0
+        known = True
+        for f in m.group(2):
+            flags |= {"i": re.I, "s": re.S, "m": re.M, "x": re.X}.get(f.lower(), 0) or 0
+            if f.lower() not in ("i", "s", "m", "x"):
+                known = False
+        if known:
+            pcre_list.append((m.group(1), flags))
+    return {
+        "buffer": buffer,
+        "direction": direction,
+        "contents": contents,
+        "pcre": pcre_list,
+        "has_lua": "lua:" in low,
+    }
+
+
+def pcap_streams(path: Path) -> tuple[bytes, bytes]:
+    """scapy 读回 PCAP，按端点角色分成 (客户端→服务端, 服务端→客户端) 两股字节流。"""
+    from scapy.all import rdpcap, TCP, Raw
+
+    req = bytearray()
+    resp = bytearray()
+    for pkt in rdpcap(str(path)):
+        if not pkt.haslayer(TCP) or not pkt.haslayer(Raw):
+            continue
+        tcp = pkt[TCP]
+        data = bytes(pkt[Raw].load)
+        if tcp.sport in (80, 443) and tcp.dport >= 1024:
+            resp.extend(data)
+        else:
+            req.extend(data)
+    return bytes(req), bytes(resp)
+
+
+def buffer_stream(buffer: str, req: bytes, resp: bytes) -> bytes:
+    """按 sticky buffer 选择待比对字节流（归一化 URI / 方法 token / 原始流）。"""
+    import urllib.parse
+
+    if buffer in ("http.uri", "http.uri.raw"):
+        first = req.split(b"\r\n", 1)[0]
+        path = first.split(b" ", 2)[1] if b" " in first else b""
+        if buffer == "http.uri":
+            path = urllib.parse.unquote(path.decode("latin-1")).encode("latin-1")
+        return path
+    if buffer == "http.method":
+        first = req.split(b"\r\n", 1)[0]
+        return first.split(b" ", 1)[0]
+    return resp  # 响应方向（stat_code / payload / header 等）由 direction 决定传入 resp
+
+
+def check_rule_pcap_bytes(
+    pcap_dir: Path,
+    rule_root: Path = RULE_ROOT,
+    cases: tuple | None = None,
+    verbose: bool = True,
+) -> tuple[list[str], list[str], dict]:
+    """把规则原文的关键字节与 PCAP 载荷逐项比对：pos 必含、neg 必缺一，失败点名 SID/字段。
+
+    返回 (failures, notes, stats)。不依赖 suricata / docker，CI 在 --eve-root 之前跑。
+    """
+    failures: list[str] = []
+    notes: list[str] = []
+    checked = 0
+    for case, sid, expected_buffer, desc in (cases if cases is not None else CASES):
+        rule_path, ln, rule_line = find_rule_by_sid(rule_root, sid)
+        if not rule_path:
+            failures.append(f"{case} sid={sid}: 规则产物中找不到 SID（rule_root={rule_root}）")
+            continue
+        exp = extract_rule_expectations(rule_line)
+        # buffer 一致性：规则原文抽出的 buffer 必须与 CASE 标注一致（防夹具与规则漂移）
+        if exp["buffer"] != expected_buffer:
+            failures.append(
+                f"{case} sid={sid}: buffer 不一致 CASE={expected_buffer} 规则原文={exp['buffer']} "
+                f"({rule_path.name}:{ln})"
+            )
+        if not exp["contents"] and not exp["pcre"]:
+            failures.append(f"{case} sid={sid}: 规则原文没有可比对 content/pcre（{rule_path.name}:{ln}）")
+            continue
+
+        for label, expect_hit in (("pos", True), ("neg", False)):
+            pcap = pcap_dir / f"{case}__{label}.pcap"
+            if not pcap.is_file():
+                failures.append(f"{case}/{label}: PCAP 不存在 {pcap}")
+                continue
+            req, resp = pcap_streams(pcap)
+            stream = buffer_stream(exp["buffer"], req, resp)
+            # 方向一致性：to_client/from_server 的断言字节应在响应流；to_server 在请求流
+            target = resp if exp["direction"] == "server_to_client" else req
+            if exp["buffer"] in ("http.uri", "http.uri.raw", "http.method"):
+                target = stream  # URI/方法已从对应流切出
+            missing_content = [c for c in exp["contents"] if c not in target]
+            missing_pcre = []
+            for pat, flags in exp["pcre"]:
+                try:
+                    if re.search(pat, target.decode("latin-1"), flags) is None:
+                        missing_pcre.append(pat)
+                except re.error as exc:
+                    failures.append(f"{case}/{label} sid={sid}: pcre 无法解析 {pat!r}: {exc}")
+            all_present = not missing_content and not missing_pcre
+            if expect_hit and not all_present:
+                fails = []
+                if missing_content:
+                    fails.append("content=" + ",".join(c.hex() for c in missing_content))
+                if missing_pcre:
+                    fails.append("pcre=" + ",".join(missing_pcre))
+                failures.append(f"{case}/pos sid={sid}: 规则关键字节在 PCAP 中缺失（{' | '.join(fails)}）")
+            if (not expect_hit) and all_present:
+                failures.append(
+                    f"{case}/neg sid={sid}: 负例 PCAP 仍满足规则全部关键字节（content+pcre 全中），"
+                    "负例失效"
+                )
+            checked += 1
+
+        # lua 上下文（从规则原文抽取）：挂了 sqli_context.lua 的规则要求解码 URI 里 union+select
+        if exp["has_lua"] and exp["buffer"] == "http.uri":
+            for label in ("pos", "neg"):
+                pcap = pcap_dir / f"{case}__{label}.pcap"
+                if not pcap.is_file():
+                    continue
+                req, _ = pcap_streams(pcap)
+                uri = buffer_stream("http.uri", req, b"").decode("latin-1").lower()
+                if not re.search(r"union\s+select", uri):
+                    failures.append(
+                        f"{case}/{label} sid={sid}: 规则含 lua:sqli_context.lua 但解码 URI 无 SQL 上下文"
+                        f"（{uri!r}）"
+                    )
+
+    stats = {"checked": checked, "cases": len(cases if cases is not None else CASES)}
+    if verbose:
+        notes.append(f"规则原文 ↔ PCAP 字节：{checked} 组（{stats['cases']} cases × pos/neg）")
+    return failures, notes, stats
+
+
 def self_test() -> int:
     """自测：4 条正例 + 4 条负例；负例必须 FAIL 且点名关键变量。"""
     checks: list[tuple[str, bool, str]] = []
@@ -510,11 +737,102 @@ rule-files:
         ("负例：多出未登记来源的规则文件 → FAIL", any("未登记来源" in x for x in f), str(f))
     )
 
+    # --- R13-1 规则原文 ↔ PCAP 字节运行时断言的自测（不依赖 CI/docker） ---
+    import tempfile
+    from scapy.all import wrpcap, rdpcap, TCP, Raw
+
+    byte_tmp = Path(tempfile.mkdtemp(prefix="pcap-bytes-"))
+    for case, d in build_pairs().items():
+        for kind, packets in d.items():
+            wrpcap(str(byte_tmp / f"{case}__{kind}.pcap"), packets)
+
+    # R13-1 要求至少覆盖的 5 组必须都在 CASES 里（否则字节断言会漏掉）
+    case_sids = {sid for _, sid, _, _ in CASES}
+    required_sids = {14010049, 13060038, 10020245, 10010504, 11021334}
+    checks.append(
+        (
+            "字节断言覆盖：5 个必需 SID 全在 CASES 中",
+            required_sids <= case_sids,
+            str(sorted(required_sids - case_sids)),
+        )
+    )
+
+    f, _, st = check_rule_pcap_bytes(byte_tmp, verbose=False)
+    checks.append(
+        (
+            "字节断言：9 组 pos/neg 规则原文↔PCAP 全匹配 → 通过",
+            not f and st["checked"] >= 10,
+            str(f[:2]),
+        )
+    )
+
+    # 负例：改坏 stat_13060038__pos 的 shebang 首字节（# -> X）→ 必须 FAIL 点名 SID/content
+    broken = byte_tmp / "stat_13060038__pos.pcap"
+    pkts = rdpcap(str(broken))
+    changed = 0
+    for pkt in pkts:
+        if pkt.haslayer(TCP) and pkt.haslayer(Raw) and b"#!/bin/bash" in bytes(pkt[Raw].load):
+            data = bytes(pkt[Raw].load)
+            pkt[Raw].load = data.replace(b"#!/bin/bash", b"X!/bin/bash", 1)
+            changed += 1
+            break
+    wrpcap(str(broken), pkts)
+    f2, _, _ = check_rule_pcap_bytes(
+        byte_tmp,
+        cases=(("stat_13060038", 13060038, "http.stat_code", ""),),
+        verbose=False,
+    )
+    checks.append(
+        (
+            "字节断言负例：改坏一个 PCAP 字节 → FAIL 点名 SID/content",
+            changed == 1 and any("13060038" in x and "content" in x for x in f2),
+            f"changed={changed} fails={f2[:2]}",
+        )
+    )
+
+    # 负例：改坏规则原文里的关键 content（临时 rule_root）→ 必须 FAIL 点名 SID
+    rule_tmp = Path(tempfile.mkdtemp(prefix="pcap-rules-"))
+    rp, rln, rtext = find_rule_by_sid(RULE_ROOT, 14010049)
+    if rp:
+        mutated = rtext.replace('content:"/e/tool/gbook/?bid=1"', 'content:"/e/tool/gbook/?bid=9"')
+        (rule_tmp / "mutated.rules").write_text(mutated + "\n", encoding="utf-8")
+        f3, _, _ = check_rule_pcap_bytes(
+            byte_tmp,
+            rule_root=rule_tmp,
+            cases=(("uri_14010049", 14010049, "http.uri", ""),),
+            verbose=False,
+        )
+        checks.append(
+            (
+                "字节断言负例：规则原文 content 改一个字节 → FAIL 点名 SID",
+                any("14010049" in x and "缺失" in x for x in f3),
+                str(f3[:2]),
+            )
+        )
+
     bad = sum(1 for _, ok, _ in checks if not ok)
     for name, ok, detail in checks:
         print(("PASS " if ok else "FAIL ") + name + ("" if ok else f"  [{detail[:180]}]"))
     print(f"\nSELF-TEST: {'PASS' if bad == 0 else 'FAIL'} ({len(checks) - bad}/{len(checks)})")
     return 0 if bad == 0 else 1
+
+
+def run_rule_byte_check(pcap_dir: Path) -> int:
+    """主流程入口：打印规则原文↔PCAP 字节断言结果；FAIL 点名 SID/字段并返回 1。"""
+    if not RULE_ROOT.is_dir():
+        print(f"FAIL: 规则产物目录不存在 {RULE_ROOT}", file=sys.stderr)
+        return 1
+    failures, notes, stats = check_rule_pcap_bytes(pcap_dir)
+    print("== 规则原文 ↔ PCAP 字节断言（R13-1）==")
+    for n in notes:
+        print(" -", n)
+    if failures:
+        print("\nRULE-BYTE CHECK: FAIL", file=sys.stderr)
+        for item in failures:
+            print(" -", item, file=sys.stderr)
+        return 1
+    print(f"\nRULE-BYTE CHECK: PASS ({stats['checked']} 组 pos/neg，逐字段比对规则原文与 PCAP 载荷)")
+    return 0
 
 
 def main() -> int:
@@ -526,7 +844,12 @@ def main() -> int:
         action="store_true",
         help="静态检查合并配置：规则头引用的 $VAR 是否都在 vars 中定义（无需 suricata）",
     )
-    parser.add_argument("--self-test", action="store_true", help="静态检查的自测（含负例）")
+    parser.add_argument(
+        "--check-rule-bytes",
+        action="store_true",
+        help="运行时断言：按 SID 读规则原文，与生成的 PCAP 载荷逐字节比对（pos 必含/neg 必缺）",
+    )
+    parser.add_argument("--self-test", action="store_true", help="静态检查 + 字节断言自测（含负例）")
     parser.add_argument(
         "--eve-root",
         default=None,
@@ -570,6 +893,9 @@ def main() -> int:
         )
         return 0
 
+    if args.check_rule_bytes:
+        return run_rule_byte_check(OUT_DIR)
+
     if args.list:
         print("用例清单（SID × buffer × 正/负）：")
         for case, sid, buffer, desc in CASES:
@@ -579,9 +905,19 @@ def main() -> int:
         return 0
 
     if args.generate:
-        return generate(OUT_DIR)
+        rc = generate(OUT_DIR)
+        if rc:
+            return rc
+        # R13-1：生成后立刻做规则原文↔PCAP 字节断言（CI 的 generate 步骤会跑到）
+        return run_rule_byte_check(OUT_DIR)
 
     if args.eve_root:
+        # R13-1：断言 EVE 命中前先核对夹具字节（CI 的 hit-regression 步骤会跑到），
+        # 防止"EVE 恰好命中但夹具与规则不匹配"的自证式绿。
+        byte_rc = run_rule_byte_check(OUT_DIR)
+        if byte_rc:
+            print("规则原文↔PCAP 字节断言失败：拒绝继续 EVE 命中断言", file=sys.stderr)
+            return byte_rc
         import json
         import os
 

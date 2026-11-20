@@ -959,3 +959,80 @@
 **第十二轮结论**：V-11/V-12/V-13/V-15 **已实质修好**；V-14 链路静态完整但须 CI 新 binary 实跑（本地旧 binary 无法验）；**V-10 仅 Partially**——活动规则已清零、dangling 误删已根治，但转换规则库仍有 676 处回绑定且门禁允许基线不收缩（R12-1）。R12-1/R12-3 建议下一轮优先。
 
 **第十二轮复核边界**：未运行 `cargo test`/CI、未跑 docker/PCAP 实命中；所有"门禁过"结论来自本地 Python 执行与临时目录对抗；Rust 相关（V-12 三测试、V-14 配对/计数）为静态代码核对，以 CI 为准。
+
+---
+
+# 第十三轮：C5/C6 收口复核（t42~t48 增量）
+
+> 只验第十二轮之后的增量与回归，不重复已验内容。只读；跑 Python 门禁/自测，未跑 cargo/CI/docker。CI 双绿（commit `1374b4d`）按依赖结果采信，未本地复跑。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| V-10 棘轮对称 / baseline | **Verified** | `fixed` 也进 failures（`qa_converter_semantics.py:442-449`）；实跑 A=676 与 baseline 676 **相等**、0 新增 0 修复；20 条抽样结构齐全；`dangling-http-uri` 仍不在 reason 集 |
+| V-11/V-12/V-13 抗重生 | **Verified** | t46/t48 重生后 B=0、C=0；共享真源与 Python 契约 17 例仍 OK；stat_code 边界与 lua 前置未被破坏 |
+| V-14 增量（cid / 发告警才登记 / 多 sid） | **Verified（含 R13-2）** | key 含 community_id；`emits_alert` 预检后再登记/消费；同一 key 保留 request_sids 集合；no-sink 自测 6/6。但预检未覆盖 `benign`/`min_confidence`，严格说仍可能为非发出的事件登记 |
+| t46/t48 端口方向 + 报告 | **Verified** | 门禁 D=0、独立扫描目的端口服务表达残留 0（DHCP 例外）、`conversion_report.json` 断言拒绝 0；18 个 PCAP（9 对）包含端口组变量与数字 443 两种 |
+| PCAP 回归真实性 | **Verified（含 R13-1）** | 夹具关键字节来自规则原文（代码注释逐条引用），负例是"近似但错"而非空负载；EVE 断言独立读 sid；但 t48 依赖的"已核对"只是打印文案，非运行时校验 |
+| 回归（C1/C2/C3/C4/C7/C8/C9/R8/R9/R10） | **Verified** | 全部 Python 门禁绿：`qa_workflow_paths`/coverage/hook matrix/semantics/gaps/pcap/success/triage/allowlist |
+| 已知限制清单 | **Partially** | README §11 仍停在第六轮 6 项、QA_REPORT 无 R9/R11/R12 条目；实际未修项明显更多（R13-3） |
+
+## 逐项证据
+
+### V-10 棘轮对称与 baseline —— **Verified**
+
+- `qa_converter_semantics.py:434-449`：`new` 与 `fixed` **都** append 到 `failures`，fixed 分支注明"必须同步收缩 baseline"（R12-1 已修）；"棘轮==基线"打印只在 `not new` 时执行（`:450-454`），不再掩盖收缩。
+- self-test 13/13（含 A/B/C/D 正/负例）；实跑输出 `A=676`、`A 棘轮：违规集合 == 基线（676 处锁死；0 新增）`、`B=0`、`C=0`、`D=0`、账本闭合，`CONVERTER SEMANTICS: PASS`。`converter_semantics_baseline.json` 恰 676 条；随机抽 20 条均有 `file/line/sid` 三元组（门禁本身做全量集合相等，强于抽样）。
+- `semantic_gaps.json` 的 18 个 reason 中**无** `dangling-http-uri`，新判定仍为"buffer 无后继且无前置命中"（`convert_probe_rules.py:409-420`，第十二轮已验，未见回退）。
+
+### V-11/V-12/V-13 抗重生 —— **Verified**
+
+- t46/t48 重生成后：门禁 B（stat_code 段中毒）=0、C（lua-without-buffer）=0；`buffer_aliases.json` 仍存在且 Python `unittest discover` 17 例（含 `SharedAliasesContractTests` 4 例）全过；schema 与 raw 不塌缩契约未回退。
+- 这两项在第十二轮已逐条验过（stat_code 5 条抽样、15 条 raw primary、978 条 lua 拒绝明细），本轮只确认增量重生未破坏，结论沿用。
+
+### V-14 增量 —— **Verified（含 R13-2）**
+
+- **cid 参与 key**：`engine.rs:365-372 correlation_key()` 显式把 `community_id` 拼入，注释说明"只按 5 元组会让同端点不同会话误配"。
+- **只在"发告警"时操作**：`:822-854` 新增 `emits_alert` 预检（规则命中 + 累计分达 threshold + 非"require_context 缺上下文"），仅当为真才 `consume_correlation`/`record_correlation_wait`。
+- **同 key 多请求 sid**：`CorrelationWait.request_sids` 改为集合（`:920-931` 去重追加），`consume_correlation()` `:965-968` 用 `deps ∩ request_sids` 匹配并消费整条等待；R12-3 的两处缺口均已处理。
+- **CI 与 no-sink**：`qa_xbits_success_rules.py --self-test` **6/6**（新增"run_engine_full 不配置分析 sink"，`:254-259`；no-sink 断言 `:346-370`）；配对/对照/坏配置 e2e 以依赖方在 `1374b4d` 的 CI 实跑为准（本地旧 binary 不复核）。
+- **R13-2**：`emits_alert` 预检（`:825-842`）**没有**应用 `make_alert_full` 中的 `benign`（`:627`）与 `min_confidence`（`:653-657`）门槛；因此仍可能为一条最终被过滤掉的请求事件登记等待，与"只在实际发告警时登记/消费"的严格表述有差距。
+
+### t46/t48 端口方向与转换报告 —— **Verified**
+
+- 门禁 D 只判端口组变量（`qa_converter_semantics.py:60-70`），实跑 **0**；self-test 13/13 含 D 四条（变量残留违规/from_server 违规/已在源侧/to_server 正常/数字端口不在此断言）。
+- 数字端口由转换器承接：`convert_probe_rules.py:466-471`（服务端口表达识别 + `CLIENT_PORT_ALLOW` DHCP 68 例外）、`:505-510`/`:870-871`（翻不过来就拒绝生成并记账）。`规则检测/xbits/规则库元数据/conversion_report.json`：`to_client_total=6532`、`flipped=6419`、`already_ok=113`、**`to_client_port_direction_assertions=0` 且 sid 列表为空**。
+- 独立扫描（自写脚本）：全库 `flow:to_client|from_server` 规则的目的端口为 `any`/客户端端口/允许例外，服务端口表达残留候选 **0**。
+
+### PCAP 回归真实性 —— **Verified（含 R13-1）**
+
+- `build_pairs()` 产出 **9 case × {pos,neg} = 18 个 PCAP**（脚本核对）；覆盖 http.uri / http.uri.raw / http.header / http.method / http.stat_code / payload + t46/t48 新增的 JspSpy（端口组变量）/ PAC（from_server 变量）/ TLS 重协商（数字 443）。
+- "非自证"证据：夹具关键字节逐条来自规则原文并在代码注释中引用——stat 的 `#!/bin/bash`（`qa_converter_pcap_regression.py:214-236`，负例换成 `/bin/sh` 而非删 body）、JspSpy 的 `<html><head><title>JspSpy`（`:246-254`）、PAC 的 `FindProxyForURL` + `import proxy.config;`（`:256-264`）、TLS magic `7a81e787…`（`:266-274`）；断言侧 `:594-609` 独立读 EVE 的 `alert.signature_id`，pos 必中、neg 必不中、文件缺失即 FAIL。不是"改期望换绿"：t45→t46/t48 的改动是**规则头翻向源端口**后把夹具客户端端口从 8080 还原为临时端口（注释 `:221-229`），方向相反地更严格。
+- tls 规则现文核对：`规则检测/suricata/Web攻击/Web服务漏洞/web.rules:811` 为 `alert tcp any 443 -> any any (... sid:11021334; ...)`，与夹具一致。
+- **R13-1**：`--list`/`--eve-root` 打印 "[t48 依赖已满足] … 已核对"（`:576-577`、`:592-593`），但代码里**没有**对规则头的运行时校验，只是文案；真正的保证来自上一条规则头现状与 EVE pos 断言。建议加一次真实规则头断言，或去掉"已核对"措辞。
+
+### 回归 —— **Verified**
+
+- 实跑全绿：`qa_workflow_paths.py`（新文件均在 paths 覆盖内）、`qa_rule_coverage.py`（74/19447）、`qa_suricata_hook_matrix.py --self-test`（12/12）、`qa_converter_semantics.py`（13/13 + 门禁）、`qa_semantic_gaps_gate.py`（13/13 + 门禁，18 reason）、`qa_converter_pcap_regression.py --self-test`（9/9）、`qa_xbits_success_rules.py --self-test`（6/6）、`triage/tests/test_triage.py`（OK）、`allowlist/tests/test_allowlist.py`（OK）。
+- C1/C2/C3/C4 的 Rust 实现与本轮增量无关；本轮未出现删除/放宽既有断言的情况（各自测数量只增不减）。
+
+### 已知限制清单核对 —— **Partially**
+
+- `xbits/README.md:494-510` 的 `## 11. 已知限制（low，尚未修复）` **仍只列第六轮的 6 项**（R6-2/R6-3/R6-4/R5-4/R5-5/R5-6），文字也仍写"在第六轮 QA 中确认"；`qa/QA_REPORT.md` 无 R9-x/R11-x/R12-x 条目。
+- 实际仍未修（本轮核对仍在）：R5-4/5/6、R6-2/3/4、R8-4/5/6、R9-2/3/4/5、R11-1、R12-2、R12-4（hook 故障消息仍无关联计数，`hook.rs:209-220`）、R12-5（`规则检测/README.md:22` 仍称 `zeek/威胁情报/` 存在）、R12-6（`xbits/README.md:389-420` 与 `:456-490` 两个 success_rules 章节）、R12-7（每类 buffer 仍仅 1 对 PCAP）、R13-1/R13-2。
+- 未发现"把未修项写成已修"的反向造假；问题是**清单严重不完整**，读者会低估残余风险。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R13-1 | low | `xbits/test/qa_converter_pcap_regression.py:576-577,592-593` | "t48 依赖已核对"是纯打印，无运行时规则头校验 | 断言 `sid:11021334` 所在规则头为 `any 443 -> any any`，否则 FAIL；或删除"已核对"措辞 |
+| R13-2 | medium/low | `engine.rs:825-842` vs `:627,653-657` | `emits_alert` 预检未含 `benign`/`min_confidence`，仍可能给被过滤的请求事件登记等待 | 把这两个门槛纳入预检，或把登记移到实际 `out.push` 之后 |
+| R13-3 | medium/low | `xbits/README.md:494-510`、`qa/QA_REPORT.md` | 已知限制清单停在第六轮，遗漏 R8/R9/R11/R12 十余项未修项 | 按上表补全清单并注明轮次；QA_REPORT 增"未修项索引" |
+
+## 收口结论
+
+**C5/C6 可关闭**：V-10（棘轮对称、baseline 全等、dangling 未换皮）、V-11/12/13（抗重生）、V-14（cid key + 发告警才登记 + 多 sid，且 CI 已双绿）、V-16/V-18 端口方向与 PCAP 18 文件回归均已 Verified；回归门禁全绿。**剩余为已知限制**：R5-4/5/6、R6-2/3/4、R8-4/5/6、R9-2/3/4/5、R11-1、R12-2/4/5/6/7，加上本轮 R13-1/2/3；其中 **R13-2、R13-3** 建议优先。
+
+**第十三轮复核边界**：未运行 `cargo test`/CI/docker；CI 双绿按依赖结果（commit `1374b4d`）采信；所有"PASS"均为本地 Python 门禁/自测输出或静态代码核对。

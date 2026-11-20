@@ -491,22 +491,93 @@ CI 断言：`xbits/test/qa_xbits_success_rules.py`（接 `xbits-ci.yml`）— �
 `correlated` + 对照无关联、只响应无请求不关联、坏配置非零退出；TTL 真等待（121s）
 用 `--with-ttl-wait` 显式开启以免拖慢日常 CI，TTL 本体由 `engine.rs` 单测覆盖。
 
-## 11. 已知限制（low，尚未修复）
+## 11. 已知限制（尚未修复）
 
-以下项在第六轮 QA 中确认为 low 级遗留，**尚未修复**，在此如实记录（不隐藏，也不冒充已修）：
+以下为历轮 QA（第五～十三轮）确认的遗留项，逐条如实记录（不隐藏，也不冒充已修）。
+每条给出一句准确描述与影响面；详细证据见 `qa/FIX_REVIEW.md` 对应轮次、`qa/QA_REPORT.md`。
+本清单随修复进度更新：绝大多数**尚未修复**；第十三轮中已在本轮修复的项标注
+"已修复（本轮）"，仍列出以留存历史审计轨迹，但不计入待修数。
 
-- **R6-2 hook 接线缺 Unix socket 集成测试**：`hook.rs` 的 listener / `read_timeout` / 定时维护逻辑
-  只有编译期覆盖；e2e（`qa_*.py`）走整链，不断言 listener 内部的维护节拍与半行缓冲行为。
-- **R6-3 accept 持续连接可饿死 tick**：listener 一次只服务一条连接；若客户端长期占住连接且持续有数据，
-  accept 轮询侧的维护 tick 不会执行（该连接的 `read_timeout` 仍提供维护，只是"无连接侧 tick"被推迟）。
-- **R6-4 pending 单行长度无上限**：`serve_stream` 的行缓冲按换行切分，没有单行最大长度限制；
-  异常客户端发送超长且无换行的数据会持续占用内存（现有 Suricata/Zeek 插件不会这样做）。
+### 引擎状态机与计数（第五～六轮）
+
 - **R5-4 `threshold > score` 无加载期校验**：引擎不会在加载规则时提示"`threshold > score` 但未声明
   `score_window_sec`"；只靠本文档约定与单测保证（当前 `xbits/rules/*.json` 无此类规则）。
-- **R5-5 引擎计数仅故障消息导出**：`engine_*` 计数只出现在 hook listener 的故障消息里（且需要挂载分析
-  流水线、在其不可用时才打印）；没有独立的 metrics/周期输出接口，正常运行时只能从 TTL 日志观察。
-- **R5-6 degraded 与 intel 同时命中时 reason 取 intel**：降级告警若同时带情报决策，`reason` 为 `intel-*`；
-  降级标记仍保留在 `xbits.degraded` 字段与 `evidence`（`degraded=…`）里，但下游需并读 `reason` 与
-  `degraded` 两个字段，才能同时看出"情报决策 + 上下文缺失/pending 溢出降级"。
+  *影响面*：误配只能靠 `scores_expired` 间接察觉，无法在部署前拦截。
+- **R5-5 引擎计数仅故障消息导出**：`engine_*` 计数只出现在 hook listener 的故障消息里（且需挂载分析
+  流水线、在其不可用时才打印）；没有独立 metrics/周期输出接口，正常运行时只能从 TTL 日志观察。
+  *影响面*：看不到正常态的容量水位与淘汰速率。
+- **R5-6 degraded 与 intel 同时命中时 reason 取 intel**：降级告警若同时带情报决策，`reason` 为
+  `intel-*`；降级标记仍在 `xbits.degraded` 字段与 `evidence`（`degraded=…`）里。
+  *影响面*：下游需并读 `reason` 与 `degraded` 两字段，才能看出"情报决策 + 降级"。
+- **R6-2 hook 接线缺 Unix socket 集成测试**：`hook.rs` 的 listener / `read_timeout` / 定时维护逻辑
+  只有编译期覆盖；e2e（`qa_*.py`）走整链，不断言 listener 内部的维护节拍与半行缓冲行为。
+  *影响面*：半行缓冲/EOF 尾行/饿死 tick 三类缺陷只能静态核对。
+- **R6-3 accept 持续连接可饿死 tick**：一次只服务一条连接；客户端长期占住连接且持续有数据时，
+  accept 轮询侧的维护 tick 不执行（该连接 `read_timeout` 仍提供维护，只是"无连接侧 tick"被推迟）。
+  *影响面*：仅依赖事件驱动的降级判定在空连接场景被延后。
+- **R6-4 pending 单行长度无上限**：`serve_stream` 的行缓冲按换行切分，无单行最大长度限制。
+  *影响面*：异常客户端发送超长无换行数据可持续占用内存（现有 Suricata/Zeek 插件不会这样做）。
+
+### 测试与 CI 断言强度（第八～九轮）
+
+- **R8-4 semgrep JSON errors 未当失败**：`triage.py` 把 `errors[]` 只写进 `info.semgrep.errors`，
+  `engines["semgrep"].ok` 仍 True；rc≠0 但带 errors 的 JSON 会被当成"真实执行成功"。
+  *影响面*：脚本 AST 规则配置错误时 verdict 仍按"无情报"输出。
+- **R8-5 `engines[tool]` 语义变更的迁移提示**：该字段由"已安装"变为"present and ok"摘要，
+  Rust 侧不读（`xbits.triage` 原样透传）；外部脚本若按旧语义读会误判"组件缺失"。
+  *影响面*：仅影响仓库外消费方；README 已说明三态为主，建议再加迁移提示。
+- **R8-6 assert_hook_output 坏 JSON 行静默跳过**：坏行被跳过，只有匹配数不足时才失败；若告警行
+  被截断，报错是"0 matched"而非"行损坏"。
+  *影响面*：排障时无法从测试输出区分"没告警"与"告警格式坏"。
+- **R9-2 `known_extra` 可抵扣场景内未声明命中**：只要求一个自由文本 reason，机制上给"漏断言"
+  留了免检通道（当前仅 1 处跨场景用法）。
+  *影响面*：场景内多命中可能被 known_extra 掩盖而不触发 warning。
+- **R9-3 新增 require 缺逐条语义说明**：`cases/recon_cases/backdoor_cases.json` 8 处新增 require
+  是把 CI 基线命中固化为断言，仓库内无逐条"为何该 SID 应命中"的说明。
+  *影响面*：若其中某条本是规则误报，测试会把误报锁死。
+- **R9-4 对照门禁是静态的**：只证明"该 SID 在别处被 require"，运行时是否真的加载/命中仍靠正例与
+  `suricata -T`；单看负例本身无法区分"规则没加载"。
+  *影响面*：规则集整批未加载时，纯 forbid 负例仍可通过。
+- **R9-5 strict 模式 PASS 文案易误读**：strict 下仍打印"0 warnings not asserted as failures — run
+  with --strict-warnings to gate"，易被误读为"未启用 strict"。
+  *影响面*：仅是输出文案误导，不影响门禁行为。
+
+### 缓存与转换器语义（第十～十二轮）
+
+- **R11-1 YARA 缓存键不覆盖跨目录 include**：缓存键只覆盖规则目录内枚举到的 `.yar`；若某规则
+  `include` 了目录外文件，被 include 文件变化而自身 mtime/size 不变时缓存不失效（既有设计）。
+  *影响面*：当前 `triage/rules` 未使用跨目录 include，风险低。
+- **R12-2 676 处 `content;buffer` 后置写法仍在转换规则库**：V-10 的"`content;buffer` == 0"
+  未全局达成；仅影响加载校验用规则，活动场景目录 0 违规。
+  *影响面*：与任务口径有差距；已作为棘轮基线锁死（第十三轮 A=676 与 baseline 相等），需单独立项清零。
+- **R12-4 关联计数未进 hook 故障消息**：`correlated_pairs/correlation_timeouts/correlation_overflow`
+  未进 `ensure_pipeline_healthy` 消息；"只发响应无请求"的不配对路径无任何输出（TTL 超时有 eprintln）。
+  *影响面*：关联能力的可见性弱于其它计数器。
+- **R12-5 `规则检测/README.md` 仍称 `zeek/威胁情报/` 存在**：该目录实际不存在，威胁情报由根目录
+  `allowlist/`、`threat-intel/` 承载。
+  *影响面*：文档误导读者以为 Zeek 侧仍持名单。
+- **R12-6 success_rules 出现两处重复章节**：`xbits/README.md` §8.2（`:389-420`）与 §10（`:456-490`）
+  重复描述同一能力。
+  *影响面*：维护两处易漂移（CI 已双绿，仅文档重复）。
+- **R12-7 PCAP 每类 buffer 仅 1 对正负例**：`qa_converter_pcap_regression.py` 的 `CASES` 每类 buffer
+  仅 1 对（任务书建议 2~3 条），其余同 buffer 家族 SID 只靠 `-T` 加载校验。
+  *影响面*：同家族变体的命中语义未被逐一验证。
+
+### 终轮新发现（第十三轮）
+
+- **R13-1 PCAP 依赖"已核对"是纯打印（已修复，本轮 t51）**：`qa_converter_pcap_regression.py`
+  的 `check_rule_pcap_bytes()` 现在按 SID 读规则原文，运行时比对 buffer/flow/content hex/pcre/URI
+  归一化与 PCAP 载荷（pos 必全含、neg 必缺一），并在 `--generate` 与 `--eve-root` 前执行，失败直接 FAIL。
+  *残留*：仅"规则头 any 443 -> any any"这类描述性打印尚未改为独立断言，但 EVE pos 断言与字节断言
+  已覆盖其语义（提示可能过时，不影响判定）。
+- **R13-3 已知限制清单不完整（本项）**：第十三轮前本清单停在第六轮 6 项，遗漏 R8/R9/R11/R12 十余项。
+  本节即为该项修复，**已修复（本轮）**。
+- **R13-2 `emits_alert` 预检未含 `benign`/`min_confidence` —— 已修复（本轮）**：
+  `engine.rs:829-844` 现与 `make_alert_full` 同口径纳入两个门槛，并补测试
+  `correlation_wait_not_registered_for_benign_or_below_min_confidence`；不再给被过滤的请求事件登记等待。
+  *影响面（已消除）*：此前可能为非发出的事件登记等待；本轮修复后该路径关闭。
+
+> 更新约定：新增未修项按 `R<轮>-<序号>` 编号追加到对应主题分组，并在 `qa/QA_REPORT.md` 的
+> "修复后状态"段落同步；修复后把条目移到"已修复"说明里，不要直接删除历史审计证据。
 
 

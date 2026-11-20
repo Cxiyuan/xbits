@@ -314,6 +314,64 @@
 
 ---
 
+## 修复后状态（截至第十三轮 C5/C6 收口，由 t50 补录）
+
+> 本节**只记录状态**，不修改上方任何原始发现正文。Verifed 结论按 `qa/FIX_REVIEW.md` 各轮次与
+> 已完成修复任务的 output 采信；commit 为本地 `git log --oneline` 可见的修复提交
+> （工作区改动尚未全部提交，标注"工作区"者以当前文件为准）。CI 实跑按依赖结果（commit `1374b4d` 双绿）采信。
+
+### V-10 ~ V-24 状态表
+
+| 编号 | 状态 | 修复任务 / commit / 复核轮次 | 说明 |
+|---|---|---|---|
+| V-10 | **Verified** | t35 C5-A（`7c4c752` 语义树转换）+ t38 C5-D 对称棘轮 + t46/t48 端口方向（`1374b4d`）；第十二/十三轮复核 | 5,544 条后置 buffer 反转已修、活动场景目录 0 违规、`dangling-http-uri` 消失。残留 R12-2（676 处 `content;buffer`，已锁为棘轮基线，不影响活动检测）见待修清单。 |
+| V-11 | **Verified** | t35（`7c4c752`）stat_code 段前置 + 容量断言；第十二轮 | 17 条"永不命中"规则已修，抽样 5 条均为 `http.stat_code; content:"200"; pkt_data; …`。 |
+| V-12 | **Verified** | t36 C5-B（`6442408`）共享 `buffer_aliases.json` 单一真源；第十二/十三轮 | 15 条 `http.uri.raw` 保真，Python 17 例含 SharedAliases 契约全过。 |
+| V-13 | **Verified** | t37 C5-C（`7c4c752` 起 lua 前置 + t50 前 979 条处置）+ t48 PCAP 18 文件；第十二/十三轮 | `lua:` 且无 buffer == 0；946 条无法定位者剔除 lua（保留纯 content），33 条补 buffer。 |
+| V-14 | **Verified** | t39 C6-A + t40 C6-B（`3ce9521` cid-scoped 配对）；第十二/十三轮 | `success_rules.json` 已真实消费、cid 入 key、发告警才登记、同 key 多 sid。R13-2 已于本轮补 `benign`/`min_confidence` 预检（见下）。 |
+| V-15 | **Verified** | t37 C5-C + t38 C5-D + t40；第十二轮 | 18 reason 全有 owner/tested_by（后扩至 17 reason，见当前工作区）、未知 reason fail-fast、dead_rules 空转链路已删。R12-5 文档残留见待修清单。 |
+| V-16 | **Verified** | C7（`52fd837`）paths 覆盖 + 元测试；第四轮 | 7 个 workflow push==PR，triage/threat-intel/allowlist 与测试资源进 paths；元测试对抗 3/4 通过（`os.path.join` 动态路径盲区已记录）。 |
+| V-17 | **Verified** | t25 C8（`dcaae21`）覆盖门禁重写；第八轮 | `covered 74/17477 + excluded 11 dirs` 与磁盘一一对应，未分类目录/列表腐烂即 FAIL。 |
+| V-18 | **Verified** | t25 C8（`dcaae21`/`bb5e1c7`）弱断言替换；第八轮 | 5 处 sleep+grep 改 `assert_hook_output.py` 轮询+字段+exit/stderr；双空用例直接 FAIL。 |
+| V-19 | **Verified** | t25 C8-5 + t28/t29/t31/t33（YARA 三态·编译失败·stat 失败·缓存）；第八～十一轮 | PE/ELF 值断言、YARA 正负样本对、缺 yara 非零退出；`failed_files`/`unreadable_errors` 入 `engine_status`，stat 失败不崩、失败态不滞留缓存；triage 单测 32 例 OK。 |
+| V-20 | **Verified** | t26 C9（`dcaae21`）engines 三态 + 签名拆分；第八轮 | `engine_status{tool}={present,ok,error}` + `degraded/engine_errors`；`signed_present` 存在性探测 ≠ `signature_verified`（恒 False），伪证书不洗白。 |
+| V-21 | **尚未修复** | — | 采集失败仍 WARN+`return 0`，`write_outputs` 无条件以 `"w"` 覆盖 `data/` 与 `exports/`，无最小产出阈值/原子替换/旧快照保留。影响：断网即清空最后一份情报而运维看到绿。见 `qa/findings/python.md` PY-01。 |
+| V-22 | **尚未修复** | — | `refresh.py:85` `ips.extend(v for v in vals if v not in domains)` 跨类型死判断仍把 public_dns 并入通用 `ip.txt`；`sources.json` 仍无代码读取；`--check` 仍不比对 `data/`。DNS 基线可被一次普通白名单静默关闭。见 PY-09/PY-10。 |
+| V-23 | **Verified（Python 侧）** | t26 C9（`dcaae21`）`allowlist/tools/ipnorm.py` 单一 `canonical_ip()` + 8 例单测；第八轮 | add/refresh/query 三端共用、zone 拒绝、端到端 IPv6 命中。**残留**：`xbits/src/intel.rs` 加载时 IP 归一（Rust 侧）未在本批改动内，IPv6 事件在 xbits 侧命中仍需确认。 |
+| V-24 | **Partially（文档收口未完）** | V-14/V-15 相关表述已在 t39/t40 更新；R12-5/R12-6/R12-7 仍未修 | `规则检测/README.md:22` 仍称 `zeek/威胁情报/` 存在；`xbits/README.md` §8.2（`:389-420`）与 §10（`:456-490`）success_rules 两处重复；PCAP 每类 buffer 仅 1 对。 |
+
+### 尚未修复项索引（按 ID，来源：第五～十三轮 verifier 复核）
+
+| ID | 状态 | 一句话 | 归属 |
+|---|---|---|---|
+| R5-4 | **尚未修复** | `threshold > score` 无加载期校验（only 文档+单测约束） | 引擎规则加载 |
+| R5-5 | **尚未修复** | 引擎计数仅故障消息导出，无 metrics/周期快照 | 可观测 |
+| R5-6 | **尚未修复** | degraded+intel 同现时 `reason` 取 intel，需并读 degraded | 可观测 |
+| R6-2 | **尚未修复** | hook listener/read_timeout/维护节拍无 Unix socket 集成测试 | 测试覆盖 |
+| R6-3 | **尚未修复** | accept 持续连接可饿死无连接侧维护 tick | 状态机 |
+| R6-4 | **尚未修复** | pending 单行长度无上限（无换行超长数据占内存） | 健壮性 |
+| R8-4 | **尚未修复** | semgrep JSON `errors[]` 仅写 info，rc≠0 带 errors 仍 ok=True | Python 判定 |
+| R8-5 | **尚未修复** | `engines[tool]` 语义从"已安装"变"present and ok"的迁移提示不足 | 文档 |
+| R8-6 | **尚未修复** | `assert_hook_output.py` 坏 JSON 行静默跳过（报 "0 matched" 而非"行损坏"） | 测试可观测 |
+| R9-2 | **尚未修复** | `known_extra` 可抵扣场景内未声明命中，仅要自由文本 reason | 测试断言 |
+| R9-3 | **尚未修复** | 8 处新增 require 无逐条"为何应命中"语义说明 | 测试文档 |
+| R9-4 | **尚未修复** | 对照门禁静态、单看 forbid 负例无法区分"规则没加载" | 测试断言 |
+| R9-5 | **尚未修复** | strict 模式 PASS 文案仍提示"未启用 strict-warnings"，易误读 | 测试文案 |
+| R11-1 | **尚未修复** | YARA 缓存键不覆盖跨目录 include（当前 triage/rules 未用，风险低） | 缓存 |
+| R12-2 | **尚未修复（已接受基线）** | 676 处 `content;buffer` 后置写法仍在转换规则库；已锁为棘轮基线 | 规则语义 |
+| R12-4 | **尚未修复** | 关联计数未进 hook 故障消息；响应无等待路径无输出 | 可观测 |
+| R12-5 | **尚未修复** | `规则检测/README.md:22` 仍称 `zeek/威胁情报/` 存在（实际不存在） | 文档 |
+| R12-6 | **尚未修复** | `xbits/README.md` success_rules 两处重复章节（§8.2/§10） | 文档 |
+| R12-7 | **尚未修复** | PCAP 每类 buffer 仅 1 对正负例（建议 2~3） | 测试覆盖 |
+| R13-1 | **已修复（t51 / tests-auditor）** | `check_rule_pcap_bytes()` 按 SID 读规则原文与 PCAP 载荷做运行时断言（buffer/flow/content hex/pcre/URI），pos 必含 neg 必缺；接在 `--generate`/`--eve-root` 前；负例（改坏 PCAP、改坏规则）均 FAIL 点名 SID | 测试真实性 |
+| R13-2 | **已修复（本轮）** | `engine.rs:829-844` `emits_alert` 预检已纳入 `benign`/`min_confidence`，与 `make_alert_full` 同口径；补测 `correlation_wait_not_registered_for_benign_or_below_min_confidence` | 关联状态机 |
+| R13-3 | **已修复（本轮）** | 本节 + `xbits/README.md` §11 全量清单即为该项修复 | 文档 |
+
+> 说明：R8-1/R8-2/R8-3/R9-1/R10-1/R12-1/R12-3 等已在对应轮次 Verified（见 `qa/FIX_REVIEW.md`
+> 第八～十一、十三轮），故不在本"尚未修复"索引内；上表只列第十三轮复核确认仍在的项。
+
+---
+
 ## 核验边界声明
 
 1. 本报告所有行号以当前工作区文件为准；`root` 下 `qa/findings/*.md` 由各审计员写入，本报告未修改任何源码或 findings。
