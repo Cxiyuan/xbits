@@ -92,19 +92,23 @@ def main() -> int:
                 )
         else:
             # 多流突发：cid 必不相同，断言两侧描述的是同一对端点。
+            # 端点方向不固定：Suricata 可能把告警挂在响应方向，故按无序对比较。
             eve_pairs = {
-                (a.get("src_ip"), a.get("dest_ip")) for a in alerts if a.get("src_ip")
+                frozenset((a.get("src_ip"), a.get("dest_ip")))
+                for a in alerts
+                if a.get("src_ip")
             }
-            zeek_pairs = {(row.get("src"), row.get("dst")) for row in rows}
+            zeek_pairs = {frozenset((row.get("src"), row.get("dst"))) for row in rows}
             if not (eve_pairs & zeek_pairs):
                 failures.append(
                     "endpoint mismatch: suricata=%s zeek=%s"
-                    % (sorted(eve_pairs), sorted(zeek_pairs))
+                    % (sorted(map(sorted, eve_pairs)), sorted(map(sorted, zeek_pairs)))
                 )
             else:
                 print(
                     "NOTE link-scope=multi: community_id 分属不同流（扫描/爆破形态），"
-                    "只断言端点一致：%s" % sorted(eve_pairs & zeek_pairs)
+                    "只断言端点一致：%s"
+                    % sorted(map(sorted, eve_pairs & zeek_pairs))
                 )
 
     for row in rows:
