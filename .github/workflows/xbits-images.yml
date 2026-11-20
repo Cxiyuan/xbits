@@ -13,6 +13,8 @@ on:
       # 镜像 Dockerfile 还会 COPY classification.config / reference.config 进镜像。
       - "测试用例/*.json"
       - "测试用例/*.config"
+      # 矩阵步骤新增的用例自洽门禁（双空/forbid-only 必中对照）读这份脚本
+      - "测试用例/assert_suricata.py"
       - "测试用例/generate_pcaps.py"
       - "测试用例/generate_recon_pcaps.py"
       - "测试用例/generate_backdoor_pcaps.py"
@@ -34,6 +36,8 @@ on:
       # 镜像 Dockerfile 还会 COPY classification.config / reference.config 进镜像。
       - "测试用例/*.json"
       - "测试用例/*.config"
+      # 矩阵步骤新增的用例自洽门禁（双空/forbid-only 必中对照）读这份脚本
+      - "测试用例/assert_suricata.py"
       - "测试用例/generate_pcaps.py"
       - "测试用例/generate_recon_pcaps.py"
       - "测试用例/generate_backdoor_pcaps.py"
@@ -198,12 +202,24 @@ jobs:
             -T -c /opt/xbits/probe-rules-production.yaml -v -l /tmp/suri-out
           docker run --rm --network none --entrypoint suricata xbits-suricata \
             -T -c /opt/xbits/probe-rules-weak.yaml -v -l /tmp/suri-out
-      - name: Full Suricata rule/hook matrix (every case, EVE == engine)
+      - name: Full Suricata rule/hook matrix (every case, EVE == engine, strict warnings)
         run: |
+          # --strict-warnings：本场景内未声明命中 / 跨场景命中 / known_extra 失效都算失败。
+          # 已知 9 处基线命中已全部落进用例断言（8 处补进 require）或 known_extra+reason
+          # （1 处真实跨场景重叠），见各 cases json 的 2026-11-20 更新。
           python xbits/test/qa_suricata_hook_matrix.py \
             --image xbits-suricata \
             --xbits xbits/target/release/xbits \
-            --rules xbits/rules/qa-all.json
+            --rules xbits/rules/qa-all.json \
+            --strict-warnings
+
+      - name: Suricata case consistency (double-empty + forbid-only must-hit control)
+        run: |
+          set -euo pipefail
+          python 测试用例/assert_suricata.py --cases 测试用例/cases.json --cases-only
+          python 测试用例/assert_suricata.py --cases 测试用例/recon_cases.json --cases-only
+          python 测试用例/assert_suricata.py --cases 测试用例/web_cases.json --cases-only
+          python 测试用例/assert_suricata.py --cases 测试用例/backdoor_cases.json --cases-only
 
       - name: app-id scanner test inside xbits-zeek image
         run: python xbits/test/qa_appid_image.py

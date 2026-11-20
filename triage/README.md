@@ -79,6 +79,17 @@ python3 triage/triage.py --stdin --all-engines --rules-dir triage/rules --semgre
 - `present=true, ok=false`：执行失败（rc!=0 / 超时 / 解析失败 / 目录或规则缺失）→ 计入顶层
   `degraded=true` 与 `engine_errors`。**"执行失败"与"扫描通过未检出"严格不同形**。
 
+**YARA 部分失败语义（R8-3）**：三类失败分开报告，任何一类出现都 `engine_status["yara"].ok=false`
+且顶层 `degraded=true`——但**已编译成功的规则照常匹配**（可用部分生效，不会被跳过）：
+- `error` 字段：`compile-failed: <文件名,...>` / `unreadable: <原因>` / `match-errors: <n>` 组合；
+- `engine_status["yara"].failed_files`：编译失败的规则文件名列表；
+- `engine_status["yara"].unreadable_errors`：目录/文件不可读原因（最多 5 条）；
+- `info.yara_rules.failed` / `info.yara_rules.loaded`：失败与成功加载的文件计数；
+- `info.yara_rules_failed`（= failed_files）、`info.yara_unreadable_errors`、`info.yara_match_errors`
+  供程序化消费。全部规则文件编译失败时 `error` 以 `no-rules-compiled` 开头。
+- 单测：`test_yara_partial_compile_failure_is_degraded_and_valid_rules_still_hit`（合法规则仍命中、
+  ok=False、degraded=True、error 含坏文件名）、`test_yara_unreadable_rules_dir_is_reported`。
+
 **签名语义（V-22）**：`info.pe.signed_present` 仅表示 Authenticode 证书表非空（存在性探测，
 可被伪造）；`info.pe.signature_verified` 才表示可信验证——本工具不做证书链/信任校验，
 `signature_verified` 恒为 `false`，因此**证书表存在绝不触发 verdict 降级**（旧 `signed` 字段

@@ -366,6 +366,276 @@ class TriageTests(unittest.TestCase):
         yara_ids = [f["id"] for f in r["findings"] if f["id"].startswith("yara.")]
         self.assertEqual(yara_ids, [], f"良性文本不得命中 YARA 规则，实际 {yara_ids}")
 
+    # ---- R8-3：部分规则编译失败 → ok=False + degraded，但合法规则仍命中 ----
+    def test_yara_partial_compile_failure_is_degraded_and_valid_rules_still_hit(self) -> None:
+        import triage.triage as tmod
+
+        sample = b"<?php\n@eval($_POST['cmd']);\n?>\n"
+        path = write_tmp(self.tmp, "partial_shell.php", sample)
+        # 规则目录：1 个合法 .yar（必命中）+ 1 个语法错误 .yar
+        rules_dir = os.path.join(self.tmp, "mixed_rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        good = os.path.join(rules_dir, "good_rules.yar")
+        with open(good, "w", encoding="utf-8") as fh:
+            fh.write(
+                'rule probe_partial_good_rule {\n'
+                '  strings:\n    $a = "eval($_POST"\n'
+                '  condition:\n    $a\n'
+                '}\n'
+            )
+        bad = os.path.join(rules_dir, "broken_rules.yar")
+        with open(bad, "w", encoding="utf-8") as fh:
+            fh.write("rule probe_broken { condition: this is not yara syntax }\n")
+
+        r = analyze(path, rules_dir=rules_dir)
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）；CI 增强步骤断言部分失败语义")
+        st = r["engine_status"]["yara"]
+        # ② 合法规则未被跳过：仍命中
+        yara_ids = [f["id"] for f in r["findings"] if f["id"].startswith("yara.")]
+        self.assertIn("yara.probe_partial_good_rule", yara_ids,
+                      f"合法规则必须照常命中，实际 {yara_ids}")
+        # ② 部分编译失败必须可见：ok=False + degraded=True
+        self.assertFalse(st["ok"], f"存在编译失败的规则文件时 yara.ok 必须为 False：{st}")
+        self.assertTrue(r["degraded"], "部分编译失败必须置顶层 degraded=True")
+        self.assertIn("yara", r["engine_errors"])
+        # ① 坏文件名进入 error 与 failed_files
+        self.assertIn("broken_rules.yar", st["error"], st)
+        self.assertIn("broken_rules.yar", st.get("failed_files", []),
+                      f"failed_files 必须含坏文件名：{st}")
+        self.assertEqual(st.get("failed_files"), ["broken_rules.yar"])
+        # ① 计数进入 info
+        self.assertEqual(r["info"]["yara_rules"]["failed"], 1)
+        self.assertEqual(r["info"]["yara_rules_failed"], ["broken_rules.yar"])
+        self.assertEqual(r["info"]["yara_rules"]["loaded"], 1)
+        # 向后兼容摘要同步为 False
+        self.assertFalse(r["engines"]["yara"])
+        # 隔离缓存：good_rules.mtime 未变时 broken_rules 的失败也要能被独立复测
+        self.assertIn(tmod._YARA_CACHE[os.path.abspath(rules_dir)][2], (["broken_rules.yar"],))
+
+    def test_yara_unreadable_rules_dir_is_reported(self) -> None:
+        """rules-dir 缺失：ok=False + error（rules-dir-missing），不得假装扫描过。"""
+        r = analyze(write_tmp(self.tmp, "plain.txt", b"hello\n"),
+                    rules_dir=os.path.join(self.tmp, "no_such_rules_dir"))
+        st = r["engine_status"]["yara"]
+        self.assertTrue(st["present"])
+        self.assertFalse(st["ok"])
+        self.assertIn("rules-dir-missing", st["error"])
+        self.assertTrue(r["degraded"])
+
+    # ---- R9-1：stat 失败分支不得 UnboundLocalError，且只记 unreadable_errors ----
+    def test_yara_stat_failure_is_reported_without_crash(self) -> None:
+        """monkeypatch os.stat 让某个 .yar 抛 OSError：不崩溃、unreadable_errors 含该文件、
+        ok=False + degraded；合法文件不被连坐（不进 failed_paths、仍编译并命中）。"""
+        import triage.triage as tmod
+        import unittest.mock as mock
+
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）；CI 增强步骤断言 stat 失败语义")
+        sample = b"<?php\n@eval($_POST['cmd']);\n?>\n"
+        path = write_tmp(self.tmp, "stat_shell.php", sample)
+        rules_dir = os.path.join(self.tmp, "stat_rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        good = os.path.join(rules_dir, "good_stat.yar")
+        with open(good, "w", encoding="utf-8") as fh:
+            fh.write(
+                'rule probe_stat_good_rule {\n'
+                '  strings:\n    $a = "eval($_POST"\n'
+                '  condition:\n    $a\n'
+                '}\n'
+            )
+        cursed = os.path.join(rules_dir, "cursed.yar")
+        with open(cursed, "w", encoding="utf-8") as fh:
+            fh.write('rule probe_cursed_never_compiles { condition: true }\n')
+
+        real_stat = os.stat
+        target = os.path.abspath(cursed)
+
+        def flaky_stat(p, *a, **kw):
+            if os.path.abspath(str(p)) == target:
+                raise OSError(13, "Permission denied (simulated race)")
+            return real_stat(p, *a, **kw)
+
+        with mock.patch("triage.triage.os.stat", side_effect=flaky_stat):
+            # 不崩溃是本用例的核心断言（修复前此处抛 UnboundLocalError）
+            r = analyze(path, rules_dir=rules_dir)
+
+        st = r["engine_status"]["yara"]
+        # stat 失败被如实上报：unreadable_errors 带文件名与原因
+        self.assertTrue(st.get("unreadable_errors"),
+                        f"stat 失败必须记入 unreadable_errors：{st}")
+        self.assertIn("cursed.yar", st["unreadable_errors"][0], st)
+        self.assertIn("stat-failed", st["unreadable_errors"][0])
+        # stat 失败不进 failed_paths（未做编译，不能算"编译失败"双重计数）
+        self.assertEqual(st.get("failed_files", []), [], st)
+        self.assertEqual(r["info"].get("yara_rules_failed", []), [])
+        self.assertEqual(r["info"]["yara_rules"]["failed"], 0)
+        # 但结论仍是失败可见：ok=False + degraded
+        self.assertFalse(st["ok"], f"存在不可读规则文件时 yara.ok 必须为 False：{st}")
+        self.assertTrue(r["degraded"])
+        self.assertIn("yara", r["engine_errors"])
+        self.assertIn("unreadable", st["error"], st)
+        # 合法文件不被连坐：正常枚举、编译成功并命中
+        self.assertEqual(r["info"]["yara_rules"]["loaded"], 1)
+        yara_ids = [f["id"] for f in r["findings"] if f["id"].startswith("yara.")]
+        self.assertIn("yara.probe_stat_good_rule", yara_ids,
+                      f"合法规则必须照常命中，实际 {yara_ids}")
+
+    def test_yara_stat_failure_isolated_via_direct_call(self) -> None:
+        """直测 _compiled_yara_rules：stat 失败 → (compiled, [], [stat-failed])，无异常抛出。"""
+        import triage.triage as tmod
+        import unittest.mock as mock
+
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）；CI 增强步骤断言 stat 失败语义")
+        import yara as yara_mod
+        rules_dir = os.path.join(self.tmp, "stat_direct")
+        os.makedirs(rules_dir, exist_ok=True)
+        good = os.path.join(rules_dir, "only_good.yar")
+        with open(good, "w", encoding="utf-8") as fh:
+            fh.write("rule probe_direct { condition: true }\n")
+
+        real_stat = os.stat
+        target = os.path.abspath(good)
+
+        def flaky_stat(p, *a, **kw):
+            if os.path.abspath(str(p)) == target:
+                raise OSError(2, "gone mid-scan")
+            return real_stat(p, *a, **kw)
+
+        with mock.patch("triage.triage.os.stat", side_effect=flaky_stat):
+            compiled, failed, unreadable = tmod._compiled_yara_rules(yara_mod, rules_dir)
+        self.assertEqual(compiled, [], "stat 失败的文件不应进入编译列表")
+        self.assertEqual(failed, [], "stat 失败不进 failed_paths（R9-1 语义）")
+        self.assertEqual(len(unreadable), 1, unreadable)
+        self.assertIn("stat-failed", unreadable[0])
+        self.assertIn("only_good.yar", unreadable[0])
+
+    # ---- R10-1：YARA 失败状态不得滞留缓存（坏文件删除后必须恢复 ok=True） ----
+    def test_yara_stat_failure_does_not_linger_in_cache(self) -> None:
+        """坏文件 stat 失败 → 分析 → 删除坏文件 → 再次分析：
+        第二次必须 ok=True / degraded=False（失败状态不得滞留缓存）。"""
+        import triage.triage as tmod
+        import unittest.mock as mock
+
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）；CI 增强步骤断言缓存滞留修复")
+        sample = b"<?php\n@eval($_POST['cmd']);\n?>\n"
+        path = write_tmp(self.tmp, "linger_shell.php", sample)
+        rules_dir = os.path.join(self.tmp, "linger_rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        good = os.path.join(rules_dir, "good_linger.yar")
+        with open(good, "w", encoding="utf-8") as fh:
+            fh.write(
+                'rule probe_linger_good_rule {\n'
+                '  strings:\n    $a = "eval($_POST"\n'
+                '  condition:\n    $a\n'
+                '}\n'
+            )
+        cursed = os.path.join(rules_dir, "vanishing.yar")
+        with open(cursed, "w", encoding="utf-8") as fh:
+            fh.write('rule probe_vanishing { condition: true }\n')
+        # 隔离缓存，避免跨用例污染
+        cache_key = os.path.abspath(rules_dir)
+        old_entry = tmod._YARA_CACHE.pop(cache_key, None)
+        try:
+            real_stat = os.stat
+            target = os.path.abspath(cursed)
+
+            def flaky_stat(p, *a, **kw):
+                if os.path.abspath(str(p)) == target:
+                    raise OSError(13, "Permission denied (simulated race)")
+                return real_stat(p, *a, **kw)
+
+            # 第一次分析：坏文件 stat 失败 → ok=False + degraded
+            with mock.patch("triage.triage.os.stat", side_effect=flaky_stat):
+                r1 = analyze(path, rules_dir=rules_dir)
+            st1 = r1["engine_status"]["yara"]
+            self.assertFalse(st1["ok"], f"第一次分析必须如实报失败：{st1}")
+            self.assertTrue(r1["degraded"])
+            self.assertTrue(st1.get("unreadable_errors"))
+            self.assertIn("vanishing.yar", st1["unreadable_errors"][0])
+
+            # 删除坏文件（剩余文件集合与第一次的 stat 成功集合相同——修复前签名一致 → 旧失败滞留）
+            os.remove(cursed)
+
+            # 第二次分析：不 mock——必须恢复 ok=True / degraded=False
+            r2 = analyze(path, rules_dir=rules_dir)
+            st2 = r2["engine_status"]["yara"]
+            self.assertTrue(st2["ok"],
+                            f"删除坏文件后失败状态不得滞留缓存：{st2}")
+            self.assertIsNone(st2["error"])
+            self.assertFalse(r2["degraded"],
+                             "恢复后不得再置 degraded=True")
+            self.assertEqual(r2["engine_errors"], {})
+            self.assertEqual(st2.get("unreadable_errors"), None)
+            self.assertEqual(r2["info"]["yara_rules"]["failed"], 0)
+            # 合法规则仍正常工作
+            self.assertEqual(r2["info"]["yara_rules"]["loaded"], 1)
+            yara_ids = [f["id"] for f in r2["findings"] if f["id"].startswith("yara.")]
+            self.assertIn("yara.probe_linger_good_rule", yara_ids)
+
+            # 正常路径缓存命中率（要求②）：第三次分析签名未变 → 命中同一缓存条目对象
+            compiled_a, failed_a, unread_a = tmod._compiled_yara_rules(
+                __import__("yara"), rules_dir)
+            compiled_b, failed_b, unread_b = tmod._compiled_yara_rules(
+                __import__("yara"), rules_dir)
+            self.assertIs(compiled_a, compiled_b,
+                          "规则全好时两次调用必须命中同一缓存（编译对象同一实例）")
+            self.assertEqual((failed_a, unread_a), ([], []))
+        finally:
+            # 恢复缓存原状（该键在测试前不存在则保持不存在）
+            if old_entry is None:
+                tmod._YARA_CACHE.pop(cache_key, None)
+            else:
+                tmod._YARA_CACHE[cache_key] = old_entry
+
+    def test_cache_key_covers_stat_failed_entries(self) -> None:
+        """缓存键必须覆盖 stat 失败条目：坏文件存在与被删除时签名不同（修复的直接机制）。"""
+        import triage.triage as tmod
+        import unittest.mock as mock
+
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）")
+        rules_dir = os.path.join(self.tmp, "sig_rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        good = os.path.join(rules_dir, "good.yar")
+        with open(good, "w", encoding="utf-8") as fh:
+            fh.write("rule probe_sig { condition: true }\n")
+        cursed = os.path.join(rules_dir, "cursed_sig.yar")
+        with open(cursed, "w", encoding="utf-8") as fh:
+            fh.write("rule probe_cursed_sig { condition: true }\n")
+
+        real_stat = os.stat
+        target = os.path.abspath(cursed)
+
+        def flaky_stat(p, *a, **kw):
+            if os.path.abspath(str(p)) == target:
+                raise OSError(13, "denied")
+            return real_stat(p, *a, **kw)
+
+        cache_key = os.path.abspath(rules_dir)
+        old_entry = tmod._YARA_CACHE.pop(cache_key, None)
+        try:
+            # 失败态签名：应含 stat-failed 条目
+            with mock.patch("triage.triage.os.stat", side_effect=flaky_stat):
+                tmod._compiled_yara_rules(__import__("yara"), rules_dir)
+            sig_failed = tmod._YARA_CACHE[cache_key][0]
+            self.assertTrue(any("stat-failed" in str(item) for item in sig_failed),
+                            f"失败条目必须进缓存键：{sig_failed}")
+            # 删除坏文件后签名不同 → 不会命中失败态缓存
+            os.remove(cursed)
+            sig_after = tmod._YARA_CACHE.get(cache_key)
+            tmod._compiled_yara_rules(__import__("yara"), rules_dir)
+            sig_clean = tmod._YARA_CACHE[cache_key][0]
+            self.assertNotEqual(sig_failed, sig_clean,
+                                "坏文件删除后缓存签名必须变化（否则旧失败滞留）")
+        finally:
+            if old_entry is None:
+                tmod._YARA_CACHE.pop(cache_key, None)
+            else:
+                tmod._YARA_CACHE[cache_key] = old_entry
+
     def test_hash_intel_local_match_marks_malicious(self) -> None:
         data = b"\x7fELF\x02\x01\x01\x00 suspicious payload"
         path = write_tmp(self.tmp, "z.bin", data)

@@ -44,6 +44,10 @@
     ]
   },
   "web_deser_fastjson": {
+    "known_extra": [
+      9104002
+    ],
+    "known_extra_reason": "跨场景真实重叠：payload 是 fastjson autotype JSON（{\"@type\":\"java.lang.Runtime\",\"cmd\":\"id\"}），同时满足后门通信 9104002（webshell_param.lua：cmd 参数 + 命令值 id）。本用例只断言 web 场景 9103018；9104002 的命中已由 backdoor/ws_cmd_* 用例 require 断言，此处登记避免重复断言与告警噪音。",
     "forbid": [
       9103001,
       9103008,

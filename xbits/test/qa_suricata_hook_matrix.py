@@ -191,10 +191,14 @@ def evaluate_case(
                 f"scope_hits={sorted(in_scope)} require={sorted(require)}"
             )
     else:
-        unasserted_in_scope = in_scope - require - forbid
+        # 场景内未声明命中：真实命中就补进 require（把"会命中"变成断言），
+        # 误报才补进 forbid；两者都不做也可以用 known_extra+reason 显式登记为
+        # "已解释的多规则命中"。未处理的才升为 warning（strict 模式下失败）。
+        unasserted_in_scope = in_scope - require - forbid - known_extra
         if unasserted_in_scope:
             warnings.append(
-                f"本场景内未声明命中（未在 require/forbid 里）: {sorted(unasserted_in_scope)}"
+                "本场景内未声明命中（未在 require/forbid/known_extra 里）: "
+                f"{sorted(unasserted_in_scope)}"
             )
 
     unexplained_out = out_scope - known_extra
@@ -204,10 +208,16 @@ def evaluate_case(
             f"{sorted(unexplained_out)}"
         )
     if known_extra:
-        notes.append(f"known_extra={sorted(known_extra)} reason={spec.get('known_extra_reason')}")
+        explained_in = known_extra & in_scope
+        explained_out = known_extra & out_scope
+        notes.append(
+            f"known_extra={sorted(known_extra)} "
+            f"(in-scope={sorted(explained_in)} cross-scenario={sorted(explained_out)}) "
+            f"reason={spec.get('known_extra_reason')}"
+        )
         stale = known_extra - hits
         if stale:
-            warnings.append(f"known_extra 登记项未再出现（需清理）: {sorted(stale)}")
+            warnings.append(f"known_extra 登记项未再出现（需清理或规则已变）: {sorted(stale)}")
 
     if any(tag in engine_err for tag in ("bad hook event", "hook accept error", "hook read error")):
         failures.append(f"engine stderr: {engine_err[-500:]}")
@@ -356,6 +366,17 @@ def self_test() -> int:
 
     f, _, _ = evaluate_case("c", neg, cat, Counter(), Counter(), "", default_exact=True)
     checks.append(("负例默认 exact：零命中 → 通过", not f))
+
+    known_in = {"require": [9103015], "known_extra": [9103101], "known_extra_reason": "同 payload 多规则命中"}
+    f, w, _ = evaluate_case("c", known_in, cat, extra_in, extra_in, "")
+    checks.append(
+        ("场景内命中用 known_extra+reason 登记 → 不再 warning",
+         not f and not any("未声明命中" in x for x in w))
+    )
+
+    stale = {"require": [9103015], "known_extra": [9103102], "known_extra_reason": "x"}
+    f, w, _ = evaluate_case("c", stale, cat, ok_engine, ok_engine, "")
+    checks.append(("known_extra 未再出现 → warning（strict 下失败）", any("未再出现" in x for x in w)))
 
     bad = 0
     for name, ok in checks:

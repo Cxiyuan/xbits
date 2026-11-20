@@ -691,3 +691,185 @@
 **第八轮结论**：C8 **已实质修好**（覆盖门禁不再自称全覆盖、hook 矩阵有了纯函数判定与自测、CI 弱断言换成轮询+字段校验、双空用例被拒绝、PE/ELF/YARA 从"存在/可编译"升级为"值/命中"）；C9 **已实质修好**（三态覆盖全部扫描器、失败与未检出不再同形、签名降级只认不可达的 `signature_verified`、IPv6 归一单一实现且三工具共用、单测全过）。剩余 6 项中 **R8-1/R8-2/R8-3** 建议下一轮处理（分别是"warning 未 gate""负例无对照""yara 局部失败不降级"），R8-4~R8-6 择机。
 
 **第八轮复核边界**：未运行 `cargo test`/CI、未跑 docker/pcap e2e；已实跑 Python 单测与只读门禁（结果见上）；对抗用例只写系统临时目录、不触仓库。CI 实际通过与否仍以 GitHub Actions 为准。
+
+---
+
+# 第九轮：R8-1~3 复核（t28 / t29）
+
+> 只复核 R8-1（strict 门禁）、R8-2（forbid-only 必中对照）、R8-3（YARA 部分编译失败）与回归。只读：未改源码、未推送、未跑 CI、未运行 cargo；跑了 Python 门禁/单测与临时目录对抗用例。工作树另有 `CLAUDE.md` 删除等无关改动，不在本单范围。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| R8-1 strict 门禁 | **Verified** | CI 矩阵步骤实传 `--strict-warnings`（未拆分降级）；9 处基线 warning：8 处补进 `require`、1 处 `known_extra`+reason；self-test 12/12；stale 登记项 strict 下失败 |
+| R8-2 forbid-only 必中对照 | **Verified** | 每个 forbid SID 必须出现在同文件其它非 pending 用例的 require 中，否则 FAIL 点名；pending 需 note 且可见 SKIP；pending 的 require 不进对照池；self-test 7/7；4 份 cases `--cases-only` 全 PASS |
+| R8-3 YARA 部分编译失败 | **Verified（含 R9-1 缺陷）** | 部分失败 → `ok=False` + `error=compile-failed: <文件>` + `failed_files` + `degraded=True`，合法规则照常命中；match-errors 计数；28 例单测过。但 stat 失败分支引用未初始化变量会崩（R9-1） |
+| 回归（C8/C9/C7） | **Verified** | 覆盖门禁 74/17477 PASS、triage 28 例、validate_rules PASS、allowlist 8 例、C7 paths PASS；本轮无"删断言/降 strict"式放宽 |
+| 本轮新发现 | **R9-1 medium/low、R9-2~R9-5 low** | stat 失败分支 UnboundLocalError；in-scope known_extra 成为可用的"免断言"通道；8 处 require 扩写缺逐条语义依据；对照门禁是静态的；strict PASS 文案小瑕 |
+
+## 逐项证据
+
+### R8-1 hook 矩阵 strict 门禁 —— **Verified**
+
+- CI 实传 strict：`xbits-images.yml:205-214` 步骤名 "…strict warnings"，命令显式 `--strict-warnings`，没有拆成 warning/失败两步，也没有 `|| true`。
+- 门禁语义：`qa_suricata_hook_matrix.py:469-476`——只要有 warnings 即 `SURICATA HOOK MATRIX: FAIL`；warning 来源见 `:194-220`（场景内未声明命中、跨场景命中、known_extra 未再出现），三者都不再"只拼进 OK 文案"。
+- 9 处基线 warning 的处置（JSON 逐条核对，无 `pending`、无 `match` 覆盖、无删除用例）：
+  - dns `cname_tunnel` require 含 `[9109002,9109201,9109202,9109203]`；`highfreq_long_positive` require 含 `[9109007,9109201]`；
+  - recon `recon_curl_rate` require 含 `[9101028,9101109]`；
+  - backdoor `c2_header_anomaly` `[9110002,9110004,9110006]`、`c2_response` `[9110002,9110004,9110006,9110007]`、`c2_sample` `[9110001,9110002,9110003,9110006]`、`c2_singleletter` `[9110004,9110006]`、`c2_variant` `[9110002,9110006]`；
+  - web `web_deser_fastjson`：`known_extra=[9104002]` + 详细 `known_extra_reason`（跨场景真实重叠；9104002 由 backdoor `ws_cmd_post/ws_cmd_query/ws_cookie/ws_z0_base64` 的 require 断言）。全仓 cases 中 `known_extra` **仅此一处**（脚本扫描确认）。
+- 机制本身未被放宽：`in_scope - require - forbid - known_extra`（`:197-201`）仍把未声明命中变 warning；`known_extra` 必须带 reason 否则 failure（`:180-181`）；stale 登记项仍 warning（`:218-220`）。
+- self-test 实跑 **12/12 PASS**，新增两项正好覆盖"场景内命中用 known_extra 登记"与"known_extra 未再出现 → warning（strict 下失败）"（`:370-379`）。
+
+### R8-2 forbid-only 必中对照 —— **Verified**
+
+- 纯函数 `analyze_cases()`（`测试用例/assert_suricata.py:51-88`）：
+  - 对照池 = **非 pending** 用例的 require 并集（`:67`）；pending 用例的 require 不进池（防自我证明）；
+  - 非 pending 且 `require` 为空的 forbid-only 用例：`forbid - control_pool` 非空 → FAIL 并点名 case+SID（`:82-87`）；
+  - 双空仍 FAIL（`:74-79`，C8 的收紧未被回退）；
+  - `pending=true` 必须带 note，否则 FAIL（`:61-66`）；跳过时打印 `SKIP (pending) note=…`（`:65`、`:183-184`）——可见而非静默。
+- `--cases-only` 模式（`:150,168-173`）：只做用例自洽性检查，不读 eve；CI 新增独立步骤对 4 份 cases 全部执行（`xbits-images.yml:216-222`）。
+- 实跑：
+  - `--self-test` → **7/7 PASS**（有对照通过 / 无对照 FAIL / 整文件只有负例 FAIL / 双空 FAIL / pending+note 可见跳过 / pending 缺 note FAIL / pending 的 require 不进池）；
+  - 4 份 cases `--cases-only` 全 PASS：23/29/34/18 例，**pending 均为 0**，对照池 13/41/9/11 个 SID。
+- 说明：该门禁是**静态自洽**检查；运行时"规则确实加载"由正例 require 实际通过 + `suricata -T` 加载步骤共同保证（见 R9-4）。
+
+### R8-3 YARA 部分编译失败 —— **Verified（功能）/ R9-1 缺陷**
+
+- 三类失败可区分：`_compiled_yara_rules()` 返回 `(compiled, failed_files, unreadable_errors)`（`triage/triage.py:414-465`）；walk 失败 → unreadable（`:438-440`）；编译失败（含 source 回退）→ failed_files（`:449-463`）。
+- 结论在匹配循环**之后**判定（`:503-542`）：部分失败时已编译规则照常 match（可用部分生效），随后
+  `problems` 组合 `compile-failed: <文件名,…>` / `unreadable: <原因> (+N more)` / `match-errors: <n>`，
+  任一非空 → `_set_engine(present=True, ok=False, error=..., failed_files=..., unreadable_errors=...)`（`:528-540`）；`engines["yara"] = present and ok = False`（`:145-156`）；顶层 `degraded` 由 `engine_errors`（present and not ok）推导为 True（`analyze()` 原逻辑）。
+- info 侧保留/新增：`yara_rules_failed`、`yara_unreadable_errors`、`yara_match_errors`、`yara_rules{loaded,failed}`（`:491-494,523-524,534-536`）。
+- 单测实跑 **28 例 OK (skipped=1)**；新增 `test_yara_partial_compile_failure_is_degraded_and_valid_rules_still_hit`（`test_triage.py:369-414`）断言：合法规则仍命中、`ok is False`、`degraded is True`、`engine_errors` 含 yara、error 含 `broken_rules.yar`、`failed_files==["broken_rules.yar"]`、loaded=1/failed=1、engines 摘要 False；`test_yara_unreadable_rules_dir_is_reported`（`:416-424`）断言 rules-dir 缺失 → ok=False + degraded。
+- README：`triage/README.md:84-91` 写明 error 组合与 `failed_files/unreadable_errors` 字段及两条测试。
+- **缺陷 R9-1**（见下表）：stat 失败分支在变量初始化之前引用 `failed`/`unreadable_errors`，实际会抛 `UnboundLocalError`，与"stat 失败 → unreadable_errors"的声明不符（已用 monkeypatch `os.stat` 复现）。
+
+### 回归（C8/C9/C7） —— **Verified**
+
+- 实跑：`qa_rule_coverage.py` → PASS（74/17477）；`test_triage.py` → 28 OK；`validate_rules.py` → PASS（6 文件 0 bad，正例 2/负例 0）；`test_allowlist.py` → 8 OK；`qa_workflow_paths.py` → PASS。
+- 无"删断言式放宽"：`git diff -- triage/tests/test_triage.py` **无删除行**（纯新增）；`assert_suricata.py` 的删除行都是把逻辑搬进 `analyze_cases()`（双空检查仍在 `:74-79`）；`qa_suricata_hook_matrix.py` 的删除行是把 in-scope 警告计算升级为 known_extra 抵扣 + 拆分 note，检查项未减少（self-test 从 10 增到 12）。
+- C8/C9 的收紧项仍在：双空 FAIL、zero-sid 默认拒绝、`engine_status` 三态、`signature_verified` 闸门、canonical_ip 单实现（本轮未触碰这些文件/行）。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R9-1 | **medium/low** | `triage/triage.py:429-436`（变量定义在 `:447-448`） | walk 循环里单个 `.yar` `os.stat` 失败时执行 `failed.append(...)` / `unreadable_errors.append(...)`，但这两个列表此时尚未定义 → `UnboundLocalError`（已复现）。声明中的"stat 失败 → unreadable_errors"实际不成立，且异常会穿透 `_yara_scan`/`analyze`（triage 直接崩，而非降级） | 把 `compiled/failed/unreadable_errors` 初始化提到 walk 之前；stat 失败只记 `unreadable_errors`（不要混入 `failed_files`）；补一条 monkeypatch `os.stat` 的单测 |
+| R9-2 | low | `xbits/test/qa_suricata_hook_matrix.py:197-201` | `known_extra` 现在可抵扣**场景内**未声明命中，只要求一个自由文本 reason；虽然当前只有 1 处跨场景用法，但机制上给"漏断言"留了免检通道 | 对 in-scope 的 known_extra 要求同时进 `forbid`（或额外要求 `known_extra_scope: cross-scenario` 才允许抵扣），并打印 `::notice::` 区分 |
+| R9-3 | low/info | `测试用例/{cases,recon_cases,backdoor_cases}.json` 8 处新增 require | 这些 require 是把 CI 基线（run 44702632926）观测到的命中固化为断言，仓库内没有逐条"为何该 SID 应命中"的语义说明（仅 c2 系列有部分 note）；若其中某条本是规则误报，测试会把误报锁死 | 给新增 require 的用例补 `note`（命中原因），或引用规则文件行号；后续规则调整时同步复核 |
+| R9-4 | low | `测试用例/assert_suricata.py:67,82-87` | 对照门禁是**静态**的：只证明"该 SID 在别处被 require"，运行时是否真的加载/命中仍靠那些正例与 `suricata -T` 步骤；单看负例本身仍无法区分"规则没加载" | 可再加一条全局断言（如解析 suricata.log 的 loaded rules 数 / 至少一个 control SID 实际出现），把运行时证据补上 |
+| R9-5 | low | `xbits/test/qa_suricata_hook_matrix.py:478-482` | strict 模式下 PASS 文案仍打印 "0 warnings not asserted as failures — run with --strict-warnings to gate"，易误读为"未启用 strict" | strict 时改文案为 "0 warnings (strict gate enabled)" |
+
+**第九轮结论**：R8-1/R8-2 **已真实关闭**（strict 真启用且 9 处基线命中全部落进断言或带 reason 的 known_extra，未通过拆分/降级/删除换取绿灯；forbid-only 负例有了同 SID 的必中对照，pending 显式可见）；R8-3 的**主语义已修好**（部分编译失败 ok=False + degraded + 坏文件名可见，合法规则仍生效，match-errors 计数）。但 R8-3 的 stat 失败分支存在 **R9-1 崩溃缺陷**，属"声明了三类失败但其中一类会抛异常"，建议随下一轮修掉；R9-2~R9-5 为低项。
+
+**第九轮复核边界**：未运行 `cargo test`/CI、未跑 docker/pcap（因此无法本地复跑 strict 矩阵；其语义由 self-test 12/12 + 代码路径 + cases JSON 核对）。已实跑 coverage/triage/validate/allowlist/C7 门禁与 assert_suricata、hook matrix 自测；R9-1 用 monkeypatch `os.stat` 复现，未修改仓库。
+
+---
+
+# 第十轮：R9-1 复核（t31）
+
+> 最小复核：只验 R9-1（YARA stat 失败分支）与 R8-3 其余断言未被改动。只读：未改源码、未推送、未跑 CI；跑了 triage 单测与独立 monkeypatch 复现。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| ① 初始化前置 + stat 失败只记 unreadable | **Verified** | `failed`/`unreadable_errors` 已提到 walk 之前（`triage.py:424-425`）；stat 失败只 `unreadable_errors.append("stat-failed: …")`（`:437`），不再写 `failed`；walk 失败返回 `([], [], [walk-failed…])`（`:442`） |
+| ② monkeypatch 单测真实复现 | **Verified** | 新增 2 例（`test_triage.py:427-512`）：不崩溃 + unreadable 含文件名 + `failed_files==[]` + `ok=False` + `degraded=True` + 合法规则仍命中；直测返回契约 `(compiled, failed, unreadable)`。实跑 30 例 OK |
+| ③ R8-3 其余断言未改动 | **Verified** | `git diff` 测试文件 **0 删除行**（+145 纯新增）；partial-compile 用例仍在（`:370-414`，断言 `failed_files==["broken_rules.yar"]`/`ok=False`/`degraded`）；triage.py 只改目标分支 |
+| 独立复现 | **Verified** | 自写 monkeypatch 脚本（不依赖其单测）：直测无异常返回 `([], ['stat-failed: …cursed.yar…'])`；`analyze()` → `yara.ok=False`、`error=unreadable: stat-failed…`、`degraded=True`、`engine_errors=['yara']`、`loaded=1` 且 `yara.demo_ok` 命中 |
+| 新发现 | **R10-1 low** | mtime 缓存键不含"不可读"状态：坏文件被删除后，缓存仍返回旧的 `stat-failed`，`ok=False/degraded` 会滞留到其它规则文件变化或进程重启 |
+
+## 逐项证据
+
+### ① 代码修复 —— **Verified**
+
+- 初始化前置：`triage/triage.py:424-425` `failed: list[str] = []` / `unreadable_errors: list[str] = []` 位于 walk 循环（`:426-440`）之前——原先在 `:447-448`，而 stat 失败分支在 `:434-435` 先引用（第九轮已复现的 `UnboundLocalError`）。
+- 语义收窄：stat 失败只 `unreadable_errors.append(f"stat-failed: {fp}: {exc}")`（`:437`），**不再** `failed.append`；`failed` 仅在编译失败时追加（`:462-463`），与 docstring 的"编译失败文件名"一致（`:417-422`）。
+- 目录不可读：walk 抛 OSError → `return [], [], [f"walk-failed: {rules_dir}: {exc}"]`（`:442`），不再吞成 `([], 0, [])`。
+- 缓存契约同步：`_YARA_CACHE[key] = (sig, compiled, failed, unreadable_errors)`，返回 `(compiled, failed, unreadable_errors)`（`:464-465`），缓存命中路径 `cached[1..3]` 与之一致（`:443-445`）。
+
+### ② 单测 —— **Verified**
+
+- `test_yara_stat_failure_is_reported_without_crash`（`test_triage.py:427-482`）：`mock.patch("triage.triage.os.stat")` 只对 `cursed.yar` 抛 `OSError(13)`；断言不崩溃（核心）、`unreadable_errors[0]` 含 `cursed.yar` 与 `stat-failed`、`failed_files==[]`、`info.yara_rules_failed==[]`、`info.yara_rules.failed==0`、`ok is False`、`degraded is True`、`engine_errors` 含 yara、error 含 `unreadable`、`loaded==1`、`yara.probe_stat_good_rule` 命中。
+- `test_yara_stat_failure_isolated_via_direct_call`（`:484-512`）：直测 `_compiled_yara_rules` → `([], [], ['stat-failed: …only_good.yar…'])`，无异常，锁定返回契约。
+- 实跑：`python triage/tests/test_triage.py` → **Ran 30 tests — OK (skipped=1)**（28 原有 + 2 新增）；`validate_rules.py` → PASS（6 文件 0 bad，正例 2/负例 0）。
+- 独立复现（本次自写，非复用其单测）：直测无异常、返回 `([], ['stat-failed: …cursed.yar…'])`；`analyze()` 结果 `{"present":true,"ok":false,"error":"unreadable: stat-failed: …cursed.yar…"}`、`degraded=True`、`engine_errors=['yara']`、`loaded=1`、命中 `yara.demo_ok` —— 与单测断言一致。
+
+### ③ R8-3 其余断言未改动 —— **Verified**
+
+- `git diff --stat -- triage/tests/test_triage.py`：145 插入 / **0 删除**；新增两例插在 partial-compile 用例之后，未改动既有断言。
+- partial-compile 用例仍在：`test_yara_partial_compile_failure_is_degraded_and_valid_rules_still_hit`（`:370-414`），仍断言 `failed_files==["broken_rules.yar"]`、`ok is False`、`degraded is True`、合法规则命中、`loaded=1/failed=1`。
+- `triage.py` 的 diff 仅限 `_set_engine` 的 R8-3 字段（上一轮已验）与 `_compiled_yara_rules` 的本次修复；`_yara_scan` 的"先匹配后判定、problems 组合、ok=False"逻辑未变（`:503-542` 上一轮行号，内容未动）。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R10-1 | low | `triage/triage.py:441-465` | 缓存键只含"可枚举文件的 (path, mtime, size)"，不含 `failed/unreadable` 状态。已复现：坏文件 stat 失败 → 缓存写入含 `stat-failed` 的结果；随后**删除**该坏文件，剩余文件集合与缓存签名相同 → 命中缓存，仍返回 `stat-failed: <已删除文件>`，`ok=False/degraded` 滞留（直到其它规则文件 mtime/size 变化或进程重启）。同理，坏文件修复后若签名恰好不变（同尺寸同 mtime 边界）也可能短暂滞留 | `unreadable_errors`/`failed` 非空时不写缓存（或把失败文件名集合纳入 key）；至少加一条"删除坏文件后重跑应恢复 ok=True"的用例 |
+
+**第十轮结论**：R9-1 **已真实关闭**（初始化前置、stat 失败只记 unreadable、walk 失败显式返回；单测与独立复现都证明不崩溃且 `ok=False/degraded/unreadable` 可见，合法规则仍生效），R8-3 其余断言未被改动。仅剩 R10-1（缓存对"不可读状态"不敏感，low）。
+
+**第十轮复核边界**：未运行 `cargo test`/CI；结论为代码 diff + 单测 + 独立 monkeypatch 复现；CI 以增强步骤（XBITS_EXPECT_ENHANCED=1 + yara，30 例）为准。
+
+---
+
+# 第十一轮：R10-1 复核（t33）
+
+> 最小复核：缓存失败状态是否滞留、正常路径是否仍命中缓存、单测是否真实覆盖、R9-1/R8-3 是否回退。只读：未改源码、未推送、未跑 CI；跑了 triage 单测与独立复现。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| ① 失败状态不再滞留 | **Verified** | 缓存键改为"枚举到的每个 .yar"（stat 失败条目也入键，含 errno/类型）；坏文件删除或恢复后签名改变 → 重编译，`ok=True`/`degraded=False`（独立复现） |
+| ② 正常路径仍用缓存 | **Verified** | 规则全好时键结构稳定；连续两次 `_compiled_yara_rules` 返回**同一 compiled 对象**（`assertIs` + 独立复现） |
+| ③ 单测真实覆盖序列 | **Verified** | `test_yara_stat_failure_does_not_linger_in_cache`（`test_triage.py:515-591`）覆盖"失败→删除→恢复 ok=True/degraded=False→缓存复用"；`test_cache_key_covers_stat_failed_entries`（`:593-637`）断言失败条目进键且删除后签名变化；32 例 OK |
+| ④ R9-1/R8-3 未回退 | **Verified** | stat 失败仍只记 unreadable（`triage.py:442-448`）；partial-compile/stat 两旧用例仍在且通过（`:370-414`、`:427-512`）；test 文件无删除行；`_yara_scan` 的 problems/ok=False 逻辑未动（`:537-553`） |
+| 新发现 | 无阻塞；**R11-1 low（信息性）** | 缓存键仍不含 `include` 外部依赖文件；若被 include 的文件在规则目录之外且内容变化（mtime/size 不变），缓存不会失效（既有设计，非本轮引入） |
+
+## 逐项证据
+
+### ① 缓存键覆盖失败状态 —— **Verified**
+
+- `_compiled_yara_rules()`（`triage/triage.py:414-476`）：
+  - `candidates` 记录**枚举到的每个 .yar**（`:432`）：stat 成功 → `(rel, mtime, size, "ok")`（`:437-441`）；stat 失败 → `(rel, None, None, "stat-failed:<errno>:<ExcName>")`（`:442-448`），同时只记 `unreadable_errors`（R9-1 语义保持）；
+  - `candidates.sort(key=lambda c: c[0])` 后 `sig = tuple(candidates)`（`:450,455`），缓存键 = `abspath(rules_dir)` + 该签名（`:454-457`）；
+  - walk 失败仍直接返回且**不写缓存**（`:451-453`）。
+- 于是：坏文件被删除 → 该条目从 candidates 消失 → 签名变化 → 缓存不命中 → 重新编译，`unreadable` 清空、`ok=True`；坏文件恢复可读 → 条目从 `stat-failed` 变 `"ok"` → 同样失效旧缓存。
+- 独立复现（自写脚本，非复用其单测）：
+  1) mock stat 失败：`yara.ok=false`、`error="unreadable: stat-failed: …vanishing.yar…"`、`degraded=true`、`loaded=1`；
+  2) 删除坏文件后再分析：`ok=true`、`error=null`、`unreadable=null`、`degraded=false`、`engine_errors={}`、`loaded=1`，且合法规则 `yara.probe_good` 命中；
+  3) 坏文件恢复可读（不删除）：`ok=false→true`、`degraded=false`、`loaded=2`。
+
+### ② 正常路径缓存命中 —— **Verified**
+
+- 规则全好时 candidates 恒为 `(rel, mtime, size, "ok")` 序列；文件未变 → 签名不变 → 命中 `_YARA_CACHE` 并返回同一 `compiled` 列表（`:457-458`）。
+- 单测：`test_triage.py:578-585` 连续两次直调 `_compiled_yara_rules`，`assertIs(compiled_a, compiled_b)` 且 `(failed, unread)==([],[])`。
+- 独立复现：`c1[0] is c2[0]` → `True`（同一编译对象），`len=1`。
+- 代价评估：键多了一个 `"ok"` 标记与 relpath 计算，O(规则文件数) 的元组构造，与旧实现同阶；编译缓存命中行为不变。
+
+### ③ 单测真实覆盖 —— **Verified**
+
+- `test_yara_stat_failure_does_not_linger_in_cache`（`:515-591`）：第一次 mock 失败断言 `ok=False/degraded=True/unreadable 含 vanishing.yar`（`:552-557`）；`os.remove(cursed)` 后第二次分析断言 `ok=True`、`error is None`、`degraded=False`、`engine_errors=={}`、`unreadable_errors is None`、`failed==0`、`loaded==1`、合法规则命中（`:560-576`）；随后断言缓存对象复用（`:578-585`）；finally 恢复 `_YARA_CACHE` 原状（`:586-591`）。
+- `test_cache_key_covers_stat_failed_entries`（`:593-637`）：失败态签名含 `stat-failed`（`:623-625`），删除坏文件后签名不同（`:626-632`），直接锁住"机制"而不只是"现象"。
+- 实跑：`python triage/tests/test_triage.py` → **Ran 32 tests — OK (skipped=1)**；`validate_rules.py` → PASS（6 文件 0 bad，正例 2/负例 0）。
+
+### ④ R9-1 / R8-3 未回退 —— **Verified**
+
+- R9-1：stat 失败分支仍只 `unreadable_errors.append("stat-failed: …")`（`:442-448`），不写 `failed`；初始化仍在 walk 之前（`:428-429`）。
+- R8-3：`_yara_scan` 的 `problems` 组合与 `ok=False` 判定未改（`:537-553`）；`failed_files`/`unreadable_errors` 仍写入 `engine_status`（`:548-551`）。
+- 用例仍在：`test_yara_partial_compile_failure_is_degraded_and_valid_rules_still_hit`（`:370-414`）、`test_yara_stat_failure_is_reported_without_crash`（`:427-482`）、`test_yara_stat_failure_isolated_via_direct_call`（`:484-512`）。
+- `git diff -- triage/tests/test_triage.py`：**无删除行**（纯新增）；32 例全过。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R11-1 | low（信息性） | `triage/triage.py:414-476` | 缓存键只覆盖规则目录内枚举到的 `.yar`；若某规则 `include` 了目录外的文件，被 include 文件变化而自身 mtime/size 不变时，缓存不会失效（既有设计，非 R10-1 引入） | 如需彻底，可在规则文件里禁止跨目录 include，或把 include 依赖也纳入签名；当前 triage/rules 未使用跨目录 include，风险低 |
+
+**第十一轮结论**：R10-1 **已真实关闭**——失败状态（stat-failed）进入缓存键，坏文件删除/恢复后旧结果不再滞留（`ok=True`/`degraded=False` 可复现），同时正常路径仍命中同一编译对象（无性能回退）；新增两例分别锁定"行为序列"与"缓存键机制"，R9-1/R8-3 未回退。无阻塞项，仅 R11-1 一条信息性提示。
+
+**第十一轮复核边界**：未运行 `cargo test`/CI；结论为代码 diff + 32 例单测 + 独立脚本复现；CI 以增强步骤（XBITS_EXPECT_ENHANCED=1 + yara）为准。

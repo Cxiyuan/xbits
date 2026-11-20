@@ -143,9 +143,16 @@ def _which(cmd: str | None) -> str | None:
 #   present=True, ok=True    本次真实执行成功（含"执行了且未检出"）
 #   present=True, ok=False   执行失败（rc!=0 / 超时 / 解析失败 / 库在但用不了）→ 计入 degraded
 def _set_engine(engines: dict, status: dict, name: str, *,
-                present: bool, ok: bool, error: str | None = None) -> None:
+                present: bool, ok: bool, error: str | None = None,
+                failed_files: list[str] | None = None,
+                unreadable_errors: list[str] | None = None) -> None:
     status[name] = {"present": bool(present), "ok": bool(ok),
                     "error": (error[:200] if error else None)}
+    # R8-3：YARA 的结构化失败明细（编译失败文件名 / 目录或文件不可读原因）
+    if failed_files:
+        status[name]["failed_files"] = list(failed_files)
+    if unreadable_errors:
+        status[name]["unreadable_errors"] = [e[:200] for e in unreadable_errors[:5]]
     engines[name] = bool(present and ok)
 
 
@@ -404,33 +411,52 @@ def _elf_scan(path: str, data: bytes, engines: dict, status: dict, findings: lis
 _YARA_CACHE: dict = {}
 
 
-def _compiled_yara_rules(yara_mod, rules_dir: str) -> tuple[list, int, list[str]]:
+def _compiled_yara_rules(yara_mod, rules_dir: str) -> tuple[list, list[str], list[str]]:
     """编译目录（递归含子目录）下所有 YARA 规则；带 mtime 缓存；兼容非 ASCII 路径。
 
-    返回 (compiled, failed_count, failed_paths)——编译失败必须计数（V-19/V-20），
-    不允许"规则全编不出来 = 没有命中 = 干净"。
+    返回 (compiled, failed_paths, unreadable_errors)（R8-3/V-19/V-20，R9-1/R10-1 修复）——三类失败必须可区分：
+      * 目录/文件不可读：进 unreadable_errors（walk 失败＝无法枚举；单文件 stat 失败＝该条规则
+        无法确认，不进 failed_paths，避免双重计数）；
+      * 规则文件编译失败：文件名进 failed_paths（部分失败 ≠ 全部生效）；
+      * 匹配异常由 _yara_scan 计数（不在此层）。
+    不允许"规则编不出来 = 没有命中 = 干净"。
+
+    缓存键（R10-1）：由**枚举到的全部 .yar 文件**组成，含 stat 失败的条目
+    （relpath + 失败类型/errno），而非只含 stat 成功的文件。这样坏文件被删除/恢复/权限变化
+    都会改变键 → 旧的 stat-failed/unreadable 不会滞留缓存；规则全好时键仍稳定，正常命中率不降。
     """
+    failed: list[str] = []
+    unreadable_errors: list[str] = []
     try:
         files = []
+        candidates: list[tuple] = []  # 缓存键：枚举到的每个 .yar（含 stat 失败）
         for dp, _dirs, fnames in os.walk(rules_dir):
             for name in sorted(fnames):
                 if name.endswith(".yar") or name.endswith(".yara"):
                     fp = os.path.join(dp, name)
+                    rel = os.path.relpath(fp, rules_dir)
                     try:
                         st = os.stat(fp)
                         files.append((fp, st.st_mtime, st.st_size))
-                    except OSError:
+                        candidates.append((rel, st.st_mtime, st.st_size, "ok"))
+                    except OSError as exc:
+                        # 单个文件 stat 失败（权限/竞态）：该条规则不可用，只记不可读原因（R9-1）
+                        unreadable_errors.append(f"stat-failed: {fp}: {exc}")
+                        # 失败条目也进缓存键（R10-1）：否则删除坏文件后旧结果会一直命中
+                        candidates.append(
+                            (rel, None, None, f"stat-failed:{exc.errno}:{type(exc).__name__}"))
                         continue
         files.sort()
-    except OSError:
-        return [], 0, []
+        candidates.sort(key=lambda c: c[0])
+    except OSError as exc:
+        # 目录本身不可读：规则集完全不可用（不写缓存，下次必然重试）
+        return [], [], [f"walk-failed: {rules_dir}: {exc}"]
     key = os.path.abspath(rules_dir)
-    sig = tuple((n, m, s) for (n, m, s) in files)
+    sig = tuple(candidates)
     cached = _YARA_CACHE.get(key)
     if cached and cached[0] == sig:
         return cached[1], cached[2], cached[3]
     compiled: list = []
-    failed: list[str] = []
     for fp, _m, _s in files:
         r = None
         try:
@@ -446,8 +472,8 @@ def _compiled_yara_rules(yara_mod, rules_dir: str) -> tuple[list, int, list[str]
             compiled.append(r)
         else:
             failed.append(os.path.basename(fp))
-    _YARA_CACHE[key] = (sig, compiled, len(failed), failed)
-    return compiled, len(failed), failed
+    _YARA_CACHE[key] = (sig, compiled, failed, unreadable_errors)
+    return compiled, failed, unreadable_errors
 
 
 def _yara_scan(path: str, rules_dir: str | None, engines: dict, status: dict,
@@ -470,12 +496,20 @@ def _yara_scan(path: str, rules_dir: str | None, engines: dict, status: dict,
         _set_engine(engines, status, "yara", present=True, ok=False,
                     error=f"read-failed: {exc}")
         return
-    compiled, failed_count, failed_paths = _compiled_yara_rules(yara, rules_dir)
-    if failed_count:
-        info["yara_rules_failed"] = sorted(failed_paths)
+    # 三类失败（R8-3）：目录不可读 / 规则文件编译失败 / 匹配异常。
+    # 部分编译失败时已编译规则仍要跑（可用部分生效），但 ok=False + degraded 必须可见。
+    compiled, failed_files, unreadable_errors = _compiled_yara_rules(yara, rules_dir)
+    if failed_files:
+        info["yara_rules_failed"] = sorted(failed_files)
+    if unreadable_errors:
+        info["yara_unreadable_errors"] = [e[:200] for e in unreadable_errors[:5]]
     if not compiled:
-        _set_engine(engines, status, "yara", present=True, ok=False,
-                    error=f"no-rules-compiled (failed={failed_count})")
+        detail = (f"no-rules-compiled (compile-failed={len(failed_files)}, "
+                  f"unreadable={len(unreadable_errors)})")
+        if unreadable_errors:
+            detail = f"{detail}; {unreadable_errors[0][:150]}"
+        _set_engine(engines, status, "yara", present=True, ok=False, error=detail,
+                    failed_files=sorted(failed_files), unreadable_errors=unreadable_errors)
         return
     for rules in compiled:
         try:
@@ -497,14 +531,26 @@ def _yara_scan(path: str, rules_dir: str | None, engines: dict, status: dict,
                                          "malware", "shellcode")) else "high"
             findings.append({"id": f"yara.{name}", "severity": sev,
                              "detail": f"YARA 命中规则 {name}", "weight": 45})
+    info.setdefault("yara_rules", {})["loaded"] = len(compiled)
+    info["yara_rules"]["failed"] = len(failed_files)
+
+    # 结论：任何一类失败（编译失败 / 目录不可读 / 匹配异常）都 ok=False + degraded；
+    # 但已编译规则的命中照常产出（可用部分生效，不被跳过）。
+    problems: list[str] = []
+    if failed_files:
+        problems.append(f"compile-failed: {','.join(sorted(failed_files))}")
+    if unreadable_errors:
+        problems.append(f"unreadable: {unreadable_errors[0][:120]}"
+                        + (f" (+{len(unreadable_errors) - 1} more)" if len(unreadable_errors) > 1 else ""))
     if match_errors:
         info["yara_match_errors"] = match_errors
+        problems.append(f"match-errors: {match_errors}")
+    if problems:
         _set_engine(engines, status, "yara", present=True, ok=False,
-                    error=f"match-errors: {match_errors}")
+                    error="; ".join(problems),
+                    failed_files=sorted(failed_files), unreadable_errors=unreadable_errors)
     else:
         _set_engine(engines, status, "yara", present=True, ok=True)
-    info.setdefault("yara_rules", {})["loaded"] = len(compiled)
-    info["yara_rules"]["failed"] = failed_count
 
 
 # ---------------- 可选：Office 宏（oletools） ----------------
