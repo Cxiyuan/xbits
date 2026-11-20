@@ -207,7 +207,7 @@ class TriageTests(unittest.TestCase):
         self.assertTrue(r["ok"])
         if not EXPECT_ENHANCED:
             self.skipTest("pefile 未安装（stdlib 路径）；增强步骤断言降级路径")
-        self.assertTrue(r["engines"]["pefile"])
+        self.assertFalse(r["engines"]["pefile"], "engines 摘要=present and ok；解析失败必须为 False")
         self.assertIsNone(r["info"].get("pe"))
         self.assertTrue(r["info"].get("pe_error"), "非法 PE 必须留下 pe_error，而不是静默当成功")
         st = r["engine_status"]["pefile"]
