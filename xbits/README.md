@@ -386,6 +386,40 @@ xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/analysis.json \
   归一化文档（`--analysis-file`、ES 的 `intel`、`allowlist`、`xbits.intel_decision`）；
   文件 triage 文档同样携带（文件事件先经引擎标注，再进 triage）。
 
+## 8.2 请求→响应关联（success_rules，V-14 方案①）
+
+PVS 探针规则里 1,546 条"请求探测 → 响应确认"链（flowbits/depend 语义）在 Suricata
+侧被剥离、声明"交 xbits 处理"——xbits 现在真实消费这份关联表（不再是无消费者的空话）：
+
+```bash
+xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/analysis.json \
+      --success-rules 规则检测/xbits/规则库元数据/success_rules.json
+```
+
+- `success_rules.json`（由 `规则检测/convert_probe_rules.py` 生成）结构：
+  `[{"sid": <响应侧>, "depends": [<请求侧>...], "scopes": [...], "msg": ..., "source": ...}]`。
+  `--success-rules` **未指定即关闭关联**（不猜默认路径）；指定了但文件缺失 / JSON 解析失败
+  → 启动直接非零退出，绝不静默降级成"无关联继续跑"。
+- **配对算法**（`xbits/src/engine.rs`，状态机在引擎内）：
+  1. 请求侧命中（事件 SID ∈ 任一响应规则的 `depends`）→ 在该 5 元组/community_id 的 key 上
+     登记等待条目（记请求侧 SID + 时间戳；同 key 重复命中刷新时间戳）；
+  2. 响应侧命中（事件 SID 是某响应规则，且同 key 等待条目的请求侧 ∈ 它的 `depends`）
+     → 消费等待条目，响应侧告警带 `correlated=<请求侧 SID>` 字段，evidence 追加
+     `correlated=<sid>: response-side success_rule matched on the same community_id (V-14)`；
+  3. 关联成立对 `confidence` 的加成 = **+15**（常量 `CORRELATION_CONFIDENCE_BONUS`，
+     与情报加分同一通道：在 `min_confidence` 门槛判定**之前**加入，可帮助达到门槛，
+     不会让证据不足的告警绕过门槛）。
+- **TTL / 上界**：等待条目 TTL = 120s（`CORRELATION_TTL`，引擎事件 TTL 60s 的 2 倍——
+  覆盖请求-响应往返与跨请求周期的 PVS 探测）；等待表容量 4096（`MAX_CORRELATIONS`，
+  与 pending 同量级），超限挤掉最旧条目并计数。
+- **可观测**（`PipelineHealth`，hook 维护循环增量并入）：
+  - `correlated_pairs`：配对成立数；`correlation_timeouts`：请求侧等待响应超 TTL 未配对数
+    （关联是**增强信号**不是判定本体——超时只计数+日志，不产出降级告警，请求侧告警
+    此前已正常判定）；等待表溢出计数 `correlation_overflow`（引擎侧访问器）。
+- 归一化文档带 `xbits.correlated`（= 请求侧 SID 文本）与 `xbits.degraded` 并列。
+- 无 `success_rules` 时功能整体关闭：等待表不登记、告警无 `correlated` 字段、
+  计数恒 0——README 如实标注为"未启用"而不是"已配对但无结果"。
+
 ## 9. 上下文关联、误报判断与统一告警落盘
 
 生产分析规则使用 `xbits/rules/analysis.json`，额外支持：
@@ -419,7 +453,45 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 - Suricata EVE 使用 `filetype: xbits-hook`，不落盘 `eve.json`/`fast.log`；
 - xbits 输出的统一告警 JSONL 是唯一告警落盘入口，包含 `confidence`、`evidence`、`rule_id`、`alert_kind` 等字段。
 
-## 10. 已知限制（low，尚未修复）
+## 10. success_rules 请求→响应关联（V-14 方案①）
+
+`规则检测/xbits/规则库元数据/success_rules.json`（996 条响应→请求映射，由
+`convert_probe_rules.py` 生成）已由 xbits **真实消费**，不是只写在元数据里的承诺。
+
+CLI（`--hook-socket` 模式）：
+
+```bash
+xbits/target/release/xbits \
+  --hook-socket /tmp/xbits-hook.sock \
+  --rules xbits/rules/default.json \
+  --success-rules 规则检测/xbits/规则库元数据/success_rules.json
+```
+
+语义：
+
+- `success_rules.json` 每条是 `{"sid": <响应侧>, "depends": [<请求侧>…], …}`；
+  加载期展开为 `response_to_requests: HashMap`，查询 O(1)。
+- 请求侧 SID 命中（事件的 sid 属于任一 `depends`）→ 以 `community_id` 为 key
+  登记 `CorrelationWait`，请求侧告警正常输出（不 `correlated`）。
+- 响应侧 SID 命中且同 key 有匹配的等待条目 → 配对成立，响应侧告警带
+  `correlated=<请求侧 SID>`（也落进分析文档的 `xbits.correlated`），
+  `evidence` 追加 `correlated=<sid>: response-side success_rule matched on the same community_id`，
+  confidence 在门槛判定**之前** +15（`CORRELATION_CONFIDENCE_BONUS`，与情报加分同通道）。
+- 未指定 `--success-rules` 时关联功能完全关闭，行为与旧版一致。
+- 指定后**加载失败（文件不存在/坏 JSON）直接非零退出**——不静默降级成"无关联继续跑"。
+
+计数器与边界：
+
+- `CORRELATION_TTL = 120s`（引擎事件 TTL 60s 的 2 倍）：等待超时只计数
+  `correlation_timeouts` + 日志，不产出降级告警（关联是增强信号，请求侧告警此前已正常判定）；
+- `MAX_CORRELATIONS = 4096`：超限淘汰最旧等待并累计 `correlation_overflow`（可见、不静默）；
+- `correlated_pairs` / `correlation_timeouts` 经 `PipelineHealth` 同步，可在分析流水线健康出口观察。
+
+CI 断言：`xbits/test/qa_xbits_success_rules.py`（接 `xbits-ci.yml`）— 配对成立带
+`correlated` + 对照无关联、只响应无请求不关联、坏配置非零退出；TTL 真等待（121s）
+用 `--with-ttl-wait` 显式开启以免拖慢日常 CI，TTL 本体由 `engine.rs` 单测覆盖。
+
+## 11. 已知限制（low，尚未修复）
 
 以下项在第六轮 QA 中确认为 low 级遗留，**尚未修复**，在此如实记录（不隐藏，也不冒充已修）：
 

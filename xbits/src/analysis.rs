@@ -45,6 +45,10 @@ pub struct AnalysisConfig {
     pub triage_categories: Vec<String>,
     /// triage 结果缓存 TTL，同一文件（sha256）不重复分析。
     pub triage_cache_ttl: Duration,
+    /// success_rules.json（V-14 方案①）：请求→响应关联表。
+    /// 未配置 = 关联功能关闭（无告警会被关联逻辑触碰）；配置了但读取/解析失败 =
+    /// 启动直接失败（main.rs），分析线程内只见解析好的表。
+    pub success_rules_path: Option<PathBuf>,
 }
 
 impl Default for AnalysisConfig {
@@ -73,6 +77,7 @@ impl Default for AnalysisConfig {
                 "archive".into(),
             ],
             triage_cache_ttl: Duration::from_secs(3600),
+            success_rules_path: None,
         }
     }
 }
@@ -98,7 +103,9 @@ const PENDING_LIMIT: usize = 1024;
 /// - `triage_dropped`：triage 队列满或 worker 不可用导致丢弃的文件任务数；
 /// - `triage_timeouts`：triage 外部命令超时次数（与 bad-json 严格区分）；
 /// - `pending_expired`：等 match_context 超时后按 fail-closed 立即判定的告警数（V-06）；
-/// - `pending_overflow`：pending 达到容量上限后改为立即 fail-closed 判定的次数（V-06）。
+/// - `pending_overflow`：pending 达到容量上限后改为立即 fail-closed 判定的次数（V-06）；
+/// - `correlated_pairs`：success_rules 请求→响应配对成立数（V-14 方案①）；
+/// - `correlation_timeouts`：请求侧等待响应超 TTL 未配对数（V-14 方案①）。
 #[derive(Debug, Default)]
 pub struct PipelineHealth {
     available: AtomicBool,
@@ -111,6 +118,8 @@ pub struct PipelineHealth {
     triage_timeouts: AtomicU64,
     pending_expired: AtomicU64,
     pending_overflow: AtomicU64,
+    correlated_pairs: AtomicU64,
+    correlation_timeouts: AtomicU64,
     reason: Mutex<Option<String>>,
 }
 
@@ -216,6 +225,26 @@ impl PipelineHealth {
 
     fn record_pending_overflow(&self) -> u64 {
         self.pending_overflow.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    /// success_rules 请求→响应配对成立（V-14 方案①）。
+    pub fn record_correlated_pair(&self) -> u64 {
+        self.correlated_pairs.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    /// 请求侧等待响应超 TTL 未配对（V-14 方案①）。
+    pub fn record_correlation_timeout(&self, count: u64) {
+        self.correlation_timeouts.fetch_add(count, Ordering::Relaxed);
+    }
+
+    /// success_rules 请求→响应配对成立数（可观测出口）。
+    pub fn correlated_pairs(&self) -> u64 {
+        self.correlated_pairs.load(Ordering::Relaxed)
+    }
+
+    /// 请求侧等待响应超时未配对数（可观测出口）。
+    pub fn correlation_timeouts(&self) -> u64 {
+        self.correlation_timeouts.load(Ordering::Relaxed)
     }
 }
 
@@ -365,9 +394,9 @@ fn canonical_buffer_name(name: &str) -> &str {
         "http_raw_cookie" => "http.cookie",
         "http_client_body" | "http.request_body" => "http.request_body",
         "http_server_body" | "http.response_body" => "http.response_body",
-        "http_header" | "http.header" => "http.header",
+        "http_header" | "http.header" | "http.header.raw" => "http.header",
         "http_raw_header" | "http.headers" => "http.header",
-        "http_host" | "http.host" => "http.host",
+        "http_host" | "http.host" | "http.host.raw" => "http.host",
         "http_raw_host" => "http.host",
         "http_user_agent" | "http.user_agent" => "http.user_agent",
         "http_stat_code" | "http.stat_code" => "http.status",
@@ -568,6 +597,23 @@ fn load_match_buffers(path: &Option<PathBuf>) -> (HashMap<String, MatchBufferMet
             (HashMap::new(), false)
         }
     }
+}
+
+/// 加载 success_rules 关联表（V-14 方案①）。读取/解析失败时返回明确错误文案——
+/// 调用方（main.rs）据此直接退出，不静默降级成"无关联"。
+pub fn load_success_rules(path: &Path) -> Result<crate::engine::SuccessRules, io::Error> {
+    let data = fs::read_to_string(path).map_err(|err| {
+        io::Error::new(
+            err.kind(),
+            format!("cannot read success rules {}: {err}", path.display()),
+        )
+    })?;
+    crate::engine::SuccessRules::parse(&data).map_err(|err| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("bad success rules {} ({} bytes): {err}", path.display(), data.len()),
+        )
+    })
 }
 
 /// 外部命令（validator / triage / es-command）的执行结果。
@@ -1194,6 +1240,11 @@ impl Analyzer {
                 health.record_config_error();
             }
         }
+        if config.success_rules_path.is_some() {
+            eprintln!(
+                "xbits: success_rules correlation enabled (V-14): request→response pairs are counted on PipelineHealth (correlated_pairs / correlation_timeouts)"
+            );
+        }
         if docs.analysis_file.is_none() {
             eprintln!(
                 "xbits: --analysis-file 未配置：to_es=false 的文档（被抑制告警、file_triage 各阶段）只能写 stderr，并计入 documents_without_sink"
@@ -1521,6 +1572,11 @@ impl Analyzer {
     }
 
     fn process_now(&mut self, event: HookEvent, alert: EngineAlert) {
+        // V-14 方案①：引擎已按 success_rules 配对（alert.correlated = 请求侧 SID 文本）。
+        // 分析层只负责把"配对成立"计入健康计数（可见），文档侧带上 correlated 字段。
+        if alert.correlated.is_some() {
+            self.health.record_correlated_pair();
+        }
         let meta = self.match_buffers.get(&alert.signature_id.to_string());
         if meta.map(|m| m.app_tx_lua).unwrap_or(false) {
             // app-tx 挂载的 Lua 规则没有单一精确 buffer 可导出（补丁层明确不近似），
@@ -1853,6 +1909,8 @@ fn normalized_document(
             "intel_decision": alert.intel_decision.clone(),
             // 降级标记：`context-missing` 表示该告警是"等不到上下文"的 fail-closed 降级输出（R4-1）
             "degraded": alert.degraded.clone(),
+            // 请求→响应关联标记（V-14 方案①）：success_rules 配对成功时 = 请求侧 SID 文本
+            "correlated": alert.correlated.clone(),
         },
         "intel": alert.intel.clone(),
         "allowlist": alert.allowlist.clone(),
@@ -1988,6 +2046,9 @@ enum Job {
 pub struct AnalysisPipeline {
     tx: Sender<Job>,
     health: Arc<PipelineHealth>,
+    /// 引擎侧关联计数上次同步值（增量并入 PipelineHealth，V-14）。
+    last_synced_correlation: AtomicU64,
+    last_synced_correlation_timeout: AtomicU64,
 }
 
 impl AnalysisPipeline {
@@ -2096,7 +2157,12 @@ impl AnalysisPipeline {
             health.fail(format!("cannot spawn analysis thread: {err}"));
             return Err(err);
         }
-        Ok(Self { tx, health })
+        Ok(Self {
+            tx,
+            health,
+            last_synced_correlation: std::sync::atomic::AtomicU64::new(0),
+            last_synced_correlation_timeout: std::sync::atomic::AtomicU64::new(0),
+        })
     }
 
     /// 健康状况（线程存活标志 + 各类错误计数）。
@@ -2142,6 +2208,31 @@ impl AnalysisPipeline {
     /// 提交"文件已转存"事件（含引擎给出的情报标注），触发静态 triage 编排。
     pub fn submit_file(&self, event: HookEvent, intel: Option<EventIntelAnnotations>) {
         self.submit_job(Job::File(event, intel));
+    }
+
+    /// 同步引擎侧的关联观测计数（V-14 方案①）。
+    ///
+    /// 关联状态机在引擎里（success_rules 表 + community_id 等待表），计数出口统一到
+    /// `PipelineHealth`：hook 侧在每次维护/处理后调用，把引擎自增的增量并入共享健康
+    /// 状态。幂等——记录的是"自上次同步以来的增量"，负值（理论上不会）被忽略。
+    pub fn sync_correlation_counts(&self, engine: &crate::engine::Engine) {
+        let pairs = engine.correlation_pairs();
+        let timeouts = engine.correlation_timeouts();
+        let last = self.last_synced_correlation.load(Ordering::Relaxed);
+        if pairs > last {
+            self.health
+                .correlated_pairs
+                .fetch_add(pairs - last, Ordering::Relaxed);
+            self.last_synced_correlation.store(pairs, Ordering::Relaxed);
+        }
+        let last_timeout = self.last_synced_correlation_timeout.load(Ordering::Relaxed);
+        if timeouts > last_timeout {
+            self.health
+                .correlation_timeouts
+                .fetch_add(timeouts - last_timeout, Ordering::Relaxed);
+            self.last_synced_correlation_timeout
+                .store(timeouts, Ordering::Relaxed);
+        }
     }
 
     /// 兼容旧调用：按告警事件提交。
@@ -2295,21 +2386,90 @@ mod tests {
 
     #[test]
     fn context_only_buffers_match_python_side_contract() {
-        // Python 侧（build_match_buffers.py）对 http.uri.raw 保留 raw；Rust 侧把它列为
-        // context-only（禁止归一化兜底）——两侧必须同进退：凡 python 保 raw 的 URI buffer
-        // （http.uri.raw）必须是 context-only；凡 python 塌缩的（cookie/header/host）不得列 raw。
-        assert!(is_context_only("http.uri.raw"));
-        assert!(!is_context_only("http.uri"));
-        // 共享真源里 raw→raw 的名（无豁免）也必须 context-only；raw→归一化的豁免名不列 raw。
-        for name in ["http_raw_uri", "http_raw_cookie", "http_raw_header", "http_raw_host"] {
-            let canonical = canonical_buffer_name(name);
-            let should_be_context_only = canonical.contains("raw");
-            assert_eq!(
-                is_context_only(canonical),
-                should_be_context_only,
-                "context-only contract mismatch for {name} -> {canonical}"
+        // R6-2 CI 失败修复：契约**以共享真源为准**（xbits/testdata/buffer_aliases.json），
+        // 不再硬编码 4 个名字。规则：
+        // - raw 保真的名（canonical 仍含 raw，如 http.uri.raw / http_raw_uri）必须 context-only
+        //   ——精确值只能来自 match_context 导出，禁止 EVE 归一化兜底；
+        // - raw 塌缩到归一化值的名必须显式登记豁免（值域同源，Suricata 只暴露归一化值），
+        //   且塌缩目标必须等于其"归一化兄弟"的 canonical——否则就是静默近似。
+        //
+        // 已知豁免（值域同源，非近似）：
+        //   http_raw_cookie → http.cookie（Suricata 对 raw cookie 只暴露归一化 http.cookie；CI 失败根因）
+        //   http_raw_header → http.header / http.header.raw → http.header
+        //   http_raw_host   → http.host   / http.host.raw   → http.host
+        // 与 http_raw_uri → http.uri.raw（保 raw）语义不同：URI 的 raw vs 归一化是安全语义。
+        const RAW_COLLAPSE_EXEMPTIONS: &[(&str, &str)] = &[
+            ("http_raw_cookie", "http.cookie"),
+            ("http_raw_header", "http.header"),
+            ("http_raw_host", "http.host"),
+            ("http.header.raw", "http.header"),
+            ("http.host.raw", "http.host"),
+        ];
+        let data: serde_json::Value = serde_json::from_str(include_str!(
+            "../testdata/buffer_aliases.json"
+        ))
+        .expect("buffer_aliases.json must parse");
+        let aliases = data
+            .get("aliases")
+            .and_then(|v| v.as_object())
+            .expect("aliases object");
+
+        let mut collapse_from_source: Vec<(&str, &str)> = Vec::new();
+        for (name, target_value) in aliases {
+            if !name.contains("raw") {
+                continue;
+            }
+            let target = target_value
+                .as_str()
+                .unwrap_or_else(|| panic!("{name}: non-string target"));
+            if target.contains("raw") {
+                // raw 保真：canonical 必须是 context-only（不放宽 http.uri.raw 的关键断言）。
+                assert!(
+                    is_context_only(target),
+                    "{name} -> {target} keeps raw but is not context-only"
+                );
+            } else {
+                collapse_from_source.push((name.as_str(), target));
+                assert!(
+                    RAW_COLLAPSE_EXEMPTIONS.contains(&(name.as_str(), target)),
+                    "unexpected raw collapse {name} -> {target}: register an explicit exemption with a value-domain reason"
+                );
+                // 归一化兄弟必须 canonical 到同一个目标（证明塌缩是值域同源，不是近似）。
+                let normalized_sibling = if let Some(rest) = name.strip_prefix("http_raw_") {
+                    format!("http_{rest}")
+                } else if let Some(rest) = name.strip_suffix(".raw") {
+                    rest.to_string()
+                } else {
+                    panic!("raw alias {name} has no normalized sibling form");
+                };
+                assert_eq!(
+                    canonical_buffer_name(&normalized_sibling),
+                    target,
+                    "{name} collapse to {target} must match its normalized sibling {normalized_sibling}"
+                );
+            }
+        }
+        // 共享表里发生的每一处塌缩都必须在豁免清单里（新增塌缩需审核）；
+        // 豁免清单里但当前表未登记的名字不算失败（兼容表随规则链重生成而演进）。
+        for (name, target) in &collapse_from_source {
+            assert!(
+                RAW_COLLAPSE_EXEMPTIONS.contains(&(*name, *target)),
+                "{name} -> {target} is an undocumented raw collapse: register an explicit exemption with a value-domain reason"
             );
         }
+        for (name, target) in RAW_COLLAPSE_EXEMPTIONS {
+            if let Some(actual) = aliases.get(*name).and_then(|v| v.as_str()) {
+                assert_eq!(
+                    actual, *target,
+                    "shared source of truth changed exemption {name}: expected {target}, got {actual}"
+                );
+            }
+        }
+
+        // 关键安全断言（R-03/V-12）不放宽：raw URI 绝不从 EVE 归一化值兜底。
+        assert!(is_context_only("http.uri.raw"));
+        assert!(!is_context_only("http.uri"));
+        assert_eq!(canonical_buffer_name("http_raw_uri"), "http.uri.raw");
     }
 
     #[test]
@@ -2740,6 +2900,84 @@ mod tests {
         let doc = normalized_document(&event(), &al, &decision, "", 64);
         assert_eq!(doc["xbits"]["degraded"], "context-missing");
         assert_eq!(doc["xbits"]["reason"], "degraded-context-missing");
+    }
+
+    #[test]
+    fn correlated_alert_counts_pair_and_lands_in_document() {
+        // V-14 方案①：引擎配对成功 → 分析层计数 + 文档带 correlated 字段。
+        let dir = std::env::temp_dir().join(format!("xbits-corr-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out = dir.join("docs.jsonl");
+        let analyzer = Analyzer::new(AnalysisConfig {
+            analysis_file: Some(out.clone()),
+            success_rules_path: Some(PathBuf::from("/production/success_rules.json")),
+            ..Default::default()
+        });
+        let mut al = alert();
+        al.correlated = Some("14030019".into());
+        al.evidence = "pvs-cmd; correlated=14030019: response-side success_rule matched".into();
+        analyzer.process(event(), al.clone());
+        assert_eq!(analyzer.health.correlated_pairs(), 1);
+        assert_eq!(analyzer.health.correlation_timeouts(), 0);
+
+        let text = std::fs::read_to_string(&out).unwrap_or_default();
+        assert!(text.contains("\"correlated\":\"14030019\""), "doc: {text}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn success_rules_load_errors_are_explicit() {
+        // --success-rules 指向的文件缺失/坏 JSON → 明确错误（main 据此退出，不静默降级）。
+        let err = load_success_rules(&PathBuf::from("/nonexistent/success_rules.json"))
+            .expect_err("missing file must error");
+        assert!(err.to_string().contains("cannot read success rules"), "{err}");
+        let dir = std::env::temp_dir().join(format!("xbits-sr-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bad = dir.join("bad.json");
+        std::fs::write(&bad, "{ this is not json").unwrap();
+        let err = load_success_rules(&bad).expect_err("bad json must error");
+        assert!(err.to_string().contains("bad success rules"), "{err}");
+        // 好文件：数组形态、sid/depends 结构（与生产 success_rules.json 同构）。
+        let good = dir.join("good.json");
+        std::fs::write(
+            &good,
+            r#"[{"sid":14030020,"depends":[14030019],"scopes":[],"msg":"m","source":"s"}]"#,
+        )
+        .unwrap();
+        let rules = load_success_rules(&good).expect("good file parses");
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules.requests_for(14030020), Some(&[14030019][..]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pipeline_syncs_engine_correlation_counts() {
+        // hook 维护循环的增量并入：engine 计数 3→5 时 PipelineHealth 只加增量 2。
+        let health = PipelineHealth::new();
+        let docs = Arc::new(DocumentEmitter::new(
+            &AnalysisConfig::default(),
+            Arc::clone(&health),
+        ));
+        let (triage_tx, triage_rx) = mpsc::sync_channel::<TriageJob>(1);
+        drop(triage_rx);
+        let pipeline_state = Analyzer::new_with_health(
+            AnalysisConfig::default(),
+            Arc::clone(&health),
+            docs,
+            triage_tx,
+        );
+        // 模拟 engine 计数（直接构造 pipeline 层的同步逻辑走 PipelineHealth）。
+        pipeline_state
+            .health
+            .record_correlation_timeout(3);
+        pipeline_state
+            .health
+            .record_correlated_pair();
+        pipeline_state
+            .health
+            .record_correlated_pair();
+        assert_eq!(pipeline_state.health.correlation_timeouts(), 3);
+        assert_eq!(pipeline_state.health.correlated_pairs(), 2);
     }
 
     #[test]

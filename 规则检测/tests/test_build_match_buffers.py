@@ -173,17 +173,31 @@ class SharedAliasesContractTests(unittest.TestCase):
             )
 
     def test_no_value_collapses_raw_to_normalized(self) -> None:
-        # raw→归一化塌缩仅允许"值域同源"特例（Suricata/xbits 双侧约定一致，非近似）：
-        #   http_raw_cookie → http.cookie、http_raw_header → http.header、
-        #   http_raw_host → http.host —— 这三对在 xbits 侧同样共用一个事件字段
-        #   （analysis.rs canonical_buffer_name 同表），raw 与归一化值域相同；
-        # 而 http_raw_uri → http.uri.raw 必须保 raw（raw vs 归一化 URI 是安全语义，
+        # raw→归一化塌缩仅允许"值域同源"豁免（Suricata/xbits 双侧约定一致，非近似）：
+        #   http_raw_cookie → http.cookie（Suricata 对 raw cookie 只暴露归一化 http.cookie；CI 失败根因）
+        #   http_raw_header → http.header、http.header.raw → http.header
+        #   http_raw_host   → http.host、http.host.raw   → http.host
+        # 这些对在 xbits 侧共用同一 canonical（analysis.rs canonical_buffer_name 同表），
+        # raw 与归一化值域相同；而 http_raw_uri / http.uri.raw 必须保 raw（安全语义，
         # xbits 对 http.uri.raw 明令禁止归一化兜底——CONTEXT_ONLY_BUFFERS）。
-        RAW_PRESERVING_EXEMPT = {"http_raw_cookie", "http_raw_header", "http_raw_host"}
+        RAW_PRESERVING_EXEMPT = {
+            "http_raw_cookie", "http_raw_header", "http_raw_host",
+            "http.header.raw", "http.host.raw",
+        }
         data = json.loads(SHARED_ALIASES.read_text(encoding="utf-8"))
         for source, target in data["aliases"].items():
             if "raw" in source and source not in RAW_PRESERVING_EXEMPT:
                 self.assertIn("raw", target, f"{source} -> {target} collapses raw semantics")
+        # 共享表里发生的每一处塌缩都必须在豁免清单里（新增塌缩需审核）；
+        # 清单中的名字若当前表未登记不算失败（表随规则链重生成可演进）。
+        collapsed = {
+            source for source, target in data["aliases"].items()
+            if "raw" in source and "raw" not in target
+        }
+        self.assertTrue(
+            collapsed <= RAW_PRESERVING_EXEMPT,
+            f"undocumented raw collapses: {sorted(collapsed - RAW_PRESERVING_EXEMPT)}",
+        )
 
 
 if __name__ == "__main__":

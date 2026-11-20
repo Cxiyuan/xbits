@@ -68,6 +68,8 @@ DOTTED = {
     "http.request_header": "http.header",
     "http.response_header": "http.header",
     "http.headers": "http.header",
+    "http.header.raw": "http.header",
+    "http.host.raw": "http.host",
     "file.data": "file.data",
     "dns.query": "dns.query",
     "dns.queries.rrname": "dns.query",

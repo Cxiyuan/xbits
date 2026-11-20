@@ -156,14 +156,14 @@
 - **影响面**：这些规则降误报的唯一手段（URL 解码、注释归一化、盲注判定）失效，退化成纯 content 匹配。
 - 来源：R-05。
 
-### V-14 · high · 1,546 条 flowbits/depend 请求→响应状态链被删除并宣称"交 xbits"，xbits 无任何消费代码
+### V-14 · high · 已修复（t39 C6-A + t40 C6-B，abaf277 之后的 commit 7c4c752 等；状态更新于第 9 轮） · 原问题：1,546 条 flowbits/depend 请求→响应状态链被删除并宣称"交 xbits"，xbits 无任何消费代码
 - **证据**：`convert_probe_rules.py:676-680`（`flowbits:` → `skip="flowbits-correlation"`）、`:683-687`（`depend`/`scope_id` → `skip="dependency-correlation"`）、`:850-852` 写 `success_rules.json`（**996 条**，已核对）；`semantic_gaps.json`：`flowbits-correlation: 670`、`dependency-correlation: 876`，合计 1,546。文档承诺：`规则检测/README.md:6-7`、`:19`。xbits 侧：grep `success_rules|depends|dependency` 在 `xbits/` **0 命中**；`main.rs:71-184` 无对应 CLI；`analysis.rs` 的 `RuleMeta` 只反序列化 `tier/category/name`。
 - **根因**："删除即修复"——把检测链路从 A 删掉、在 B 写注释，然后用 `suricata -T` 绿证明完成。
 - **正面修复**：二选一并明写：① xbits 实现 `--success-rules`，按 `community_id + sid` 做请求→响应配对，产出 `correlated=true` 与评分，并有配对成立/不成立两种断言；② 不实现就恢复 Suricata 侧 flowbits 或把 `depend` 规则合并成单条，并删除文档承诺。对 `semantic_gaps.json` 每个 reason 建"能力归属表"（谁接管/有无测试）。
 - **影响面**：检测能力净减少 1,546 条，所有可见证据都指向"已迁移"。
 - 来源：R-04。
 
-### V-15 · high · 剔除治理空转：`semantic_gaps.json` 只有生产者，`dead_rules.json` 恒为 `[]`
+### V-15 · high · 已修复（t37 C5-C + t38 C5-D + t40 C6-B，abaf277 之后的 commit 7c4c752 等；状态更新于第 9 轮） · 原问题：剔除治理空转：`semantic_gaps.json` 只有生产者，`dead_rules.json` 恒为 `[]`
 - **证据**：`semantic_gaps.json` counts 合计 **14,120**（本次逐项重算一致：`http-only-uri-unsupported 2947`、`dangling-http-uri 2073`、`dsl-semantic 1634`、`no-dependency 4708`、`dependency-correlation 876`、`flowbits-correlation 670`、`state-noalert 527`、`convert-rule-none 263`、`isdataat 136`、`unsupported 89`、`negated-pcre 80`、`method-unsupported 48`、`mixed-position 39`、`response-direction-conflict 14`、`rawbytes-unsupported 8`、`rate-unsupported 6`、`duplicate-position 1`、`false-positive-quarantine 1`）；消费方只有转换器自身（`convert_probe_rules.py:832-838`），`xbits/` grep `semantic_gaps` **0 命中**，workflow 也不读。`dead_rules.json` 实测内容 `[]`；机制上不可能非空：`convert_probe_rules.py:744-745` `flowbit_set = None` → `:360-363` 注入分支永不执行，带 flowbits 的规则更早在 `:676-680` 被剔除 → `cleanup_dead_flowbits`（`:462-505`）无输入。文档仍以它为卖点：`规则检测/README.md:20`。
 - **根因**：把"记录了剔除原因"当成治理完成；没有 diff 契约、没有能力归属、没有阈值。
 - **正面修复**：`semantic_gaps.json` 纳入 CI 契约（每次转换与提交版本 diff，每个 reason 的 SID 集合变化需显式白名单，新增剔除直接 fail）；每个 reason 建"能力归属 + 有无测试"字段，无归属视为 bug；剔除率设阈值告警；删除无效的 flowbits 清理链路，或改成有实际输入的形式。

@@ -226,11 +226,16 @@ fn ensure_pipeline_healthy(
 /// 引擎定时维护（R5-1）：把过期 pending 的降级告警、溢出降级告警写出去并投递分析流水线。
 ///
 /// 与"事件到达"解耦：连接空闲（read_timeout）与无连接（accept tick）都会调用。
+/// 每次维护同时把引擎侧的关联观测计数增量并入流水线健康（V-14：correlated_pairs /
+/// correlation_timeouts 的唯一出口），保证计数可见。
 fn maintenance<W: Write + ?Sized>(
     engine: &mut Engine,
     pipeline: Option<&AnalysisPipeline>,
     writer: &mut W,
 ) -> io::Result<()> {
+    if let Some(pipeline) = pipeline {
+        pipeline.sync_correlation_counts(engine);
+    }
     for (event, alert) in engine.maintenance() {
         if let Some(pipeline) = pipeline {
             pipeline.submit_alert(event, alert.clone());
@@ -275,6 +280,9 @@ fn handle_line<W: Write + ?Sized>(
             }
             write_alert(writer, &alert)?;
         }
+        if let Some(pipeline) = pipeline {
+            pipeline.sync_correlation_counts(engine);
+        }
         let annotations = engine.intel_annotations(&ev);
         match pipeline {
             Some(pipeline) => pipeline.submit_file(ev, annotations),
@@ -290,6 +298,9 @@ fn handle_line<W: Write + ?Sized>(
             pipeline.submit_alert(event, alert.clone());
         }
         write_alert(writer, &alert)?;
+    }
+    if let Some(pipeline) = pipeline {
+        pipeline.sync_correlation_counts(engine);
     }
     Ok(())
 }
@@ -381,17 +392,19 @@ pub fn run_hook_listener_with_analysis<W: Write + ?Sized>(
     writer: &mut W,
     pipeline: Option<&AnalysisPipeline>,
 ) -> io::Result<()> {
-    run_hook_listener_full(socket_path, rules, writer, pipeline, None)
+    run_hook_listener_full(socket_path, rules, writer, pipeline, None, None)
 }
 
-/// 完整版 listener：可挂载统一情报服务（threat-intel + allowlist），
-/// 引擎告警将携带 intel / allowlist 标注。
+/// 完整版 listener：可挂载统一情报服务（threat-intel + allowlist）与 success_rules
+/// 关联表（V-14 方案①），引擎告警将携带 intel / allowlist / correlated 标注。
+#[allow(clippy::too_many_arguments)]
 pub fn run_hook_listener_full<W: Write + ?Sized>(
     socket_path: &str,
     rules: Vec<Rule>,
     writer: &mut W,
     pipeline: Option<&AnalysisPipeline>,
     intel: Option<std::sync::Arc<crate::intel::IntelService>>,
+    success_rules: Option<crate::engine::SuccessRules>,
 ) -> io::Result<()> {
     let path = Path::new(socket_path);
     if path.exists() {
@@ -414,6 +427,13 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
     let mut engine = Engine::new(rules);
     if let Some(ref intel) = intel {
         engine = engine.with_intel(intel.clone());
+    }
+    if let Some(success) = success_rules {
+        eprintln!(
+            "xbits: success_rules correlation enabled (V-14): response_rules={}, request_sids covered",
+            success.len()
+        );
+        engine = engine.with_success_rules(success);
     }
     // 情报状态逐项打印：未配置 / 读取失败 / 为空 / 已加载 四态可区分，
     // 不再用一个会撒谎的布尔（例如只加载了 5 万条域名却打印 intel=empty）。

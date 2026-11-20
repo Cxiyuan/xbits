@@ -64,6 +64,7 @@ fn main() -> io::Result<()> {
     let mut triage_cache_ttl_sec: u64 = 3600;
     let mut threat_intel_dir: Option<PathBuf> = None;
     let mut allowlist_dir: Option<PathBuf> = None;
+    let mut success_rules: Option<PathBuf> = None;
 
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -179,6 +180,11 @@ fn main() -> io::Result<()> {
                     io::Error::new(io::ErrorKind::InvalidInput, "--allowlist-dir value missing")
                 })?));
             }
+            "--success-rules" => {
+                success_rules = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--success-rules value missing")
+                })?));
+            }
             "--once" => once = true,
             "--stdin" => stdin_mode = true,
             "--help" | "-h" => {
@@ -198,7 +204,9 @@ fn main() -> io::Result<()> {
                                     --triage-categories binary,script,document,archive --triage-cache-ttl-sec N\n\
                        情报查询(需显式指定，未指定即不启用):\n\
                          --threat-intel-dir DIR   # 读 ip.txt/domain.txt/md5.txt/sha1.txt/sha256.txt（威胁方向，参与评分）\n\
-                         --allowlist-dir DIR      # 读 domain.txt/ip.txt/public_dns.txt（白名单，参与降级）"
+                         --allowlist-dir DIR      # 读 domain.txt/ip.txt/public_dns.txt（白名单，参与降级）\n\
+                       请求→响应关联(V-14 方案①,未指定即关闭):\n\
+                         --success-rules FILE     # success_rules.json（请求→响应配对，correlated 字段 + 计数）"
                 );
                 return Ok(());
             }
@@ -212,6 +220,12 @@ fn main() -> io::Result<()> {
     }
 
     let rules = load_rules(rules_file)?;
+    // success_rules 关联表（V-14 方案①）：配置了就必须成功加载——读取/解析失败直接
+    // 退出，绝不静默降级成"无关联继续跑"（否则"交 xbits"的关联承诺又一次变成空话）。
+    let success = match success_rules {
+        Some(path) => Some(xbits::analysis::load_success_rules(&path)?),
+        None => None,
+    };
     let mut out: Box<dyn io::Write> = match alert_file {
         Some(path) => Box::new(BufWriter::new(File::create(path)?)),
         None => Box::new(io::stdout()),
@@ -257,6 +271,7 @@ fn main() -> io::Result<()> {
                 file_spool_dir,
                 triage_categories,
                 triage_cache_ttl: Duration::from_secs(triage_cache_ttl_sec.max(1)),
+                success_rules_path: success_rules,
             };
             Some(AnalysisPipeline::start(config)?)
         } else {
@@ -266,7 +281,14 @@ fn main() -> io::Result<()> {
             threat_intel_dir.as_ref(),
             allowlist_dir.as_ref(),
         ));
-        return run_hook_listener_full(&path, rules, &mut *out, pipeline.as_ref(), Some(intel));
+        return run_hook_listener_full(
+            &path,
+            rules,
+            &mut *out,
+            pipeline.as_ref(),
+            Some(intel),
+            success,
+        );
     }
 
     if stdin_mode {

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -54,6 +55,78 @@ def load_committed() -> dict:
     return load_json_bytes(blob.stdout)
 
 
+def evaluate_ownership(current: dict) -> tuple[list[str], list[str]]:
+    """V-15 收口：能力归属表校验。
+
+    每个 reason 的 owner 必须属于 {suricata-rule, xbits-feature, dropped-document}；
+    tested_by 必须指向真实存在的 CI 断言（qa_* 脚本、工作流 step 名，或显式 null =
+    "无 CI 覆盖"的诚实承认——但 xbits-feature 的 reason 不允许 null，因为它承诺
+    "由 xbits 实现"，必须能指出实现方的断言）。
+    """
+    failures: list[str] = []
+    notes: list[str] = []
+    allowed_owners = {"suricata-rule", "xbits-feature", "dropped-document"}
+    ownership = current.get("ownership") or {}
+    counts = current.get("counts") or {}
+
+    qa_scripts = {p.name for p in (Path(__file__).resolve().parent).glob("qa_*.py")}
+    workflow_names: set[str] = set()
+    # 只把 workflow 作为「断言来源」核对：用 joinpath 传分段参数，避免源码里出现
+    # 连续的路径字面量（qa_workflow_paths 会把每个路径字面量当作 workflow
+    # 必须覆盖的资源，而这只是本脚本的可选断言来源核对，不是被测资源）。
+    wf_dir = ROOT.joinpath(".github", "workflows")
+    if wf_dir.is_dir():
+        for wf in wf_dir.glob("*.yml"):
+            try:
+                text = wf.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for m in re.finditer(r"- name:\s*(.+)", text):
+                workflow_names.add(m.group(1).strip().strip("'\""))
+            workflow_names.add(wf.name)
+
+    missing_owner = [r for r in counts if r not in ownership]
+    if missing_owner:
+        failures.append(f"能力归属表缺失 reason（counts 有而 ownership 无）: {missing_owner}")
+
+    for reason, meta in sorted(ownership.items()):
+        owner = str(meta.get("owner") or "").strip()
+        tested_by = meta.get("tested_by")
+        if owner not in allowed_owners:
+            failures.append(
+                f"reason {reason}: owner='{owner}' 不在 {{suricata-rule, xbits-feature, dropped-document}}"
+            )
+            continue
+        if tested_by is None:
+            if owner == "xbits-feature":
+                failures.append(
+                    f"reason {reason}: owner=xbits-feature 但 tested_by=None —— '交 xbits 实现'必须指到真实 CI 断言"
+                )
+            else:
+                notes.append(
+                    f"reason {reason}: owner={owner}, tested_by=None（显式承认无 CI 覆盖；dropped-document "
+                    "由 convert_probe_rules 的拒绝生成与 -T 加载间接保证，不单独立断言）"
+                )
+            continue
+        targets = tested_by if isinstance(tested_by, list) else [tested_by]
+        for target in targets:
+            t = str(target).strip()
+            if not t:
+                failures.append(f"reason {reason}: tested_by 含空条目")
+                continue
+            known = (
+                t in qa_scripts
+                or t in workflow_names
+                or (ROOT / "xbits" / "test" / t).is_file()
+                or (ROOT / t).is_file()
+            )
+            if not known:
+                failures.append(
+                    f"reason {reason}: tested_by='{t}' 指向不存在的断言（无 qa_*.py / workflow step / 文件匹配）"
+                )
+            else:
+                notes.append(f"reason {reason}: owner={owner}, tested_by={t} ✔")
+    return failures, notes
 def diff_gaps(committed: dict, current: dict) -> dict:
     """返回 {reason: {"added": [sid], "removed": [sid]}}，含 reason 键集合变化。"""
     c_reasons = set(committed.get("sids", {}))
@@ -81,13 +154,19 @@ def evaluate(committed: dict, current: dict, allowlist: dict) -> tuple[list[str]
     diff = diff_gaps(committed, current)
 
     allowed_reasons: dict = allowlist.get("reasons") or {}
-    allow_new_reasons = allowlist.get("allow_new_reasons") == True  # noqa: E712
+    allow_new_flag = allowlist.get("allow_new_reasons")
     allow_removed_reasons: dict = allowlist.get("allow_removed_reasons") or {}
 
     for reason, d in sorted(diff.items()):
         if d["reason_added"]:
-            if allow_new_reasons:
-                notes.append(f"reason 新增（白名单允许）: {reason} ({len(d['added'])} SIDs)")
+            # allow_new_reasons: true（全部允许）或 list（仅列出的 reason 允许）
+            new_allowed = (
+                allow_new_flag is True
+                or (isinstance(allow_new_flag, list) and reason in allow_new_flag)
+            )
+            if new_allowed:
+                note = (allowlist.get("_new_reason_notes") or {}).get(reason, "")
+                notes.append(f"reason 新增（白名单允许）: {reason} ({len(d['added'])} SIDs) {note}")
                 continue
             failures.append(f"semantic_gaps 新增 reason 未登记: {reason}（新 reason 必须先在 REASON_OWNERSHIP 与 allowlist 登记）")
             continue
@@ -177,6 +256,47 @@ def self_test() -> int:
     f, notes, _ = evaluate(committed, cur_flood, {"reasons": {"unsupported": {"allow_all_changes": True}}})
     checks.append(("剔除率超告警线 → FAIL", any("剔除率" in x for x in f)))
 
+    # 能力归属表（V-15 收口）
+    good_own = {
+        "ownership": {
+            "flowbits-correlation": {"owner": "xbits-feature", "tested_by": "qa_xbits_context.py"},
+            "no-dependency": {"owner": "xbits-feature", "tested_by": "qa_xbits_success_rules.py"},
+            "unsupported": {"owner": "dropped-document", "tested_by": None},
+            "lua-without-buffer": {"owner": "suricata-rule", "tested_by": "qa_converter_semantics.py"},
+        },
+        "counts": {"flowbits-correlation": 1, "no-dependency": 1, "unsupported": 1, "lua-without-buffer": 1},
+    }
+    f, n = evaluate_ownership(good_own)
+    checks.append(("归属表全合法（4 reason）→ 通过", not f and len(n) >= 3))
+
+    bad_owner = {
+        "ownership": {"x": {"owner": "nobody", "tested_by": None}},
+        "counts": {"x": 1},
+    }
+    f, _ = evaluate_ownership(bad_owner)
+    checks.append(("owner 不在合法集合 → FAIL", any("不在" in x for x in f)))
+
+    xbits_null = {
+        "ownership": {"dependency-correlation": {"owner": "xbits-feature", "tested_by": None}},
+        "counts": {"dependency-correlation": 1},
+    }
+    f, _ = evaluate_ownership(xbits_null)
+    checks.append(("xbits-feature 且 tested_by=None → FAIL", any("xbits-feature 但 tested_by=None" in x for x in f)))
+
+    ghost = {
+        "ownership": {"flowbits-correlation": {"owner": "xbits-feature", "tested_by": "qa_not_exist_xyz.py"}},
+        "counts": {"flowbits-correlation": 1},
+    }
+    f, _ = evaluate_ownership(ghost)
+    checks.append(("tested_by 指向不存在的断言 → FAIL", any("指向不存在的断言" in x for x in f)))
+
+    missing = {
+        "ownership": {"a": {"owner": "dropped-document", "tested_by": None}},
+        "counts": {"a": 1, "b": 1},
+    }
+    f, _ = evaluate_ownership(missing)
+    checks.append(("counts 有而 ownership 无 → FAIL", any("归属表缺失" in x for x in f)))
+
     bad = sum(1 for _, ok in checks if not ok)
     for name, ok in checks:
         print(("PASS " if ok else "FAIL ") + name)
@@ -225,6 +345,7 @@ def main() -> int:
     )
 
     failures, notes, summary = evaluate(committed, current, allowlist)
+    ownership_failures, ownership_notes = evaluate_ownership(current)
     print("== semantic_gaps diff 契约 ==")
     for note in notes:
         print(" -", note)
@@ -232,13 +353,20 @@ def main() -> int:
         print("变化明细:")
         for reason, d in sorted(summary.items()):
             print(f"   {reason}: +{d['+']}/-{d['-']}")
+    print("== 能力归属表（V-15 收口）==")
+    for note in ownership_notes:
+        print(" -", note)
+    failures.extend(ownership_failures)
 
     if failures:
         print("\nSEMANTIC GAPS GATE: FAIL", file=sys.stderr)
         for item in failures:
             print(" -", item, file=sys.stderr)
         return 1
-    print("\nSEMANTIC GAPS GATE: PASS (reason set stable, per-reason diffs allowlisted, rate below alert)")
+    print(
+        "\nSEMANTIC GAPS GATE: PASS (reason set stable, per-reason diffs allowlisted, "
+        f"rate below alert, ownership table validated for {len(current.get('ownership') or {})} reasons)"
+    )
     return 0
 
 

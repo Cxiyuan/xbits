@@ -3400,10 +3400,10 @@
   },
   "13020170": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
@@ -3427,226 +3427,226 @@
   },
   "13020173": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020174": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020175": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020176": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020177": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020178": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020179": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020180": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020181": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020182": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020183": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020184": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020185": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020186": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020187": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020188": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020189": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020190": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020191": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020192": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020193": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020194": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020195": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020196": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
   "13020197": {
     "buffers": [
-      "http.header"
+      "payload"
     ],
-    "primary": "http.header",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\SQL注入\\sql.strong.rules"
   },
@@ -7251,15 +7251,6 @@
     "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
   },
   "13080090": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\WebShell\\webshell.rules"
-  },
-  "13080091": {
     "buffers": [
       "payload"
     ],
@@ -54349,15 +54340,6 @@
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
   },
-  "11021132": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
   "11020705": {
     "buffers": [
       "http.method"
@@ -59665,24 +59647,6 @@
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
   },
-  "11023693": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
-  "11023694": {
-    "buffers": [
-      "http.uri"
-    ],
-    "primary": "http.uri",
-    "has_payload": false,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
   "11023696": {
     "buffers": [
       "payload"
@@ -59775,15 +59739,6 @@
     "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
   },
   "11023714": {
-    "buffers": [
-      "http.uri"
-    ],
-    "primary": "http.uri",
-    "has_payload": false,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
-  "11023718": {
     "buffers": [
       "http.uri"
     ],
@@ -59966,15 +59921,6 @@
     "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
   },
   "11023778": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
-  "11023779": {
     "buffers": [
       "payload"
     ],
@@ -67893,24 +67839,6 @@
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
   },
-  "11023698": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
-  "11023695": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
   "11021325": {
     "buffers": [
       "payload"
@@ -68089,16 +68017,6 @@
       "http.uri"
     ],
     "primary": "http.uri",
-    "has_payload": false,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
-  },
-  "11021329": {
-    "buffers": [
-      "http.method",
-      "http.uri"
-    ],
-    "primary": "http.method",
     "has_payload": false,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\Web服务漏洞\\web.rules"
@@ -75802,10 +75720,10 @@
   },
   "13070316": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
@@ -77089,10 +77007,10 @@
   },
   "13070313": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
@@ -77467,19 +77385,19 @@
   },
   "13070332": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
   "13070333": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\信息泄露\\information_disclose.rules"
   },
@@ -88108,10 +88026,10 @@
   },
   "13100229": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
@@ -92626,10 +92544,10 @@
   },
   "13100554": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\扫描器\\web_scan.rules"
   },
@@ -107428,15 +107346,6 @@
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\浏览器漏洞\\web_browse.rules"
   },
-  "12010078": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\浏览器漏洞\\web_browse.rules"
-  },
   "12010079": {
     "buffers": [
       "payload"
@@ -111028,15 +110937,6 @@
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\浏览器漏洞\\web_browse.rules"
   },
-  "12010770": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\Web攻击\\浏览器漏洞\\web_browse.rules"
-  },
   "12010771": {
     "buffers": [
       "payload"
@@ -113973,10 +113873,10 @@
   },
   "13050035": {
     "buffers": [
-      "http.uri"
+      "payload"
     ],
-    "primary": "http.uri",
-    "has_payload": false,
+    "primary": "payload",
+    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\Web攻击\\目录遍历\\directory_tranversal.rules"
   },
@@ -119435,15 +119335,6 @@
     "app_tx_lua": false,
     "source": "suricata\\主机系统漏洞\\system.rules"
   },
-  "10011148": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\主机系统漏洞\\system.rules"
-  },
   "10011151": {
     "buffers": [
       "payload"
@@ -119814,15 +119705,6 @@
     "source": "suricata\\主机系统漏洞\\system.rules"
   },
   "10011120": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\主机系统漏洞\\system.rules"
-  },
-  "10011142": {
     "buffers": [
       "payload"
     ],
@@ -122675,15 +122557,6 @@
     "app_tx_lua": false,
     "source": "suricata\\其他\\bp_ips.rules"
   },
-  "10070272": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\其他\\bp_ips.rules"
-  },
   "10070274": {
     "buffers": [
       "payload"
@@ -124143,15 +124016,6 @@
     "source": "suricata\\其他\\bp_ips.rules"
   },
   "10070783": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
-    "app_tx_lua": false,
-    "source": "suricata\\其他\\bp_ips.rules"
-  },
-  "10070784": {
     "buffers": [
       "payload"
     ],
@@ -173949,15 +173813,6 @@
     ],
     "primary": "http.uri",
     "has_payload": false,
-    "app_tx_lua": false,
-    "source": "suricata\\网络设备漏洞\\network_device.rules"
-  },
-  "11070666": {
-    "buffers": [
-      "payload"
-    ],
-    "primary": "payload",
-    "has_payload": true,
     "app_tx_lua": false,
     "source": "suricata\\网络设备漏洞\\network_device.rules"
   },

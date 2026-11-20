@@ -2,12 +2,12 @@
  "stats": {
   "webshell_response.lua": 2542,
   "webshell_param.lua": 247,
-  "sqli_context.lua": 535,
+  "sqli_context.lua": 509,
   "keyword_context.lua": 1488,
-  "info_disclosure_request.lua": 383,
-  "scanner_context.lua": 112,
+  "info_disclosure_request.lua": 379,
+  "scanner_context.lua": 110,
   "cmdi_context.lua": 290,
-  "traversal_context.lua": 82,
+  "traversal_context.lua": 81,
   "upload_context.lua": 28,
   "xss_context.lua": 420
  },
@@ -17,15 +17,15 @@
   "Web攻击/WebShell/webshell.rules": 236,
   "Web攻击/WebShell/pvs-webshell.rules": 7,
   "Web攻击/SQL注入/sql.rules": 216,
-  "Web攻击/SQL注入/sql.strong.rules": 263,
+  "Web攻击/SQL注入/sql.strong.rules": 237,
   "Web攻击/SQL注入/sql.weak.rules": 54,
   "Web攻击/敏感关键词/gray_keyword.rules": 1488,
-  "Web攻击/信息泄露/information_disclose.rules": 382,
-  "Web攻击/扫描器/web_scan.rules": 115,
+  "Web攻击/信息泄露/information_disclose.rules": 378,
+  "Web攻击/扫描器/web_scan.rules": 113,
   "Web攻击/命令执行/cmd_executed.request.rules": 8,
   "Web攻击/命令注入/cmd.rules": 30,
   "Web攻击/命令注入/oscmd.rules": 252,
-  "Web攻击/目录遍历/directory_tranversal.rules": 23,
+  "Web攻击/目录遍历/directory_tranversal.rules": 22,
   "Web攻击/目录遍历/directory_traversal.rules": 25,
   "Web攻击/文件包含/file_include.rules": 26,
   "Web攻击/文件包含/rfi.rules": 8,
@@ -33,5 +33,106 @@
   "Web攻击/XSS/pvs-xss.rules": 127,
   "Web攻击/XSS/xss.rules": 293
  },
- "items": []
+ "items": [
+  {
+   "file": "Web攻击/WebShell/webshell_detect.rules",
+   "script": "webshell_response.lua",
+   "count": 2542
+  },
+  {
+   "file": "Web攻击/WebShell/webshell_detect.request.rules",
+   "script": "webshell_param.lua",
+   "count": 4
+  },
+  {
+   "file": "Web攻击/WebShell/webshell.rules",
+   "script": "webshell_param.lua",
+   "count": 236
+  },
+  {
+   "file": "Web攻击/WebShell/pvs-webshell.rules",
+   "script": "webshell_param.lua",
+   "count": 7
+  },
+  {
+   "file": "Web攻击/SQL注入/sql.rules",
+   "script": "sqli_context.lua",
+   "count": 216
+  },
+  {
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "count": 237
+  },
+  {
+   "file": "Web攻击/SQL注入/sql.weak.rules",
+   "script": "sqli_context.lua",
+   "count": 54
+  },
+  {
+   "file": "Web攻击/敏感关键词/gray_keyword.rules",
+   "script": "keyword_context.lua",
+   "count": 1488
+  },
+  {
+   "file": "Web攻击/信息泄露/information_disclose.rules",
+   "script": "info_disclosure_request.lua",
+   "count": 378
+  },
+  {
+   "file": "Web攻击/扫描器/web_scan.rules",
+   "script": "scanner_context.lua",
+   "count": 110
+  },
+  {
+   "file": "Web攻击/命令执行/cmd_executed.request.rules",
+   "script": "cmdi_context.lua",
+   "count": 8
+  },
+  {
+   "file": "Web攻击/命令注入/cmd.rules",
+   "script": "cmdi_context.lua",
+   "count": 30
+  },
+  {
+   "file": "Web攻击/命令注入/oscmd.rules",
+   "script": "cmdi_context.lua",
+   "count": 252
+  },
+  {
+   "file": "Web攻击/目录遍历/directory_tranversal.rules",
+   "script": "traversal_context.lua",
+   "count": 22
+  },
+  {
+   "file": "Web攻击/目录遍历/directory_traversal.rules",
+   "script": "traversal_context.lua",
+   "count": 25
+  },
+  {
+   "file": "Web攻击/文件包含/file_include.rules",
+   "script": "traversal_context.lua",
+   "count": 26
+  },
+  {
+   "file": "Web攻击/文件包含/rfi.rules",
+   "script": "traversal_context.lua",
+   "count": 8
+  },
+  {
+   "file": "Web攻击/文件上传/file_upload.rules",
+   "script": "upload_context.lua",
+   "count": 28
+  },
+  {
+   "file": "Web攻击/XSS/pvs-xss.rules",
+   "script": "xss_context.lua",
+   "count": 127
+  },
+  {
+   "file": "Web攻击/XSS/xss.rules",
+   "script": "xss_context.lua",
+   "count": 293
+  }
+ ]
 }

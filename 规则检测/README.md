@@ -14,15 +14,20 @@
       `Web攻击/文件上传/`、`Web攻击/信息泄露/`、`Web攻击/扫描器/`；
     - `恶意软件/木马/`、`恶意软件/后门/`、`恶意软件/C2与远控/`、`恶意URL/`；
     - `网络服务漏洞/`、`主机系统漏洞/`、`应用软件漏洞/`、`网络设备漏洞/`。
-  - PVS 请求→响应成功确认、flowbits 状态链只保留在 xbits 元数据，不进 active 转换规则。
+  - PVS 请求→响应成功确认、flowbits 状态链不进 active 转换规则；
+    `success_rules.json` 已由 `xbits --success-rules FILE` 真实消费——请求侧命中登记等待、
+    响应侧同 community_id 命中配对成功后带 `correlated=<请求侧 SID>` 与 confidence+15
+    （见 `xbits/README.md` success_rules 章节；CI 断言 `qa_xbits_success_rules.py`）。
 - `zeek/`：**只做行为分析**（`.zeek`）：DNS 突发、侦察 404/unique URI、C2 重复 URI；
   `威胁情报/` 为白域名、公共 DNS、僵尸网络元数据。不再包含 content/UA 签名匹配。
 - `xbits/规则库元数据/`：xbits 中央分析引擎消费的数据（由转换器生成，勿手改）：
   - `rules_meta.json`：每条规则元数据（depend/scope/holetype/tier/category）；
-  - `success_rules.json`：PVS 成功确认依赖（全量元数据；active 规则未消费，
-    接管方待 xbits --success-rules 落地，见 semantic_gaps.json `ownership.dependency-correlation`）；
+  - `success_rules.json`：PVS 成功确认依赖（996 条响应→请求映射；active 规则未消费，
+    由 `xbits --success-rules FILE` 消费，CI 断言见 `xbits/test/qa_xbits_success_rules.py`）；
   - `semantic_gaps.json`：剔除的 SID 与原因（含语义、状态链、依赖关联），每个 reason
-    带 `owner`（谁接管）与 `tested_by`（CI 哪个断言覆盖该缺口，null＝显式承认无覆盖）；
+    带 `owner`（谁接管）与 `tested_by`（CI 哪个断言覆盖该缺口，null＝显式承认无覆盖；
+    owner=xbits-feature 的 reason 必须有 tested_by），由 `qa_semantic_gaps_gate.py` 做
+    逐 reason diff 白名单 + 归属表校验；
   - `dead_rules.json`：**已删除**（flowbits 清理链路输入恒空、产物恒为 `[]`，属空转假治理；
     flowbits 依赖接管见 `semantic_gaps.json ownership.flowbits-correlation`）；
   - `audit_rules.json`：云审计规则；

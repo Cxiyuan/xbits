@@ -1,6 +1,7 @@
 {
  "counts": {
-  "convert-rule-none": 259,
+  "byte-extract-reference": 13,
+  "convert-rule-none": 262,
   "dependency-correlation": 876,
   "dsl-semantic": 1639,
   "duplicate-position": 1,
@@ -19,6 +20,21 @@
   "unsupported": 90
  },
  "sids": {
+  "byte-extract-reference": [
+   10011142,
+   10011148,
+   11021329,
+   11023693,
+   11023694,
+   11023695,
+   11023698,
+   11023718,
+   11023779,
+   11070666,
+   11070697,
+   11070698,
+   11070699
+  ],
   "convert-rule-none": [
    10010296,
    10010297,
@@ -77,6 +93,8 @@
    10041507,
    10041508,
    10041510,
+   10070272,
+   10070784,
    11000212,
    11000218,
    11000315,
@@ -96,6 +114,7 @@
    11020714,
    11020756,
    11020965,
+   11021132,
    11021350,
    11021369,
    11021385,
@@ -219,13 +238,12 @@
    11070678,
    11070679,
    11070692,
-   11070697,
-   11070698,
-   11070699,
    11070713,
    11070714,
    12000289,
    12000300,
+   12010078,
+   12010770,
    12010804,
    12010816,
    12010854,
@@ -271,6 +289,7 @@
    13012281,
    13012282,
    13012283,
+   13080091,
    13082103,
    13082106,
    13082109,
@@ -12189,6 +12208,11 @@
   ]
  },
  "ownership": {
+  "byte-extract-reference": {
+   "owner": "dropped-document",
+   "tested_by": null,
+   "note": "within/distance 引用 byte_extract 变量，运行时求值无法静态校验，Suricata 拒载"
+  },
   "convert-rule-none": {
    "owner": "dropped-document",
    "tested_by": null,
@@ -12196,8 +12220,8 @@
   },
   "dependency-correlation": {
    "owner": "xbits-feature",
-   "tested_by": null,
-   "note": "depend/scope 请求→响应配对（V-14 决议：等 xbits --success-rules）"
+   "tested_by": "qa_xbits_success_rules.py",
+   "note": "depend/scope 请求→响应配对已由 xbits --success-rules 实现（V-14 方案①）：qa_xbits_success_rules.py 断言配对/对照/坏配置三态"
   },
   "dsl-semantic": {
    "owner": "dropped-document",
@@ -12216,8 +12240,8 @@
   },
   "flowbits-correlation": {
    "owner": "xbits-feature",
-   "tested_by": null,
-   "note": "跨包 flowbits 状态链（V-14 决议）"
+   "tested_by": "qa_xbits_context.py",
+   "note": "跨包 flowbits 状态链由 xbits 上下文关联承担：qa_xbits_context.py 断言正例/负例/对照告警"
   },
   "http-only-uri-unsupported": {
    "owner": "dropped-document",
@@ -12246,8 +12270,8 @@
   },
   "no-dependency": {
    "owner": "xbits-feature",
-   "tested_by": null,
-   "note": "PVS 成功确认无依赖，保留为 xbits 元数据"
+   "tested_by": "qa_xbits_success_rules.py",
+   "note": "PVS 成功确认无依赖，保留为 xbits 元数据：qa_xbits_success_rules.py 断言 success_rules 加载/消费"
   },
   "rate-unsupported": {
    "owner": "dropped-document",

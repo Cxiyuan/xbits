@@ -1,5 +1,5 @@
 {
- "rejected_count": 946,
+ "rejected_count": 978,
  "note": "V-13 前置拒绝明细：这些规则在 lua: 之前没有 sticky buffer，Lua 增强必然静默失效（脚本 init(args)=[] 不消费 buffer 输入）。补 buffer 或剔除由 convert/维护流程处理；本脚本不静默注入。",
  "items": [
   {
@@ -92,13 +92,6 @@
    "script": "webshell_param.lua",
    "mode": "flow",
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"assert\"; nocase; pcre:\"/(php|<\\?|<%|\\$)[^>$]*assert[+\\s/*]*\\([+\\s/*]*('|\"|\\$|\\w+\\()/i\"; msg:\"WebShell PHP assert "
-  },
-  {
-   "sid": 13080091,
-   "file": "Web攻击/WebShell/webshell.rules",
-   "script": "webshell_param.lua",
-   "mode": "flow",
-   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"include\"; nocase; pcre:\"/(php|<\\?|<%|\\{|\\$)[^{$]{1,50}[^'\"\\w-\\.\\/]include(_once)?(\\+|\\s|\\/\\*.*\\*\\/)*\\(('|\"|\\$|\\w+"
   },
   {
    "sid": 13080093,
@@ -4287,6 +4280,13 @@
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"form-data\"; nocase; content:\"polloption\"; nocase; pcre:\"/form-data\\;\\s+name=(\\x22|\\x27)polloption\\[1/i\"; msg:\"SQL"
   },
   {
+   "sid": 13020170,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0D 0A|user-agent|3A 20|pangolin\"; nocase; msg:\"SQL Injection Attack Pangolin Tool Detection\"; flow:to_server,est"
+  },
+  {
    "sid": 13020171,
    "file": "Web攻击/SQL注入/sql.strong.rules",
    "script": "sqli_context.lua",
@@ -4299,6 +4299,181 @@
    "script": "sqli_context.lua",
    "mode": "all",
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"sqlmap\"; nocase; pcre:\"/\\x0d\\x0aUser-Agent:[+\\s]*sqlmap\\/\\d+\\.\\d+/i\"; msg:\"SQL Injection Attack Sqlmap Tool Detec"
+  },
+  {
+   "sid": 13020173,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|CLIENT-IP|3a| '\"; nocase; msg:\"SQL Injection Attack CLIENT-IP Single Quotation Detection\"; flow:to_server,"
+  },
+  {
+   "sid": 13020174,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|CLIENT-IP|3a| %27\"; nocase; msg:\"SQL Injection Attack CLIENT-IP Single Quotation Detection\"; flow:to_serve"
+  },
+  {
+   "sid": 13020175,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|CLIENT-IP|3a| &quot|3b|\"; nocase; msg:\"SQL Injection Attack CLIENT-IP Single Quotation Detection\"; flow:to"
+  },
+  {
+   "sid": 13020176,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|CLIENT-IP|3a| %c0%a7\"; nocase; msg:\"SQL Injection Attack CLIENT-IP Single Quotation Detection\"; flow:to_se"
+  },
+  {
+   "sid": 13020177,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|CLIENT-IP|3a| %2527\"; nocase; msg:\"SQL Injection Attack CLIENT-IP Single Quotation Detection\"; flow:to_ser"
+  },
+  {
+   "sid": 13020178,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|X-Forwarded-For|3a| '\"; nocase; msg:\"SQL Injection Attack X-Forwarded-For Single Quotation Detection\"; flo"
+  },
+  {
+   "sid": 13020179,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|X-Forwarded-For|3a| %27\"; nocase; msg:\"SQL Injection Attack X-Forwarded-For Single Quotation Detection\"; f"
+  },
+  {
+   "sid": 13020180,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|X-Forwarded-For|3a| &quot|3b|\"; nocase; msg:\"SQL Injection Attack X-Forwarded-For Single Quotation Detecti"
+  },
+  {
+   "sid": 13020181,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|X-Forwarded-For|3a| %c0%a7\"; nocase; msg:\"SQL Injection Attack X-Forwarded-For Single Quotation Detection\""
+  },
+  {
+   "sid": 13020182,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|X-Forwarded-For|3a| %2527\"; nocase; msg:\"SQL Injection Attack X-Forwarded-For Single Quotation Detection\";"
+  },
+  {
+   "sid": 13020183,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|User-Agent|3a| '\"; nocase; msg:\"Abnormal Behavior User-Agent Single Quotation Detection\"; flow:to_server,e"
+  },
+  {
+   "sid": 13020184,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|User-Agent|3a| %27\"; nocase; msg:\"SQL Injection Attack User-Agent Single Quotation Detection\"; flow:to_ser"
+  },
+  {
+   "sid": 13020185,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|User-Agent|3a| &quot|3b|\"; nocase; msg:\"SQL Injection Attack User-Agent Single Quotation Detection\"; flow:"
+  },
+  {
+   "sid": 13020186,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|User-Agent|3a| %c0%a7\"; nocase; msg:\"SQL Injection Attack User-Agent Single Quotation Detection\"; flow:to_"
+  },
+  {
+   "sid": 13020187,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|User-Agent|3a| %2527\"; nocase; msg:\"SQL Injection Attack User-Agent Single Quotation Detection\"; flow:to_s"
+  },
+  {
+   "sid": 13020188,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Referer|3a| '\"; nocase; msg:\"SQL Injection Attack Referer Single Quotation Detection\"; flow:to_server,esta"
+  },
+  {
+   "sid": 13020189,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Referer|3a| %27\"; nocase; msg:\"SQL Injection Attack Referer Single Quotation Detection\"; flow:to_server,es"
+  },
+  {
+   "sid": 13020190,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Referer|3a| &quot|3b|\"; nocase; msg:\"SQL Injection Attack Referer Single Quotation Detection\"; flow:to_ser"
+  },
+  {
+   "sid": 13020191,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Referer|3a| %c0%a7\"; nocase; msg:\"SQL Injection Attack Referer Single Quotation Detection\"; flow:to_server"
+  },
+  {
+   "sid": 13020192,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Referer|3a| %2527\"; nocase; msg:\"SQL Injection Attack Referer Single Quotation Detection\"; flow:to_server,"
+  },
+  {
+   "sid": 13020193,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Cookie|3a| '\"; nocase; msg:\"SQL Injection Attack Cookie Single Quotation Detection\"; flow:to_server,establ"
+  },
+  {
+   "sid": 13020194,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Cookie|3a| %27\"; nocase; msg:\"SQL Injection Attack Cookie Single Quotation Detection\"; flow:to_server,esta"
+  },
+  {
+   "sid": 13020195,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Cookie|3a| &quot|3b|\"; nocase; msg:\"SQL Injection Attack Cookie Single Quotation Detection\"; flow:to_serve"
+  },
+  {
+   "sid": 13020196,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Cookie|3a| %c0%a7\"; nocase; msg:\"SQL Injection Attack Cookie Single Quotation Detection\"; flow:to_server,e"
+  },
+  {
+   "sid": 13020197,
+   "file": "Web攻击/SQL注入/sql.strong.rules",
+   "script": "sqli_context.lua",
+   "mode": "all",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|0d 0a|Cookie|3a| %2527\"; nocase; msg:\"SQL Injection Attack Cookie Single Quotation Detection\"; flow:to_server,es"
   },
   {
    "sid": 13020198,
@@ -4362,6 +4537,13 @@
    "script": "info_disclosure_request.lua",
    "mode": "info",
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"|2E 20|HTTP\"; nocase; pcre:\"/\\/[^\\r\\n?]*\\.(asp|pl)\\.[^\\r\\n]*HTTP\\//i\"; msg:\"Microsoft IIS Appended Dot Script Sou"
+  },
+  {
+   "sid": 13070316,
+   "file": "Web攻击/信息泄露/information_disclose.rules",
+   "script": "info_disclosure_request.lua",
+   "mode": "info",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"%2e|20|HTTP\"; nocase; pcre:\"/\\.(asp|pl)%2e HTTP/i\"; msg:\"Microsoft IIS Appended Dot Script Source Disclosure Vuln"
   },
   {
    "sid": 13070318,
@@ -4665,11 +4847,32 @@
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\".jsp%\"; nocase; pcre:\"/(GET|HEAD|POST)[^\\r\\n?]*\\.jsp%[a-f0-9]{4} HTTP/i\"; msg:\"Information Disclose Jrun Server D"
   },
   {
+   "sid": 13070313,
+   "file": "Web攻击/信息泄露/information_disclose.rules",
+   "script": "info_disclosure_request.lua",
+   "mode": "info",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"/%3f.jsp\"; pcre:\"/(GET|HEAD|POST)[^\\r\\n?]*\\/%3f\\.jsp HTTP/i\"; msg:\"Allaire JRun Web Root Directory Disclosure Vul"
+  },
+  {
    "sid": 13070350,
    "file": "Web攻击/信息泄露/information_disclose.rules",
    "script": "info_disclosure_request.lua",
    "mode": "info",
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"%c0%80.jsp\"; nocase; pcre:\"/(GET|HEAD|POST)[^\\r\\n?]*%c0%80\\.jsp HTTP/i\"; msg:\"Information Disclose WebSphere Serv"
+  },
+  {
+   "sid": 13070332,
+   "file": "Web攻击/信息泄露/information_disclose.rules",
+   "script": "info_disclosure_request.lua",
+   "mode": "info",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"/%2F/\"; nocase; pcre:\"/(GET|HEAD|POST)[^\\r\\n?]*\\/%2F\\/ HTTP/i\"; msg:\"Information Disclose Weblogic Server Directo"
+  },
+  {
+   "sid": 13070333,
+   "file": "Web攻击/信息泄露/information_disclose.rules",
+   "script": "info_disclosure_request.lua",
+   "mode": "info",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"/%2E/\"; nocase; pcre:\"/(GET|HEAD|POST)[^\\r\\n?]*\\/%2E\\/ HTTP/i\"; msg:\"Information Disclose Weblogic Server Directo"
   },
   {
    "sid": 13070334,
@@ -5687,6 +5890,13 @@
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"#&<(,+|22|>|3B|\"; nocase; pcre:\"/referer: [^\\r\\n]+#&<\\(,\\+\\x22>\\;/i\"; msg:\"Web Scan Tool IBM AppScan Detection\"; "
   },
   {
+   "sid": 13100229,
+   "file": "Web攻击/扫描器/web_scan.rules",
+   "script": "scanner_context.lua",
+   "mode": "scanner",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"Referer: http://bogus.referer.ibm.com\"; nocase; msg:\"Web Scan Tool IBM AppScan Detection\"; flow:to_server,establi"
+  },
+  {
    "sid": 13100242,
    "file": "Web攻击/扫描器/web_scan.rules",
    "script": "scanner_context.lua",
@@ -5972,6 +6182,13 @@
    "script": "scanner_context.lua",
    "mode": "scanner",
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"python-requests\"; nocase; pcre:\"/User-Agent[^\\r\\n]*python-requests/i\"; msg:\"Python Script Scanner\"; flow:to_serve"
+  },
+  {
+   "sid": 13100554,
+   "file": "Web攻击/扫描器/web_scan.rules",
+   "script": "scanner_context.lua",
+   "mode": "scanner",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"/nice%20ports%2C/Tri%6Eity.txt%2ebak\"; msg:\"Nmap Scan Detection\"; flow:to_server,established; sid:13100554; rev:1"
   },
   {
    "sid": 13100582,
@@ -6497,6 +6714,13 @@
    "script": "traversal_context.lua",
    "mode": "to_server",
    "head": "alert tcp any any -> any $HTTP_PORTS (content:\"0x2e0x2e\"; nocase; pcre:\"/0x2e0x2e(\\/|\\\\|0x2f|0x5c)/i\"; msg:\"Directory Tranversal Attack\"; flow:to_server,establi"
+  },
+  {
+   "sid": 13050035,
+   "file": "Web攻击/目录遍历/directory_tranversal.rules",
+   "script": "traversal_context.lua",
+   "mode": "to_server",
+   "head": "alert tcp any any -> any $HTTP_PORTS (content:\"%c0%2e%c0%2e\"; nocase; pcre:\"/%c0%2e%c0%2e(\\/|\\\\|%2f|%5c)/i\"; msg:\"Directory Tranversal Attack\"; flow:to_server,e"
   },
   {
    "sid": 13050049,

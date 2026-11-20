@@ -241,6 +241,17 @@ jobs:
             --xbits xbits/target/release/xbits \
             --rules xbits/rules/default.json
 
+      # V-14 方案①：success_rules 请求→响应关联 e2e（配对/对照/无请求/坏配置）
+      - name: Verify xbits success_rules request-response correlation
+        run: |
+          set -euo pipefail
+          python xbits/test/qa_xbits_success_rules.py --self-test
+          python xbits/test/qa_xbits_success_rules.py \
+            --xbits xbits/target/release/xbits
+          # ::warning:: TODO: 120s 真实 TTL 等待的进程级验证按需跑
+          #   python xbits/test/qa_xbits_success_rules.py --xbits xbits/target/release/xbits --with-ttl-wait
+          #   （默认 CI 不跑，避免每轮多 2 分钟；TTL 数值本体由 engine.rs 单测覆盖）
+
       - name: Run Zeek Input event bridge
         run: |
           set -euo pipefail

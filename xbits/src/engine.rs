@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::intel::EventIntelAnnotations;
 use crate::model::{HookEvent, Rule};
@@ -17,6 +17,11 @@ pub const INTEL_THREAT_CONFIDENCE_BONUS: u64 = 15;
 /// 白名单命中对 `confidence` 的扣减（白方向只降级）：降低输出置信度并写
 /// `intel_decision=allowlist-downgraded`，不新增"情报驱动的静默丢弃"路径。
 pub const INTEL_ALLOWLIST_CONFIDENCE_PENALTY: u64 = 25;
+
+/// 请求→响应关联成立（V-14 方案①）对 `confidence` 的增量：与情报加分同一通道——
+/// 在 `min_confidence` 门槛判定**之前**加入，帮助证据不足的关联告警达到门槛，
+/// 但不会让它们绕过门槛。值写入 README §8.2。
+pub const CORRELATION_CONFIDENCE_BONUS: u64 = 15;
 
 /// Central-engine output. Fields remain Xbits::Alert compatible; analysis
 /// metadata is appended for evidence/confidence consumers.
@@ -65,6 +70,12 @@ pub struct EngineAlert {
     /// 挂起超时后按 fail-closed 产出的可见判定结果（不再是"丢弃且无输出"）。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub degraded: Option<String>,
+    /// 请求→响应关联标记（V-14/方案①）：success_rules 声明的响应侧规则命中且与
+    /// 先前请求侧告警同 community_id 时置 Some（值为配对到的请求侧 SID 文本）。
+    /// 告警仍走现有输出通道，这只是可见的结构化标记；同时 confidence 获
+    /// [`CORRELATION_CONFIDENCE_BONUS`] 加成（在门槛判定前，与情报加分同一通道）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlated: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +108,91 @@ struct ScoreEntry {
     window: Duration,
 }
 
+/// success_rules.json 的一条请求→响应关联（V-14 方案①）。
+///
+/// 文件由 `规则检测/convert_probe_rules.py` 生成，结构：
+/// `[{"sid": <响应侧>, "depends": [<请求侧>...], "scopes": [...], ...}]`。
+/// 语义：请求侧规则（depends）命中后，同一 `community_id`（5 元组回退）上
+/// 响应侧规则（sid）命中 → 响应侧告警标记 `correlated=<请求侧 SID>`。
+#[derive(Debug, Clone, Deserialize)]
+pub struct SuccessPair {
+    pub sid: u64,
+    #[serde(default)]
+    pub depends: Vec<u64>,
+    #[serde(default)]
+    pub scopes: Vec<u64>,
+    #[serde(default)]
+    pub msg: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+/// success_rules 关联表：响应侧 SID → 请求侧 SID 列表（加载时展开，查询 O(1)）。
+#[derive(Debug, Clone, Default)]
+pub struct SuccessRules {
+    response_to_requests: HashMap<u64, Vec<u64>>,
+}
+
+impl SuccessRules {
+    /// 从 JSON（数组形态）解析；解析失败由调用方转成明确错误（不静默降级）。
+    pub fn parse(json: &str) -> Result<Self, String> {
+        let entries: Vec<SuccessPair> =
+            serde_json::from_str(json).map_err(|err| format!("bad success_rules json: {err}"))?;
+        let mut map: HashMap<u64, Vec<u64>> = HashMap::new();
+        for entry in entries {
+            if entry.depends.is_empty() {
+                continue;
+            }
+            map.entry(entry.sid).or_default().extend(entry.depends);
+        }
+        Ok(Self {
+            response_to_requests: map,
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.response_to_requests.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.response_to_requests.len()
+    }
+
+    /// 该响应侧 SID 声明的请求侧 SID 列表。
+    pub fn requests_for(&self, response_sid: u64) -> Option<&[u64]> {
+        self.response_to_requests
+            .get(&response_sid)
+            .map(|v| v.as_slice())
+    }
+
+    /// 这批 sid 中是否有任一是任何响应规则的 depends（请求侧命中判定）。
+    pub fn is_request_sid_of(&self, sids: &[u64]) -> bool {
+        sids.iter()
+            .any(|sid| self.response_to_requests.values().any(|deps| deps.contains(sid)))
+    }
+
+    /// 请求侧 SID 是否是任何响应规则的 depends（单值便捷判定）。
+    pub fn is_request_sid(&self, sid: u64) -> bool {
+        self.response_to_requests.values().any(|deps| deps.contains(&sid))
+    }
+}
+
+/// 请求→响应关联的等待条目：请求侧告警命中后登记，等待同 cid 的响应侧命中。
+#[derive(Debug, Clone)]
+struct CorrelationWait {
+    request_sid: u64,
+    at: Instant,
+}
+
+/// 请求→响应关联等待 TTL：取引擎事件 TTL（60s）的 2 倍——响应通常紧随请求，
+/// 但 PVS 探测类流量可能跨多个请求周期；120s 足够覆盖绝大多数握手-响应往返，
+/// 又不会让表无限增长（容量另有 `MAX_CORRELATIONS` 保护）。
+const CORRELATION_TTL: Duration = Duration::from_secs(120);
+
+/// 请求→响应关联等待表容量上限：超过后 FIFO 挤掉最旧条目并计数 `correlation_overflow`，
+/// 复用 pending 的治理思路（V-06：有界 + 可见，不做无界缓存）。
+const MAX_CORRELATIONS: usize = 4096;
+
 /// Stateful central analysis engine:
 ///   * buffers Zeek metadata contexts by connection;
 ///   * buffers Suricata alerts whose rules require context;
@@ -112,6 +208,12 @@ pub struct Engine {
     pending: Vec<PendingAlert>,
     ttl: Duration,
     intel: Option<std::sync::Arc<crate::intel::IntelService>>,
+    /// 请求→响应关联（V-14 方案①）：success_rules 表 + 等待表 + 计数。
+    success_rules: SuccessRules,
+    correlations: HashMap<String, CorrelationWait>,
+    correlation_overflow: u64,
+    correlation_timeouts: u64,
+    correlation_pairs: u64,
     /// TTL/容量治理的可观测计数：过期清理不再静默（V-06）。
     pending_expired: u64,
     pending_overflow: u64,
@@ -132,6 +234,11 @@ impl Engine {
             pending: Vec::new(),
             ttl: Duration::from_secs(60),
             intel: None,
+            success_rules: SuccessRules::default(),
+            correlations: HashMap::new(),
+            correlation_overflow: 0,
+            correlation_timeouts: 0,
+            correlation_pairs: 0,
             pending_expired: 0,
             pending_overflow: 0,
             contexts_expired: 0,
@@ -140,6 +247,32 @@ impl Engine {
             max_pending: MAX_PENDING,
             max_scores: MAX_SCORES,
         }
+    }
+
+    /// 挂载 success_rules 关联表（V-14 方案①）；未挂载时关联功能整体关闭。
+    pub fn with_success_rules(mut self, rules: SuccessRules) -> Self {
+        self.success_rules = rules;
+        self
+    }
+
+    /// TTL 过期被清理的关联等待条目数（等待响应超时未配对）。
+    pub fn correlation_timeouts(&self) -> u64 {
+        self.correlation_timeouts
+    }
+
+    /// 成功配对的请求→响应关联数。
+    pub fn correlation_pairs(&self) -> u64 {
+        self.correlation_pairs
+    }
+
+    /// 关联等待表溢出（挤掉最旧）计数。
+    pub fn correlation_overflow(&self) -> u64 {
+        self.correlation_overflow
+    }
+
+    /// 当前等待中的关联条目数（测试/诊断用）。
+    pub fn correlations_len(&self) -> usize {
+        self.correlations.len()
     }
 
     /// 挂载统一情报服务（threat-intel + allowlist）；未挂载时告警不带情报标注。
@@ -287,6 +420,21 @@ impl Engine {
         let scores_before = self.scores.len();
         self.scores.retain(|_, s| now.duration_since(s.at) <= s.window);
         let scores_dropped = scores_before - self.scores.len();
+
+        // 请求→响应关联等待表（V-14）：TTL 过期 = 未等到响应侧命中，计数 + 清理。
+        // 关联本身是"增强信号"而不是判定：过期不需要产出降级告警（请求侧告警已正常
+        // 判定过），但必须计数 `correlation_timeouts` 保持可见。
+        let correlations_before = self.correlations.len();
+        self.correlations
+            .retain(|_, w| now.duration_since(w.at) <= CORRELATION_TTL);
+        let correlations_dropped = correlations_before - self.correlations.len();
+        if correlations_dropped > 0 {
+            self.correlation_timeouts += correlations_dropped as u64;
+            eprintln!(
+                "xbits: engine expired {correlations_dropped} correlation wait(s) without a matching response alert (total={})",
+                self.correlation_timeouts
+            );
+        }
 
         if contexts_dropped > 0 {
             self.contexts_expired += contexts_dropped as u64;
@@ -448,6 +596,20 @@ impl Engine {
         intel: Option<&EventIntelAnnotations>,
         degraded: Option<&str>,
     ) -> Option<EngineAlert> {
+        Self::make_alert_full(ev, rule, ctx, intel, degraded, None)
+    }
+
+    /// 带 `correlated` 配对信息的构造（V-14 方案①）：`correlated=Some(request_sid 文本)` 时
+    /// confidence 获 [`CORRELATION_CONFIDENCE_BONUS`] 加成（门槛判定**之前**，与情报加分
+    /// 同一通道；不会让低于门槛的证据绕过门槛），evidence 追加 `correlated=<sid>`。
+    fn make_alert_full(
+        ev: &HookEvent,
+        rule: &Rule,
+        ctx: Option<&HookEvent>,
+        intel: Option<&EventIntelAnnotations>,
+        degraded: Option<&str>,
+        correlated: Option<u64>,
+    ) -> Option<EngineAlert> {
         if rule.require_context && ctx.is_none() && degraded.is_none() {
             return None;
         }
@@ -467,6 +629,12 @@ impl Engine {
                     .min(100);
                 intel_decision = ann.decision();
             }
+        }
+        if correlated.is_some() {
+            // 关联成立：confidence 加成在门槛判定之前（与情报加分同一通道）。
+            confidence = confidence
+                .saturating_add(CORRELATION_CONFIDENCE_BONUS)
+                .min(100);
         }
         // min_confidence 是真正的过滤门槛：confidence 只由上下文证据 + 情报加分算出（不含门槛抬升），
         // 低于门槛即丢弃。白名单降级在门槛之后执行，保证"白方向只降级、不因门槛丢弃"。
@@ -514,6 +682,11 @@ impl Engine {
                 "{evidence}; degraded={label}: require_context rule waited out its ttl without context (fail-closed, no suppression key)"
             );
         }
+        if let Some(request_sid) = correlated {
+            evidence = format!(
+                "{evidence}; correlated={request_sid}: response-side success_rule matched on the same community_id (V-14)"
+            );
+        }
         Some(EngineAlert {
             timestamp: ev.timestamp.clone().or_else(|| ev.ts.clone()).unwrap_or_default(),
             signature_id: ev.sid.unwrap_or(0),
@@ -542,6 +715,7 @@ impl Engine {
             allowlist: intel.and_then(EventIntelAnnotations::allowlist_document),
             intel_decision: intel_decision.map(str::to_string),
             degraded: degraded.map(str::to_string),
+            correlated: correlated.map(|sid| sid.to_string()),
         })
     }
 
@@ -634,6 +808,26 @@ impl Engine {
             0
         };
 
+        // ---- V-14 方案①：请求→响应关联 ----
+        // success_rules 语义（schema 见 SuccessPair）：响应侧 sid 的 depends 列出请求侧 sid。
+        // - 请求侧命中（本事件 sid ∈ 任一 depends）→ 登记/刷新该 5 元组 key 的等待条目；
+        // - 响应侧命中（本事件 sid 是响应侧且等待表里同 key 的请求侧 ∈ 它的 depends）
+        //   → 消费配对，产出 correlated=<请求侧 sid> 的告警。
+        // 两条路径互斥：响应侧 sid 不会同时出现在 depends 里（转换器保证 depends/sid 分层）。
+        let ev_sid = ev.sid;
+        let mut correlated_sid: Option<u64> = None;
+        match ev_sid {
+            Some(sid) if self.success_rules.requests_for(sid).is_some() => {
+                // 响应侧优先消费配对（同 key 等待且请求侧 ∈ depends）。
+                correlated_sid = self.consume_correlation(&key, sid);
+            }
+            Some(sid) if self.success_rules.is_request_sid(sid) => {
+                // 请求侧命中 → 登记等待（不产出告警，只登记）。
+                self.record_correlation_wait(&key, &[sid]);
+            }
+            _ => {}
+        }
+
         for rule in self.rules.clone() {
             if !rule.matches(ev) {
                 continue;
@@ -683,13 +877,64 @@ impl Engine {
                 });
                 continue;
             }
-            if let Some(alert) =
-                Self::make_alert(ev, &rule, context.as_ref(), annotations.as_ref())
-            {
+            if let Some(alert) = Self::make_alert_full(
+                ev,
+                &rule,
+                context.as_ref(),
+                annotations.as_ref(),
+                None,
+                correlated_sid,
+            ) {
                 out.push((ev.clone(), alert));
             }
         }
         out
+    }
+
+    /// 请求侧命中 → 登记关联等待（同 key 已有等待则刷新时间戳；容量超限 FIFO 挤最旧）。
+    fn record_correlation_wait(&mut self, key: &str, request_sids: &[u64]) {
+        let now = Instant::now();
+        if let Some(wait) = self.correlations.get_mut(key) {
+            // 同一连接上多次请求命中：刷新时间并记第一个请求 sid（先到先配对）。
+            wait.at = now;
+            return;
+        }
+        let request_sid = request_sids.first().copied().unwrap_or(0);
+        // 容量保护：FIFO 挤掉最旧（HashMap 无序，改用最旧 at）。
+        if self.correlations.len() >= MAX_CORRELATIONS {
+            if let Some(oldest_key) = self
+                .correlations
+                .iter()
+                .min_by_key(|(_, w)| w.at)
+                .map(|(k, _)| k.clone())
+            {
+                self.correlations.remove(&oldest_key);
+                self.correlation_overflow += 1;
+                if self.correlation_overflow <= 5 || self.correlation_overflow % 1000 == 0 {
+                    eprintln!(
+                        "xbits: engine correlation table full (limit={MAX_CORRELATIONS}); evicted oldest wait (total={})",
+                        self.correlation_overflow
+                    );
+                }
+            }
+        }
+        self.correlations.insert(
+            key.to_string(),
+            CorrelationWait {
+                request_sid,
+                at: now,
+            },
+        );
+    }
+
+    /// 响应侧命中 → 若等待表有同 key 且请求侧在 depends 里，消费配对并计数。
+    fn consume_correlation(&mut self, key: &str, response_sid: u64) -> Option<u64> {
+        let deps = self.success_rules.requests_for(response_sid)?;
+        let wait = self.correlations.get(key)?;
+        let matched = deps.iter().find(|d| **d == wait.request_sid).copied()?;
+        self.correlations.remove(key);
+        self.correlation_pairs += 1;
+        Some(matched)
     }
 }
 
@@ -1244,5 +1489,146 @@ mod tests {
         );
         assert_ne!(event.sid, later.sid);
         assert_eq!(alert.degraded.as_deref(), Some("context-missing"));
+    }
+
+    // ---- V-14 方案①：success_rules 请求→响应关联 ----
+
+    fn success_json() -> &'static str {
+        // 响应侧 14030020 的 depends 是请求侧 14030019（与生产 success_rules.json 同构）。
+        r#"[{"sid":14030020,"depends":[14030019],"msg":"OS Command(touch) Injection Risk Detected on Target Website","source":"etc_fw/pvs/rules/cmd.rules"}]"#
+    }
+
+    fn corr_event(sid: u64, cid: &str) -> HookEvent {
+        HookEvent {
+            source: "suricata".into(),
+            kind: "alert".into(),
+            signature: Some("[PVS] correlation probe".into()),
+            src: Some("203.0.113.9".into()),
+            dst: Some("10.0.0.80".into()),
+            sport: Some(40001),
+            dport: Some(80),
+            proto: Some("TCP".into()),
+            sid: Some(sid),
+            community_id: Some(cid.into()),
+            ..Default::default()
+        }
+    }
+
+    fn correlation_rule_for(sid: u64) -> Rule {
+        serde_json::from_str::<Rule>(&format!(
+            r#"{{"id":"r-corr-{sid}","name":"corr-{sid}","source":"suricata","kind":"alert","sid_in":[{sid}],"score":20,"threshold":20,"reason":"corr-{sid}"}}"#
+        ))
+        .expect("correlation rule")
+    }
+
+    #[test]
+    fn success_rules_parse_and_request_sid_detection() {
+        let rules = SuccessRules::parse(success_json()).expect("parse");
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules.requests_for(14030020), Some(&[14030019][..]));
+        assert!(rules.is_request_sid(14030019));
+        assert!(!rules.is_request_sid(14030020));
+        assert!(rules.requests_for(9999999).is_none());
+        // 坏 JSON 必须显式报错（不静默空表）
+        assert!(SuccessRules::parse("{ this is not json").is_err());
+    }
+
+    #[test]
+    fn correlation_pairs_when_response_matches_request_on_same_cid() {
+        let rules = SuccessRules::parse(success_json()).unwrap();
+        let mut eng = Engine::new(vec![
+            correlation_rule_for(14030019),
+            correlation_rule_for(14030020),
+        ])
+        .with_success_rules(rules);
+
+        // 请求侧命中：告警正常输出，同时登记等待（不 correlated）。
+        let alerts = eng.process_alerts(&corr_event(14030019, "1:cidA="));
+        assert_eq!(alerts.len(), 1);
+        assert!(alerts[0].correlated.is_none());
+        assert_eq!(eng.correlations_len(), 1, "请求侧命中必须登记等待条目");
+        assert_eq!(eng.correlation_pairs(), 0);
+
+        // 响应侧同 cid 命中：配对成立 → correlated=<请求侧 sid> + confidence 加成。
+        let alerts = eng.process_alerts(&corr_event(14030020, "1:cidA="));
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(
+            alerts[0].correlated.as_deref(),
+            Some("14030019"),
+            "响应侧告警必须携带配对到的请求侧 SID"
+        );
+        assert!(
+            alerts[0].evidence.contains("correlated=14030019"),
+            "evidence 必须写明关联: {}",
+            alerts[0].evidence
+        );
+        assert_eq!(eng.correlation_pairs(), 1);
+        assert_eq!(eng.correlations_len(), 0, "配对后等待条目必须被消费");
+
+        // 对照组：无关联表的引擎产出相同规则告警 → correlated 为 None、confidence 少 15。
+        let mut plain = Engine::new(vec![
+            correlation_rule_for(14030019),
+            correlation_rule_for(14030020),
+        ]);
+        let _ = plain.process_alerts(&corr_event(14030019, "1:cidA="));
+        let baseline = plain.process_alerts(&corr_event(14030020, "1:cidA="));
+        assert!(baseline[0].correlated.is_none());
+        assert_eq!(
+            baseline[0].confidence + CORRELATION_CONFIDENCE_BONUS,
+            alerts[0].confidence
+        );
+    }
+
+    #[test]
+    fn correlation_requires_same_cid() {
+        let rules = SuccessRules::parse(success_json()).unwrap();
+        let mut eng = Engine::new(vec![
+            correlation_rule_for(14030019),
+            correlation_rule_for(14030020),
+        ])
+        .with_success_rules(rules);
+        let _ = eng.process_alerts(&corr_event(14030019, "1:cidA="));
+        // 不同 cid 的响应侧命中：不配对（等待条目仍保留，等它自己的响应）。
+        let alerts = eng.process_alerts(&corr_event(14030020, "1:cidB="));
+        assert_eq!(alerts.len(), 1);
+        assert!(alerts[0].correlated.is_none());
+        assert_eq!(eng.correlation_pairs(), 0);
+        assert_eq!(eng.correlations_len(), 1);
+    }
+
+    #[test]
+    fn correlation_times_out_when_response_never_arrives() {
+        let rules = SuccessRules::parse(success_json()).unwrap();
+        let mut eng = Engine::new(vec![correlation_rule_for(14030019)])
+            .with_success_rules(rules);
+        let _ = eng.process_alerts(&corr_event(14030019, "1:cidT="));
+        assert_eq!(eng.correlations_len(), 1);
+
+        // 时间推进过关联 TTL：等待条目被清理并计数（请求侧告警此前已正常判定，
+        // 超时不产出降级告警——关联是增强信号，不是判定本体）。
+        let future = Instant::now() + CORRELATION_TTL + Duration::from_millis(1);
+        let degraded = eng.prune_at(future);
+        assert!(degraded.is_empty(), "关联超时不应产出降级告警");
+        assert_eq!(eng.correlations_len(), 0);
+        assert_eq!(eng.correlation_timeouts(), 1);
+    }
+
+    #[test]
+    fn correlation_table_is_bounded_and_counted() {
+        let rules = SuccessRules::parse(success_json()).unwrap();
+        let mut eng = Engine::new(vec![correlation_rule_for(14030019)])
+            .with_success_rules(rules);
+        // MAX_CORRELATIONS 是常量；这里通过灌入超过容量的不同 cid 请求侧命中触发淘汰。
+        for i in 0..(MAX_CORRELATIONS + 8) {
+            let mut ev = corr_event(14030019, &format!("1:cid{i}="));
+            ev.community_id = Some(format!("1:cid{i}="));
+            let _ = eng.process_alerts(&ev);
+        }
+        assert!(
+            eng.correlations_len() <= MAX_CORRELATIONS,
+            "关联等待表必须有界: {}",
+            eng.correlations_len()
+        );
+        assert!(eng.correlation_overflow() >= 1, "淘汰必须计数（不得静默丢弃）");
     }
 }

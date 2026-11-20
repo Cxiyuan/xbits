@@ -392,6 +392,20 @@ def semantic_skip_reason(line: str) -> str | None:
     if to_client and any(t.lower() in REQUEST_BUFFERS for t in tokens):
         return "response-direction-conflict"
 
+    # byte_extract/byte_jump 变量引用（within:<varname> / distance:<varname>）：
+    # 变量值依赖运行时 byte_* 提取，静态无法校验，Suricata 拒绝未知变量名
+    if re.search(r"\b(?:within|distance)\s*:\s*[A-Za-z_]", line, re.I):
+        return "byte-extract-reference"
+
+    # http_method 段 content 尾随空格：Suricata detect-http-method 直接拒绝
+    for i, t in enumerate(tokens):
+        if t.lower() in ("http_method",):
+            prev = next((tokens[j] for j in range(i - 1, -1, -1)
+                         if tokens[j].lower().split(":", 1)[0] not in SNORT_MODIFIERS), "")
+            m = re.match(r'content\s*:\s*"([^"]*)"', prev.strip(), re.S)
+            if m and m.group(1) != m.group(1).rstrip():
+                return "method-trailing-space"
+
     # 悬空 sticky buffer：其后没有任何 content/pcre 承接（V-10：新判定，
     # 替代旧版对「content 在前、buffer 在后」正确 Snort 顺序的误删）
     match_idx = [i for i, t in enumerate(tokens)
@@ -451,6 +465,22 @@ BUFFER_CANON = {
     "http_user_agent": "http_user_agent", "http_stat_code": "http_stat_code",
     "http_stat_msg": "http_stat_msg", "file_data": "file_data",
     "dns_query": "dns_query",
+}
+
+# 语义树 buffer → Suricata sticky buffer 输出名。
+# 下划线旧名（http_uri 等）在 Suricata 里是 content 修饰词（必须跟在
+# content 之后）；点分名（http.uri 等）才是 sticky buffer（content 跟在
+# buffer 之后）。语义树输出为前置 buffer，必须用点分名，否则
+# suricata -T 报「keyword found inside the rule without a content context」。
+STICKY_EMIT = {
+    "http_uri": "http.uri", "http_raw_uri": "http.uri.raw",
+    "http_method": "http.method", "http_header": "http.header",
+    "http_raw_header": "http.header.raw", "http_cookie": "http.cookie",
+    "http_client_body": "http.request_body", "http_server_body": "http.response_body",
+    "http_host": "http.host", "http_raw_host": "http.host.raw",
+    "http_user_agent": "http.user_agent", "http_stat_code": "http.stat_code",
+    "http_stat_msg": "http.stat_msg", "file_data": "file.data",
+    "dns_query": "dns.query",
 }
 
 
@@ -562,9 +592,10 @@ def linearize_tree(tree: list[dict]) -> tuple[list[str], list[str]]:
         if cap is not None:
             problems.append(f"buffer-capacity:{buf}")
             continue
-        # buffer 切换：换段输出
+        # buffer 切换：换段输出（必须用点分 sticky buffer 名——下划线旧名是
+        # content 修饰词，前置会被 Suricata 拒绝）
         if buf is not None and buf != last_buf:
-            out.append(buf)
+            out.append(STICKY_EMIT.get(buf, buf))
             last_buf = buf
         elif buf is None and last_buf is not None:
             # 回到 payload 段：显式重置（Suricata 语义）。
@@ -604,6 +635,13 @@ def _strip_pcre_flags(tok: str, problems: list[str]) -> str | None:
     # R 相对链：语义树上同段绑定，相对语义丢失 → 保守跳过（与旧版一致）
     if any(c in flags for c in PCRE_DROP_FLAGS):
         problems.append("pcre-relative-flags")
+        return None
+    # PCRE 兼容性预检：[\w-\/] 等 Python 拒绝的字符类范围 PCRE2 同样拒绝
+    # （旧版靠 re.compile 预检剔除，语义树重写时误删，CI 加载失败已证实）
+    try:
+        re.compile(pat)
+    except re.error:
+        problems.append("pcre-invalid-range")
         return None
     newflags = "".join(c for c in flags if c not in PCRE_BUFFER_FLAGS)
     # 保留 i/s/m 等语义修饰
@@ -1146,37 +1184,51 @@ def main() -> int:
             gaps.setdefault(reason, []).append(int(sid_str))
     # V-15 契约结构：每个 reason 必须声明 owner（谁接管）与 tested_by（CI 哪个断言覆盖）。
     # owner ∈ suricata-rule（能力留在/回到规则层）/ xbits-feature（交 xbits 实现）/ dropped-document（明确放弃，仅文档留痕）。
-    # tested_by=None 表示当前无 CI 断言覆盖该缺口——这是显式承认，不是隐藏。
+    # tested_by=None 表示当前无 CI 断言覆盖该缺口——这是显式承认，不是隐藏；
+    # 但 owner=xbits-feature 的 reason 必须给出 tested_by（C6-B 契约：'交 xbits 实现'
+    # 必须能指到实现方的 CI 断言，否则"交 xbits"就是空头支票——由
+    # xbits/test/qa_semantic_gaps_gate.py evaluate_ownership 强制）。
     REASON_OWNERSHIP = {
+        "byte-extract-reference":   {"owner": "dropped-document", "tested_by": None,
+                                     "note": "within/distance 引用 byte_extract 变量，"
+                                             "运行时求值无法静态校验，Suricata 拒载"},
         "convert-rule-none":        {"owner": "dropped-document", "tested_by": None,
                                      "note": "转换器无法等价转换（返回 None），规则不产出"},
-        "dependency-correlation":   {"owner": "xbits-feature", "tested_by": None,
-                                     "note": "depend/scope 请求→响应配对（V-14 决议：等 xbits --success-rules）"},
+        "dependency-correlation":   {"owner": "xbits-feature", "tested_by": "qa_xbits_success_rules.py",
+                                     "note": "depend/scope 请求→响应配对已由 xbits --success-rules 实现"
+                                             "（V-14 方案①）：qa_xbits_success_rules.py 断言配对/对照/坏配置三态"},
         "dsl-semantic":             {"owner": "dropped-document", "tested_by": None,
                                      "note": "DSL 语义无法映射到 Suricata"},
         "duplicate-position":       {"owner": "dropped-document", "tested_by": None,
                                      "note": "同 content 重复绝对定位"},
         "false-positive-quarantine":{"owner": "dropped-document", "tested_by": None,
                                      "note": "人工确认高误报，隔离名单 docs/false-positive-sids.txt"},
-        "flowbits-correlation":     {"owner": "xbits-feature", "tested_by": None,
-                                     "note": "跨包 flowbits 状态链（V-14 决议）"},
+        "flowbits-correlation":     {"owner": "xbits-feature", "tested_by": "qa_xbits_context.py",
+                                     "note": "跨包 flowbits 状态链由 xbits 上下文关联承担："
+                                             "qa_xbits_context.py 断言正例/负例/对照告警"},
         "http-only-uri-unsupported":{"owner": "dropped-document", "tested_by": None,
                                      "note": "http_only_uri Snort 专属语义"},
         "isdataat":                 {"owner": "dropped-document", "tested_by": None,
                                      "note": "isdataat 偏移越界 Suricata 拒载"},
-        "lua-without-buffer":       {"owner": "suricata-rule", "tested_by": None,
+        "lua-without-buffer":       {"owner": "suricata-rule", "tested_by": "qa_converter_semantics.py",
                                      "note": "lua: 前无 sticky buffer（V-13）：可定位的补 buffer，"
-                                             "其余不注入 lua（apply_lua_enhancements.py 前置拒绝）"},
+                                             "其余不注入 lua（apply_lua_enhancements.py 前置拒绝）；"
+                                             "qa_converter_semantics.py --self-test 断言 lua 前有 buffer"},
         "mail_uri":                 {"owner": "dropped-document", "tested_by": None,
                                      "note": "邮件 URI 语法不支持"},
+        "buffer-without-payload":   {"owner": "dropped-document", "tested_by": None,
+                                     "note": "悬空 sticky buffer 无承接匹配（V-10 取代 dangling-http-uri 判定）"},
+        "method-trailing-space":    {"owner": "dropped-document", "tested_by": None,
+                                     "note": "http_method 段 content 尾随空格，Suricata detect-http-method 拒载"},
         "method-unsupported":       {"owner": "dropped-document", "tested_by": None,
                                      "note": "Suricata 不支持的 method 语法"},
         "mixed-position":           {"owner": "dropped-document", "tested_by": None,
                                      "note": "绝对+相对定位混用，Suricata 拒载"},
         "negated-pcre":             {"owner": "dropped-document", "tested_by": None,
                                      "note": "pcre:! 否定形式不支持"},
-        "no-dependency":            {"owner": "xbits-feature", "tested_by": None,
-                                     "note": "PVS 成功确认无依赖，保留为 xbits 元数据"},
+        "no-dependency":            {"owner": "xbits-feature", "tested_by": "qa_xbits_success_rules.py",
+                                     "note": "PVS 成功确认无依赖，保留为 xbits 元数据："
+                                             "qa_xbits_success_rules.py 断言 success_rules 加载/消费"},
         "rate-unsupported":         {"owner": "dropped-document", "tested_by": None,
                                      "note": "rate 过滤不支持"},
         "rawbytes-unsupported":     {"owner": "dropped-document", "tested_by": None,
