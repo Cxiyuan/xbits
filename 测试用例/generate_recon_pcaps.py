@@ -33,6 +33,7 @@ def http_request(
     host: str = "app.example.test",
     method: str = "GET",
     extra_headers: Optional[Dict[str, str]] = None,
+    connection_close: bool = True,
 ) -> bytes:
     lines = [
         "%s %s HTTP/1.1" % (method, path),
@@ -43,7 +44,8 @@ def http_request(
         lines.append("User-Agent: %s" % user_agent)
     for name, value in (extra_headers or {}).items():
         lines.append("%s: %s" % (name, value))
-    lines.append("Connection: close")
+    if connection_close:
+        lines.append("Connection: close")
     return ("\r\n".join(lines) + "\r\n\r\n").encode("ascii")
 
 
@@ -518,6 +520,7 @@ def main() -> int:
                     "/wordlist-%03d" % i,
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                     "app.example.test",
+                    connection_close=False,
                 ),
                 http_response(404, b"", "text/plain"),
             )

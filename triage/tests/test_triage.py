@@ -415,6 +415,8 @@ class TriageTests(unittest.TestCase):
 
     def test_yara_unreadable_rules_dir_is_reported(self) -> None:
         """rules-dir 缺失：ok=False + error（rules-dir-missing），不得假装扫描过。"""
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）；CI 增强步骤断言 rules-dir-missing 语义")
         r = analyze(write_tmp(self.tmp, "plain.txt", b"hello\n"),
                     rules_dir=os.path.join(self.tmp, "no_such_rules_dir"))
         st = r["engine_status"]["yara"]
