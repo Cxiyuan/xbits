@@ -240,8 +240,7 @@ fn main() -> io::Result<()> {
             || analysis_file.is_some()
             || match_buffers.is_some()
             || triage_command.is_some()
-            || file_spool_dir.is_some()
-            || success_rules.is_some();
+            || file_spool_dir.is_some();
         // 启用了分析但一个文档 sink 都没有 → 启动即失败：
         // 否则审计/ES 文档只能被丢弃（"报个日志就算完"不接受）。
         if analysis_enabled && analysis_file.is_none() && es_url.is_none() && es_command.is_none() {

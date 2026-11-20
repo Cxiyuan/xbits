@@ -412,6 +412,13 @@ def main() -> int:
     # http.uri.raw=<值> 来自 match_context 导出，而不是 EVE 归一化兜底。
     # xbits 规则文件用 testdata 的 sid_in 语义不通（真实 SID 不在 testdata 规则里），
     # 因此这里动态生成一个只含这 3 条 SID 的规则文件（与生产 gen_xbits_analysis 同构）。
+    #
+    # 重要前提（run 44770518125 失败根因）：抑制语义 = validator 判 false_positive
+    # 且 confidence≥fp_confidence 才写白名单，二次命中才 suppressed。因此这些生产 SID
+    # 必须被 stub_validator.py 判为 false_positive（9104001 / 11020687 已加入其 fp_sids）。
+    # 注意这条链路与 buffer key 构建相互独立：key 构建失败时报 "no document sink" 之外的
+    # "suppression skipped: missing exact match_context" 日志；本次失败无该日志，且输出
+    # verdict=uncertain/confidence=10/reason=stub-validator，证明是 stub 未判 FP 而非 key 错。
     prod_meta = Path(args.production_meta) if args.production_meta else None
     if prod_meta is not None and prod_meta.exists():
         PROD_SIDS = [9103001, 9104001, 11020687]  # raw / raw / uri+raw 混合

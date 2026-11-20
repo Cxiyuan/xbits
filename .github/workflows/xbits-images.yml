@@ -261,6 +261,11 @@ jobs:
       - name: Generate converter regression PCAP pairs
         run: python xbits/test/qa_converter_pcap_regression.py --generate
 
+      - name: Static check merged -T config vars (no suricata needed)
+        run: |
+          python xbits/test/qa_converter_pcap_regression.py --self-test
+          python xbits/test/qa_converter_pcap_regression.py --check-config-vars
+
       - name: Suricata -T loads merged converter+scenario rule set
         run: |
           set -euo pipefail

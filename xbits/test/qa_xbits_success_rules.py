@@ -14,6 +14,9 @@
      的进程级对照，TTL 本体由 engine.rs 单测覆盖（CI cargo test）。
   4. --success-rules 指向不存在/坏 JSON 文件 → 进程明确报错退出码非 0
      （绝不静默降级成"无关联继续跑"）。
+  5. 无文档 sink 时 --success-rules 仍可用：不传 --analysis-file/--es-*，引擎层关联
+     照常产出 correlated 到 stdout/--alert-file（关联不依赖 analysis pipeline；
+     run 44770518125 case1-3 "hook socket not ready" 回归防护）。
 
 本脚本自测（--self-test）只验证事件/断言构造逻辑，不启动进程；真实 e2e 由 CI
 的 cargo build 产物运行（本地无 cargo）。
@@ -248,6 +251,12 @@ def self_test() -> int:
     checks.append(("事件带 community_id（关联 key）", ev["community_id"] == CID and ev["sid"] == RESPONSE_SID))
     checks.append(("correlated 文本 = 请求侧 SID", CORRELATED == str(REQUEST_SID)))
     checks.append(("BONUS=15 与 engine.rs 常量一致", BONUS == 15))
+    # case2b 语义守卫：run_engine_full 启动的进程不得带任何分析 sink，
+    # 否则"无 sink 仍可关联"这条断言就名不副实。
+    import inspect
+
+    src = inspect.getsource(run_engine_full)
+    checks.append(("run_engine_full 不配置分析 sink", "--analysis-file" not in src and "--es-url" not in src))
     bad = sum(1 for _, ok in checks if not ok)
     for name, ok in checks:
         print(("PASS " if ok else "FAIL ") + name)
@@ -332,6 +341,41 @@ def main() -> int:
         else:
             print("case2 NO-REQUEST: OK correlated absent")
 
+    # 2b) 回归防护（run 44770518125 case1-3 "hook socket not ready" 根因）：
+    #     --success-rules 是**引擎层**功能（关联不依赖 analysis pipeline）。历史上曾把
+    #     --success-rules 混进 main.rs 的 analysis_enabled，导致"未配文档 sink（无
+    #     --analysis-file/--es-url）时启动即报错退出"，hook socket 起不来。
+    #     本用例**不传任何分析 sink**（run_engine_full 的 cmd 只有 --hook-socket/--rules
+    #     /--alert-file），断言：① 进程正常起 socket 并产出 2 条告警；② 响应侧 correlated
+    #     成立；③ stderr 不出现 "no document sink is configured"（即 success-rules 未被
+    #     误当成分析开关）。
+    ok, detail, stderr_text = run_engine_full(
+        xbits, [hook_event(REQUEST_SID, CID), hook_event(RESPONSE_SID, CID)], 2,
+        success_rules_path="-",
+    )
+    if not ok:
+        failures.append(f"case2b NO-SINK engine failed (success-rules must not require a document sink): {detail}")
+    else:
+        if "no document sink is configured" in stderr_text:
+            failures.append(
+                "case2b NO-SINK: --success-rules wrongly treated as enabling analysis "
+                f"(startup refused for missing sink): {stderr_text[-200:]}"
+            )
+        got = json.loads(detail)
+        resp_alerts = [a for a in got if a.get("signature_id") == RESPONSE_SID]
+        if not resp_alerts:
+            failures.append(f"case2b NO-SINK: response alert missing without analysis sink: {got}")
+        elif resp_alerts[0].get("correlated") != CORRELATED:
+            failures.append(
+                f"case2b NO-SINK: correlation must work without a document sink, got "
+                f"correlated={resp_alerts[0].get('correlated')!r}: {resp_alerts[0]}"
+            )
+        else:
+            print(
+                "case2b NO-SINK: OK hook serves + correlated without any analysis sink "
+                f"(correlated={resp_alerts[0].get('correlated')})"
+            )
+
     # 3) TTL 过期 → correlation_timeouts 计数（进程级出口是 stderr 日志行）。
     #    真实等待 121s 会拖慢 CI：默认用 --with-ttl-wait 显式开启（本地/专项验证），
     #    默认路径做两件不依赖 120s 的事：
@@ -377,7 +421,7 @@ def main() -> int:
         for item in failures:
             print(" -", item, file=sys.stderr)
         return 1
-    print("\nSUCCESS RULES E2E: PASS (pair+bonus, control, no-request, broken-config fails loudly)")
+    print("\nSUCCESS RULES E2E: PASS (pair+bonus, control, no-request, no-sink correlation, broken-config fails loudly)")
     return 0
 
 
