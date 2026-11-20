@@ -1102,11 +1102,11 @@ mod tests {
         assert_eq!(degraded.len(), 2, "溢出必须产出可见降级告警");
         assert!(degraded
             .iter()
-            .all(|(_, a)| a.degraded.as_deref() == Some("pending-overflow")));
+            .all(|a| a.degraded.as_deref() == Some("pending-overflow")));
         assert!(
-            degraded[0].1.evidence.contains("pending-overflow"),
+            degraded[0].evidence.contains("pending-overflow"),
             "evidence 必须写明 pending-overflow: {}",
-            degraded[0].1.evidence
+            degraded[0].evidence
         );
     }
 
