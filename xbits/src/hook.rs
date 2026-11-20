@@ -1,11 +1,18 @@
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufReader, Read, Write};
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
-use std::os::unix::net::UnixListener;
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use crate::analysis::AnalysisPipeline;
 use crate::engine::Engine;
 use crate::model::{HookEvent, Rule};
+
+/// 空闲维护节拍（R5-1）：连接上无数据超过该间隔就触发一次引擎维护，
+/// 让挂起告警的 TTL 过期 / 计数 / 降级输出与"是否有新事件"解耦。
+const MAINTENANCE_TICK: Duration = Duration::from_millis(200);
+/// accept 空闲时的轮询间隔（无连接时也要按 tick 推进维护，但不忙等）。
+const ACCEPT_IDLE_SLEEP: Duration = Duration::from_millis(20);
 
 fn parse_event(line: &str) -> Option<HookEvent> {
     // 1) xbits 薄插件格式
@@ -166,10 +173,17 @@ fn write_alert<W: Write + ?Sized>(writer: &mut W, alert: &crate::engine::EngineA
     Ok(())
 }
 
-/// 分析流水线不可用时返回错误：让进程以非零退出，而不是静默降级继续跑。
+/// 分析流水线 / 引擎不可用时返回错误：让进程以非零退出，而不是静默降级继续跑。
 ///
 /// 触发来源：分析线程 panic 退出，或入队连续失败达到阈值（见 `PipelineHealth`）。
-fn ensure_pipeline_healthy(pipeline: Option<&AnalysisPipeline>) -> io::Result<()> {
+/// 消息里同时带两层指标，且**字段名不混用**：
+/// - 分析层：`pending_expired` / `pending_overflow`（等 match_context 的告警）；
+/// - 引擎层：`engine_pending_expired` / `engine_pending_overflow` / `engine_contexts_expired` /
+///   `engine_scores_expired` / `engine_scores_evicted`（R4-1：引擎计数真正导出并被消费）。
+fn ensure_pipeline_healthy(
+    pipeline: Option<&AnalysisPipeline>,
+    engine: Option<&Engine>,
+) -> io::Result<()> {
     let Some(pipeline) = pipeline else {
         return Ok(());
     };
@@ -180,20 +194,166 @@ fn ensure_pipeline_healthy(pipeline: Option<&AnalysisPipeline>) -> io::Result<()
         .failure_reason()
         .unwrap_or_else(|| "unknown (analysis thread not running)".to_string());
     let health = pipeline.health();
+    let engine_stats = engine
+        .map(|engine| {
+            format!(
+                ", engine_pending_expired={}, engine_pending_overflow={}, engine_contexts_expired={}, engine_scores_expired={}, engine_scores_evicted={}",
+                engine.pending_expired(),
+                engine.pending_overflow(),
+                engine.contexts_expired(),
+                engine.scores_expired(),
+                engine.scores_evicted()
+            )
+        })
+        .unwrap_or_default();
     Err(io::Error::new(
         io::ErrorKind::Other,
         format!(
-            "analysis pipeline unavailable: {reason} (send_failures={}, document_errors={}, documents_without_sink={}, config_errors={}, triage_dropped={}, triage_timeouts={})",
+            "analysis pipeline unavailable: {reason} (send_failures={}, document_errors={}, documents_without_sink={}, config_errors={}, triage_dropped={}, triage_timeouts={}, pending_expired={}, pending_overflow={}{engine_stats})",
             health.send_failures(),
             health.document_errors(),
             health.documents_without_sink(),
             health.config_errors(),
             health.triage_dropped(),
-            health.triage_timeouts()
+            health.triage_timeouts(),
+            health.pending_expired(),
+            health.pending_overflow()
         ),
     ))
 }
 
+
+/// 引擎定时维护（R5-1）：把过期 pending 的降级告警、溢出降级告警写出去并投递分析流水线。
+///
+/// 与"事件到达"解耦：连接空闲（read_timeout）与无连接（accept tick）都会调用。
+fn maintenance<W: Write + ?Sized>(
+    engine: &mut Engine,
+    pipeline: Option<&AnalysisPipeline>,
+    writer: &mut W,
+) -> io::Result<()> {
+    for (event, alert) in engine.maintenance() {
+        if let Some(pipeline) = pipeline {
+            pipeline.submit_alert(event, alert.clone());
+        }
+        write_alert(writer, &alert)?;
+    }
+    ensure_pipeline_healthy(pipeline, Some(engine))
+}
+
+/// 处理一行 hook JSON（原 listener 内的单行逻辑，抽出来供定时读取复用）。
+fn handle_line<W: Write + ?Sized>(
+    line: &str,
+    engine: &mut Engine,
+    pipeline: Option<&AnalysisPipeline>,
+    writer: &mut W,
+) -> io::Result<()> {
+    let ev: HookEvent = match parse_event(line) {
+        Some(v) => v,
+        None => {
+            eprintln!("xbits: bad hook event: {line}");
+            return Ok(());
+        }
+    };
+    // 分析线程已 panic 退出或入队连续失败 → 明确失败（进程非零退出），不静默降级。
+    ensure_pipeline_healthy(pipeline, Some(engine))?;
+    if ev.kind.eq_ignore_ascii_case("match_context") {
+        if let Some(pipeline) = pipeline {
+            pipeline.submit_event(ev);
+        }
+        return Ok(());
+    }
+    // 文件已转存事件：先经引擎（规则评分 + 情报标注走同一决策链），再带着引擎给出的
+    // 情报标注进静态 triage。triage 由 xbits 以 --stdin 调起时，以本次传入的情报为准，
+    // 不再自行读本地 file_hash.txt（本地名单仅 triage 独立 CLI 使用）；即情报只有一个
+    // 数据源（本引擎）、一个判定点，triage 侧不另起一套查询语义。
+    if is_file_event(&ev.kind) {
+        // 每条告警配它自己的原始事件（R6-1）：降级告警带的是被降级的挂起告警事件，
+        // 不再用"当前事件"重配，避免分析层拿到别的事件的 payload/sid。
+        for (event, alert) in engine.process(&ev) {
+            if let Some(pipeline) = pipeline {
+                pipeline.submit_alert(event, alert.clone());
+            }
+            write_alert(writer, &alert)?;
+        }
+        let annotations = engine.intel_annotations(&ev);
+        match pipeline {
+            Some(pipeline) => pipeline.submit_file(ev, annotations),
+            None => eprintln!(
+                "xbits: file_triage skipped: 未启用分析流水线（需要 --file-spool-dir/--triage-cmd/--analysis-file 之一）；file_sha256={}",
+                ev.file_sha256.as_deref().unwrap_or("")
+            ),
+        }
+        return Ok(());
+    }
+    for (event, alert) in engine.process(&ev) {
+        if let Some(pipeline) = pipeline {
+            pipeline.submit_alert(event, alert.clone());
+        }
+        write_alert(writer, &alert)?;
+    }
+    Ok(())
+}
+
+/// 处理一条连接：带 read_timeout 的读取循环 + 跨读/跨超时的**残留半行缓冲**。
+///
+/// R5-1：超时不是错误——超时即触发一次引擎维护（所以挂起告警的 TTL 不再依赖下一条事件）；
+/// 同时半行 JSON 必须留在 `pending` 缓冲里，绝不因超时丢失。
+fn serve_stream<W: Write + ?Sized>(
+    stream: UnixStream,
+    engine: &mut Engine,
+    pipeline: Option<&AnalysisPipeline>,
+    writer: &mut W,
+) -> io::Result<()> {
+    stream.set_nonblocking(false)?;
+    stream.set_read_timeout(Some(MAINTENANCE_TICK))?;
+    let mut reader = BufReader::new(stream);
+    let mut pending: Vec<u8> = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        match reader.read(&mut chunk) {
+            Ok(0) => {
+                // 对端关闭：把最后一行（可能没有换行符）也处理掉，然后结束连接。
+                if !pending.is_empty() {
+                    let line = String::from_utf8_lossy(&pending).into_owned();
+                    pending.clear();
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() {
+                        handle_line(trimmed, engine, pipeline, writer)?;
+                    }
+                }
+                break;
+            }
+            Ok(n) => {
+                pending.extend_from_slice(&chunk[..n]);
+                while let Some(pos) = pending.iter().position(|b| *b == b'\n') {
+                    let mut line_bytes = Vec::with_capacity(pos);
+                    line_bytes.extend_from_slice(&pending[..pos]);
+                    pending.drain(..=pos);
+                    let line = String::from_utf8_lossy(&line_bytes);
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    handle_line(trimmed, engine, pipeline, writer)?;
+                }
+            }
+            Err(err)
+                if err.kind() == io::ErrorKind::WouldBlock
+                    || err.kind() == io::ErrorKind::TimedOut =>
+            {
+                // 空闲 tick：推进引擎维护（过期降级告警要能按时输出，R5-1）。
+                maintenance(engine, pipeline, writer)?;
+            }
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+            Err(err) => {
+                // 与旧行为一致：读错误只结束当前连接，不拖垮整个 listener。
+                eprintln!("xbits: hook read error: {err}");
+                break;
+            }
+        }
+    }
+    Ok(())
+}
 
 struct SocketFile {
     path: PathBuf,
@@ -275,75 +435,26 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
         intel_state
     );
 
-    for stream in listener.incoming() {
-        let stream = match stream {
-            Ok(s) => s,
-            Err(err) => {
-                eprintln!("xbits: hook accept error: {err}");
-                continue;
+    // R5-1：listener 需要"无事件也按 tick 维护"。accept 设为非阻塞，用短睡眠轮询，
+    // 空闲时按 MAINTENANCE_TICK 节流地推进引擎维护（挂起告警的 TTL 不再依赖下一条事件）。
+    listener.set_nonblocking(true)?;
+    let mut last_maintenance = Instant::now();
+    loop {
+        match listener.accept() {
+            Ok((stream, _)) => {
+                // 新连接时复查分析流水线健康（线程可能已在无流量期间退出）。
+                ensure_pipeline_healthy(pipeline, Some(&engine))?;
+                serve_stream(stream, &mut engine, pipeline, writer)?;
             }
-        };
-        // 新连接时复查分析流水线健康（线程可能已在无流量期间退出）。
-        ensure_pipeline_healthy(pipeline)?;
-        let reader = BufReader::new(stream);
-        for line in reader.lines() {
-            let line = match line {
-                Ok(l) => l,
-                Err(err) => {
-                    eprintln!("xbits: hook read error: {err}");
-                    break;
+            Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
+                if last_maintenance.elapsed() >= MAINTENANCE_TICK {
+                    maintenance(&mut engine, pipeline, writer)?;
+                    last_maintenance = Instant::now();
                 }
-            };
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                continue;
+                std::thread::sleep(ACCEPT_IDLE_SLEEP);
             }
-            let ev: HookEvent = match parse_event(trimmed) {
-                Some(v) => v,
-                None => {
-                    eprintln!("xbits: bad hook event: {trimmed}");
-                    continue;
-                }
-            };
-            // 分析线程已 panic 退出或入队连续失败 → 明确失败（进程非零退出），不静默降级。
-            ensure_pipeline_healthy(pipeline)?;
-            if ev.kind.eq_ignore_ascii_case("match_context") {
-                if let Some(pipeline) = pipeline {
-                    pipeline.submit_event(ev);
-                }
-                continue;
-            }
-            // 文件已转存事件：先经引擎（规则评分 + 情报标注走同一决策链），再带着引擎给出的
-            // 情报标注进静态 triage。triage 由 xbits 以 --stdin 调起时，以本次传入的情报为准，
-            // 不再自行读本地 file_hash.txt（本地名单仅 triage 独立 CLI 使用）；即情报只有一个
-            // 数据源（本引擎）、一个判定点，triage 侧不另起一套查询语义。
-            if is_file_event(&ev.kind) {
-                for alert in engine.process(&ev) {
-                    if let Some(pipeline) = pipeline {
-                        pipeline.submit_alert(ev.clone(), alert.clone());
-                    }
-                    write_alert(writer, &alert)?;
-                }
-                let annotations = engine.intel_annotations(&ev);
-                match pipeline {
-                    Some(pipeline) => {
-                        pipeline.submit_file(ev, annotations);
-                    }
-                    None => eprintln!(
-                        "xbits: file_triage skipped: 未启用分析流水线（需要 --file-spool-dir/--triage-cmd/--analysis-file 之一）；file_sha256={}",
-                        ev.file_sha256.as_deref().unwrap_or("")
-                    ),
-                }
-                continue;
-            }
-            for alert in engine.process(&ev) {
-                if let Some(pipeline) = pipeline {
-                    pipeline.submit_alert(ev.clone(), alert.clone());
-                }
-                write_alert(writer, &alert)?;
-            }
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+            Err(err) => return Err(err),
         }
     }
-
-    Ok(())
 }

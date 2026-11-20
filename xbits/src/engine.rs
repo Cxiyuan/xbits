@@ -61,6 +61,10 @@ pub struct EngineAlert {
     /// 情报决策标签：threat-hit / threat-overrides-allowlist / allowlist-downgraded
     #[serde(skip_serializing_if = "Option::is_none")]
     pub intel_decision: Option<String>,
+    /// 降级告警标签（R4-1）：目前只有 `context-missing`——`require_context` 规则等不到上下文、
+    /// 挂起超时后按 fail-closed 产出的可见判定结果（不再是"丢弃且无输出"）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub degraded: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,20 +81,46 @@ struct PendingAlert {
     at: Instant,
 }
 
+/// 引擎累计分表容量上限：超过后**淘汰最旧条目**（只丢最旧的一部分，不再整表重置）并计数
+/// `scores_evicted`，避免高基数下无界增长又不至于一次丢掉全部累计分（R4-2）。
+const MAX_SCORES: usize = 100_000;
+/// 引擎 pending 容量上限：超过后按 FIFO 丢弃最旧一条并计数（`pending_overflow`），不再无界增长。
+const MAX_PENDING: usize = 4096;
+
+/// 累计分条目：带最近更新时间与本条目生效的窗口，供 TTL 清理（V-06/R4-2：
+/// scores 不再只增不减；窗口可被规则 `score_window_sec` 拉长）。
+#[derive(Debug, Clone)]
+struct ScoreEntry {
+    score: u64,
+    at: Instant,
+    /// 该条目当前生效的累计窗口（最近一次命中的规则声明；未声明则用引擎默认窗口）。
+    window: Duration,
+}
+
 /// Stateful central analysis engine:
 ///   * buffers Zeek metadata contexts by connection;
 ///   * buffers Suricata alerts whose rules require context;
 ///   * emits only when context arrives, with confidence/evidence;
 ///   * suppresses benign contexts and context-missing alerts;
-///   * enforces `min_confidence` as a real filter (confidence is never lifted to the threshold).
+///   * enforces `min_confidence` as a real filter (confidence is never lifted to the threshold);
+///   * owns TTL/capacity governance for its state tables and reports what it drops (V-06).
 pub struct Engine {
     rules: Vec<Rule>,
-    scores: HashMap<String, u64>,
-    cid_uid: HashMap<String, String>,
+    /// 累计分表：按 group_key 累计，带 TTL 与容量上限（超限重置并计数）。
+    scores: HashMap<String, ScoreEntry>,
     contexts: HashMap<String, ContextEntry>,
     pending: Vec<PendingAlert>,
     ttl: Duration,
     intel: Option<std::sync::Arc<crate::intel::IntelService>>,
+    /// TTL/容量治理的可观测计数：过期清理不再静默（V-06）。
+    pending_expired: u64,
+    pending_overflow: u64,
+    contexts_expired: u64,
+    scores_expired: u64,
+    scores_evicted: u64,
+    /// 测试可下调容量上限（生产用上面的常量）。
+    max_pending: usize,
+    max_scores: usize,
 }
 
 impl Engine {
@@ -98,11 +128,17 @@ impl Engine {
         Self {
             rules,
             scores: HashMap::new(),
-            cid_uid: HashMap::new(),
             contexts: HashMap::new(),
             pending: Vec::new(),
             ttl: Duration::from_secs(60),
             intel: None,
+            pending_expired: 0,
+            pending_overflow: 0,
+            contexts_expired: 0,
+            scores_expired: 0,
+            scores_evicted: 0,
+            max_pending: MAX_PENDING,
+            max_scores: MAX_SCORES,
         }
     }
 
@@ -134,6 +170,41 @@ impl Engine {
 
     pub fn pending_len(&self) -> usize {
         self.pending.len()
+    }
+
+    /// 上下文缓存条目数（TTL 清理的可观测入口）。
+    pub fn contexts_len(&self) -> usize {
+        self.contexts.len()
+    }
+
+    /// 累计分表条目数。
+    pub fn scores_len(&self) -> usize {
+        self.scores.len()
+    }
+
+    /// TTL 过期被清理的挂起告警数（`prune` 每次累加，V-06：不再静默丢弃）。
+    pub fn pending_expired(&self) -> u64 {
+        self.pending_expired
+    }
+
+    /// pending 达到容量上限后被 FIFO 挤掉的最旧告警数。
+    pub fn pending_overflow(&self) -> u64 {
+        self.pending_overflow
+    }
+
+    /// TTL 过期被清理的上下文条目数。
+    pub fn contexts_expired(&self) -> u64 {
+        self.contexts_expired
+    }
+
+    /// TTL 过期被清理的累计分条目数。
+    pub fn scores_expired(&self) -> u64 {
+        self.scores_expired
+    }
+
+    /// 累计分表因超过容量上限被淘汰的条目总数（只淘汰最旧条目，不再整表重置）。
+    pub fn scores_evicted(&self) -> u64 {
+        self.scores_evicted
     }
 
     fn key_for(ev: &HookEvent) -> String {
@@ -173,11 +244,118 @@ impl Engine {
         }
     }
 
-    fn prune(&mut self) {
-        let now = Instant::now();
-        self.contexts.retain(|_, c| now.duration_since(c.at) <= self.ttl);
-        self.pending
-            .retain(|p| now.duration_since(p.at) <= self.ttl);
+    /// 引擎维护：按当前时刻清理 TTL/容量，并返回过期挂起告警的降级输出。
+    ///
+    /// R5-1：hook listener 用 read_timeout/accept tick **定时**调用它，不再依赖"下一条事件到达"
+    /// 才触发维护——否则挂起后流量停止，降级告警/计数会无限期推迟。
+    pub fn maintenance(&mut self) -> Vec<(HookEvent, EngineAlert)> {
+        self.prune_at(Instant::now())
+    }
+
+    fn prune(&mut self) -> Vec<(HookEvent, EngineAlert)> {
+        self.prune_at(Instant::now())
+    }
+
+    /// 按给定时刻清理 TTL 过期状态（测试可传入推进后的时刻），并返回过期挂起告警的**降级输出**
+    /// （连同其原始事件，供调用方按事件投递给分析流水线）。
+    ///
+    /// V-06 / R4-1：
+    /// - `retain` 清理必须**可见**：contexts/pending/scores 的过期分别累加到对应计数并打日志；
+    /// - 引擎 pending 过期**不再丢弃**：按 fail-closed 产出一条带 `degraded=context-missing`
+    ///   的 `EngineAlert`（reason 也是 `context-missing`、evidence 里写明"上下文始终没到"），
+    ///   由 `process()`/`maintenance()` 返回，hook 因此能写 stdout 并送进分析流水线；
+    /// - 累计分表超容量上限**不再整表清空**：只淘汰最旧条目并计数 `scores_evicted`（R4-2）。
+    fn prune_at(&mut self, now: Instant) -> Vec<(HookEvent, EngineAlert)> {
+        let contexts_before = self.contexts.len();
+        self.contexts
+            .retain(|_, c| now.duration_since(c.at) <= self.ttl);
+        let contexts_dropped = contexts_before - self.contexts.len();
+
+        // pending 逐条判定：过期者收集起来产出降级告警（不静默丢）。
+        let mut expired: Vec<PendingAlert> = Vec::new();
+        let mut remaining: Vec<PendingAlert> = Vec::new();
+        for pending in self.pending.drain(..) {
+            if now.duration_since(pending.at) > self.ttl {
+                expired.push(pending);
+            } else {
+                remaining.push(pending);
+            }
+        }
+        self.pending = remaining;
+
+        // 累计分按条目自身窗口过期（规则可用 `score_window_sec` 拉长窗口，R4-2）。
+        let scores_before = self.scores.len();
+        self.scores.retain(|_, s| now.duration_since(s.at) <= s.window);
+        let scores_dropped = scores_before - self.scores.len();
+
+        if contexts_dropped > 0 {
+            self.contexts_expired += contexts_dropped as u64;
+            eprintln!(
+                "xbits: engine expired {contexts_dropped} context(s) after ttl {:?} (total={})",
+                self.ttl, self.contexts_expired
+            );
+        }
+        if !expired.is_empty() {
+            self.pending_expired += expired.len() as u64;
+            eprintln!(
+                "xbits: engine degraded {} pending alert(s): context never arrived within ttl {:?} (emitting fail-closed alerts with degraded=context-missing; total={})",
+                expired.len(),
+                self.ttl,
+                self.pending_expired
+            );
+        }
+        if scores_dropped > 0 {
+            self.scores_expired += scores_dropped as u64;
+            eprintln!(
+                "xbits: engine expired {scores_dropped} score entries after their window (total={})",
+                self.scores_expired
+            );
+        }
+        self.enforce_score_cap();
+
+        // 过期 pending → 可见的降级告警（连同原始事件返回；情报标注仍按单一数据源重新查一遍）。
+        let mut out = Vec::new();
+        for pending in expired {
+            let ann = self.annotations(&pending.event, None);
+            if let Some(alert) = Self::make_alert_with(
+                &pending.event,
+                &pending.rule,
+                None,
+                ann.as_ref(),
+                Some("context-missing"),
+            ) {
+                out.push((pending.event, alert));
+            }
+        }
+        out
+    }
+
+    /// 累计分表容量保护：超过上限时淘汰最旧条目（不是整表清空），并计数 `scores_evicted`。
+    fn enforce_score_cap(&mut self) {
+        let cap = self.max_scores.max(1);
+        if self.scores.len() <= cap {
+            return;
+        }
+        let mut by_age: Vec<(String, Instant)> = self
+            .scores
+            .iter()
+            .map(|(key, entry)| (key.clone(), entry.at))
+            .collect();
+        by_age.sort_by_key(|(_, at)| *at);
+        let excess = self.scores.len() - cap;
+        let mut evicted = 0u64;
+        for (key, _) in by_age.into_iter().take(excess) {
+            if self.scores.remove(&key).is_some() {
+                evicted += 1;
+            }
+        }
+        if evicted > 0 {
+            self.scores_evicted += evicted;
+            eprintln!(
+                "xbits: engine score table over cap ({cap}); evicted {evicted} oldest entr(ies) to bound memory (total evicted={})",
+                self.scores_evicted
+            );
+        }
     }
 
     fn merge_context(&mut self, ev: &HookEvent) {
@@ -256,7 +434,21 @@ impl Engine {
         ctx: Option<&HookEvent>,
         intel: Option<&EventIntelAnnotations>,
     ) -> Option<EngineAlert> {
-        if rule.require_context && ctx.is_none() {
+        Self::make_alert_with(ev, rule, ctx, intel, None)
+    }
+
+    /// 构造告警。`degraded=Some(label)` 表示这是"上下文始终没到"的 fail-closed 降级告警：
+    /// 允许在没有 ctx 时产出（`require_context` 不再直接返回 None），并且**不套用规则的
+    /// `min_confidence`**——降级告警不是"证据不足的检测"，而是"无法判定"的可见事实，
+    /// 被门槛吞掉就失去可见性；它始终带 `degraded` 标记，下游可以据此分流。
+    fn make_alert_with(
+        ev: &HookEvent,
+        rule: &Rule,
+        ctx: Option<&HookEvent>,
+        intel: Option<&EventIntelAnnotations>,
+        degraded: Option<&str>,
+    ) -> Option<EngineAlert> {
+        if rule.require_context && ctx.is_none() && degraded.is_none() {
             return None;
         }
         if Self::benign(rule, ctx) {
@@ -278,9 +470,12 @@ impl Engine {
         }
         // min_confidence 是真正的过滤门槛：confidence 只由上下文证据 + 情报加分算出（不含门槛抬升），
         // 低于门槛即丢弃。白名单降级在门槛之后执行，保证"白方向只降级、不因门槛丢弃"。
-        if let Some(minimum) = rule.min_confidence {
-            if confidence < minimum {
-                return None;
+        // 降级告警（degraded）例外：它标记的是"无法判定"，必须可见（见 make_alert_with 文档）。
+        if degraded.is_none() {
+            if let Some(minimum) = rule.min_confidence {
+                if confidence < minimum {
+                    return None;
+                }
             }
         }
         if let Some(ann) = intel {
@@ -314,6 +509,11 @@ impl Engine {
         if let Some(decision) = intel_decision {
             evidence = format!("{evidence}; intel_decision={decision}");
         }
+        if let Some(label) = degraded {
+            evidence = format!(
+                "{evidence}; degraded={label}: require_context rule waited out its ttl without context (fail-closed, no suppression key)"
+            );
+        }
         Some(EngineAlert {
             timestamp: ev.timestamp.clone().or_else(|| ev.ts.clone()).unwrap_or_default(),
             signature_id: ev.sid.unwrap_or(0),
@@ -328,7 +528,9 @@ impl Engine {
             score,
             confidence,
             evidence,
-            reason: rule.reason.clone().unwrap_or_else(|| rule.name.clone()),
+            reason: degraded
+                .map(str::to_string)
+                .unwrap_or_else(|| rule.reason.clone().unwrap_or_else(|| rule.name.clone())),
             rule_id: rule.id.clone(),
             event: ev.event.clone(),
             alert_kind: ev.alert_kind.clone(),
@@ -339,27 +541,55 @@ impl Engine {
             intel: intel.and_then(|ann| ann.threat.clone()),
             allowlist: intel.and_then(EventIntelAnnotations::allowlist_document),
             intel_decision: intel_decision.map(str::to_string),
+            degraded: degraded.map(str::to_string),
         })
     }
 
     /// 累计分：规则分 + 情报威胁加分（情报因此真实参与 threshold 判定）。
+    ///
+    /// 窗口语义（R4-2）：每条累计分带一个窗口，取**最近一次命中规则**的 `score_window_sec`
+    /// （未声明则用引擎默认窗口 = 事件 TTL，默认 60s）；窗口从最近一次命中开始滑动，
+    /// 窗口内同一 `group_by` 的命中持续累计。`threshold > score` 的规则必须显式声明足够长的
+    /// 窗口，否则事件间隔超过窗口时累计分会被清掉、永远不达标（见 README §8.2 与单测）。
     fn score_for(&mut self, ev: &HookEvent, rule: &Rule, intel_bonus: u64) -> u64 {
         let key = self.group_key(ev, rule);
-        let entry = self.scores.entry(key).or_insert(0);
-        *entry = entry.saturating_add(rule.score.max(1).saturating_add(intel_bonus));
-        *entry
+        let now = Instant::now();
+        let window = rule
+            .score_window_sec
+            .map(Duration::from_secs)
+            .unwrap_or(self.ttl);
+        let entry = self.scores.entry(key).or_insert(ScoreEntry {
+            score: 0,
+            at: now,
+            window,
+        });
+        entry.score = entry
+            .score
+            .saturating_add(rule.score.max(1).saturating_add(intel_bonus));
+        entry.at = now;
+        // R5-3：window 取**单调 max**——同一 group_key 可能被多条规则共享累计分，
+        // 短窗口规则不得把长窗口规则已经累积的分提前清掉（长窗口优先）。
+        entry.window = entry.window.max(window);
+        let accumulated = entry.score;
+        // 容量保护：插入后若超上限，淘汰最旧条目（不是整表清空），并计数。
+        self.enforce_score_cap();
+        accumulated
     }
 
-    pub fn process(&mut self, ev: &HookEvent) -> Vec<EngineAlert> {
+    /// 处理一条事件，返回 `(原始事件, 告警)` 对（R6-1）。
+    ///
+    /// 每条告警都与**产生它的那条事件**配对，而不是统一配当前事件：
+    /// - 本轮事件命中的规则 → 当前事件；
+    /// - 挂起随后被上下文结算的告警 → 该挂起告警自己的事件；
+    /// - 过期/溢出降级告警 → 被降级的挂起告警自己的事件。
+    /// hook 用这个事件投递给分析流水线，保证事件驱动路径与定时维护路径拿到同一份 payload/sid。
+    pub fn process(&mut self, ev: &HookEvent) -> Vec<(HookEvent, EngineAlert)> {
         if ev.kind.eq_ignore_ascii_case("match_context") {
             return Vec::new();
         }
-        self.prune();
-        if let (Some(cid), Some(uid)) = (&ev.community_id, &ev.uid) {
-            if !cid.is_empty() && !uid.is_empty() {
-                self.cid_uid.insert(cid.clone(), uid.clone());
-            }
-        }
+        // prune 会返回"挂起超时"的降级告警（R4-1），与本次事件的告警一起输出。
+        // R5-1 的定时维护走 `Engine::maintenance()`（同样返回原始事件 + 告警）。
+        let mut out: Vec<(HookEvent, EngineAlert)> = self.prune();
 
         let is_zeek_context = ev.source.eq_ignore_ascii_case("zeek")
             && ev.kind.eq_ignore_ascii_case("event");
@@ -368,7 +598,6 @@ impl Engine {
             self.merge_context(ev);
         }
 
-        let mut out = Vec::new();
         if is_zeek_context {
             let context = self.contexts.get(&key).map(|c| c.event.clone());
             let pending_all = std::mem::take(&mut self.pending);
@@ -384,7 +613,8 @@ impl Engine {
                     if let Some(alert) =
                         Self::make_alert(&pending.event, &pending.rule, Some(ctx), ann.as_ref())
                     {
-                        out.push(alert);
+                        // 用挂起告警自己的事件（而不是触发结算的这条 zeek 上下文事件）。
+                        out.push((pending.event, alert));
                     }
                 }
                 // Rejected benign/confidence cases are dropped.
@@ -415,6 +645,36 @@ impl Engine {
             }
             if ev.source.eq_ignore_ascii_case("suricata") && rule.require_context && context.is_none()
             {
+                // 容量上限（R5-2）：不再只计数——把被挤掉的最旧挂起告警按 fail-closed
+                // 产出 `degraded=pending-overflow` 的可见告警（与 context-missing 同一条降级通道）。
+                let limit = self.max_pending.max(1);
+                if self.pending.len() >= limit {
+                    let evicted = if self.pending.is_empty() {
+                        None
+                    } else {
+                        Some(self.pending.remove(0))
+                    };
+                    self.pending_overflow += 1;
+                    if self.pending_overflow <= 5 || self.pending_overflow % 1000 == 0 {
+                        eprintln!(
+                            "xbits: engine pending queue full (limit={limit}); degrading oldest pending alert (degraded=pending-overflow; total={})",
+                            self.pending_overflow
+                        );
+                    }
+                    if let Some(evicted) = evicted {
+                        let ann = self.annotations(&evicted.event, None);
+                        if let Some(alert) = Self::make_alert_with(
+                            &evicted.event,
+                            &evicted.rule,
+                            None,
+                            ann.as_ref(),
+                            Some("pending-overflow"),
+                        ) {
+                            // 降级告警同样携带被挤掉告警自己的事件（R6-1）。
+                            out.push((evicted.event, alert));
+                        }
+                    }
+                }
                 self.pending.push(PendingAlert {
                     rule,
                     event: ev.clone(),
@@ -426,15 +686,10 @@ impl Engine {
             if let Some(alert) =
                 Self::make_alert(ev, &rule, context.as_ref(), annotations.as_ref())
             {
-                out.push(alert);
+                out.push((ev.clone(), alert));
             }
         }
         out
-    }
-
-    pub fn flush_pending(&mut self) -> Vec<EngineAlert> {
-        self.pending.clear();
-        Vec::new()
     }
 }
 
@@ -465,10 +720,20 @@ mod tests {
         }
     }
 
+    /// t23/R6-1：多数断言只关心告警本身，这里把 `(原始事件, 告警)` 对折成告警。
+    /// 需要验证配对事件的测试直接用 `Engine::process` 返回的对。
+    fn process_alerts(engine: &mut Engine, ev: &HookEvent) -> Vec<EngineAlert> {
+        engine
+            .process(ev)
+            .into_iter()
+            .map(|(_, alert)| alert)
+            .collect()
+    }
+
     #[test]
     fn alert_triggers_rule_and_score() {
         let mut eng = Engine::new(vec![rule()]);
-        let alerts = eng.process(&alert_event());
+        let alerts = eng.process_alerts(&alert_event());
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].signature_id, 9103001);
         assert_eq!(alerts[0].score, 20);
@@ -484,7 +749,7 @@ mod tests {
             event: Some("http_request".into()),
             ..Default::default()
         };
-        assert!(eng.process(&ev).is_empty());
+        assert!(eng.process_alerts(&ev).is_empty());
     }
 
     #[test]
@@ -493,7 +758,7 @@ mod tests {
         r.require_context = true;
         r.benign_uri_contains = vec!["/healthz".into()];
         let mut eng = Engine::new(vec![r]);
-        assert!(eng.process(&alert_event()).is_empty());
+        assert!(eng.process_alerts(&alert_event()).is_empty());
         assert_eq!(eng.pending_len(), 1);
         let context = HookEvent {
             source: "zeek".into(),
@@ -509,7 +774,7 @@ mod tests {
             status: Some(200),
             ..Default::default()
         };
-        let alerts = eng.process(&context);
+        let alerts = eng.process_alerts(&context);
         assert_eq!(alerts.len(), 1);
         assert!(alerts[0].confidence >= 80);
         assert!(alerts[0].evidence.contains("host=app.example.test"));
@@ -522,7 +787,7 @@ mod tests {
         r.require_context = true;
         r.benign_uri_contains = vec!["/healthz".into()];
         let mut eng = Engine::new(vec![r]);
-        assert!(eng.process(&alert_event()).is_empty());
+        assert!(eng.process_alerts(&alert_event()).is_empty());
         let context = HookEvent {
             source: "zeek".into(),
             kind: "event".into(),
@@ -534,7 +799,7 @@ mod tests {
             uri: Some("/healthz".into()),
             ..Default::default()
         };
-        assert!(eng.process(&context).is_empty());
+        assert!(eng.process_alerts(&context).is_empty());
     }
 
     // ---- 情报进入决策链（V-02/V-03）----
@@ -570,7 +835,7 @@ mod tests {
         let dir = tmpdir("threat");
         std::fs::write(dir.join("ip.txt"), "203.0.113.9\n").unwrap();
         let mut eng = Engine::new(vec![rule()]).with_intel(intel(Some(&dir), None));
-        let alerts = eng.process(&alert_event());
+        let alerts = eng.process_alerts(&alert_event());
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].score, 20 + INTEL_THREAT_SCORE_BONUS);
         assert_eq!(alerts[0].confidence, 50 + INTEL_THREAT_CONFIDENCE_BONUS);
@@ -585,7 +850,7 @@ mod tests {
         let dir = tmpdir("allow");
         std::fs::write(dir.join("ip.txt"), "10.0.0.80\n").unwrap();
         let mut eng = Engine::new(vec![rule()]).with_intel(intel(None, Some(&dir)));
-        let alerts = eng.process(&alert_event());
+        let alerts = eng.process_alerts(&alert_event());
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].score, 20);
         assert_eq!(alerts[0].confidence, 50 - INTEL_ALLOWLIST_CONFIDENCE_PENALTY);
@@ -605,7 +870,7 @@ mod tests {
         std::fs::write(allow.join("ip.txt"), "10.0.0.80\n").unwrap();
         let mut eng = Engine::new(vec![rule()])
             .with_intel(intel(Some(&threat), Some(&allow)));
-        let alerts = eng.process(&alert_event());
+        let alerts = eng.process_alerts(&alert_event());
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].score, 20 + INTEL_THREAT_SCORE_BONUS);
         assert_eq!(
@@ -624,7 +889,7 @@ mod tests {
         let mut r = rule();
         r.require_context = true;
         let mut eng = Engine::new(vec![r]).with_intel(intel(Some(&dir), None));
-        assert!(eng.process(&alert_event()).is_empty());
+        assert!(eng.process_alerts(&alert_event()).is_empty());
         assert_eq!(eng.pending_len(), 1);
         let context = HookEvent {
             source: "zeek".into(),
@@ -638,7 +903,7 @@ mod tests {
             uri: Some("/login".into()),
             ..Default::default()
         };
-        let alerts = eng.process(&context);
+        let alerts = eng.process_alerts(&context);
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].intel_decision.as_deref(), Some("threat-hit"));
         assert_eq!(alerts[0].score, 20 + INTEL_THREAT_SCORE_BONUS);
@@ -686,7 +951,7 @@ mod tests {
         let mut eng = Engine::new(vec![r]);
         // 无上下文：confidence = 50 < 90，必须不输出。
         // 旧实现 `.max(min_confidence)` 会把它抬到 90，过滤条件恒假（V-09）。
-        assert!(eng.process(&alert_event()).is_empty());
+        assert!(eng.process_alerts(&alert_event()).is_empty());
 
         // 强证据：host+uri+status+ua → 100 ≥ 90，仍必须输出。
         let ctx = HookEvent {
@@ -703,8 +968,8 @@ mod tests {
             user_agent: Some("sqlmap/1.7".into()),
             ..Default::default()
         };
-        assert!(eng.process(&ctx).is_empty(), "zeek 上下文不应触发 suricata 规则");
-        let alerts = eng.process(&alert_event());
+        assert!(eng.process_alerts(&ctx).is_empty(), "zeek 上下文不应触发 suricata 规则");
+        let alerts = eng.process_alerts(&alert_event());
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].confidence, 100);
     }
@@ -719,10 +984,10 @@ mod tests {
         r.min_confidence = Some(90);
         r.require_context = true;
         let mut eng = Engine::new(vec![r]);
-        assert!(eng.process(&alert_event()).is_empty());
+        assert!(eng.process_alerts(&alert_event()).is_empty());
         assert_eq!(eng.pending_len(), 1);
         assert!(
-            eng.process(&weak_http_context()).is_empty(),
+            eng.process_alerts(&weak_http_context()).is_empty(),
             "75 < 90 必须被门槛过滤"
         );
         assert_eq!(eng.pending_len(), 0);
@@ -732,8 +997,8 @@ mod tests {
         r2.min_confidence = Some(90);
         r2.require_context = true;
         let mut eng2 = Engine::new(vec![r2]).with_intel(intel(Some(&dir), None));
-        assert!(eng2.process(&alert_event()).is_empty());
-        let alerts = eng2.process(&weak_http_context());
+        assert!(eng2.process_alerts(&alert_event()).is_empty());
+        let alerts = eng2.process_alerts(&weak_http_context());
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].confidence, 75 + INTEL_THREAT_CONFIDENCE_BONUS);
         assert_eq!(alerts[0].intel_decision.as_deref(), Some("threat-hit"));
@@ -743,12 +1008,231 @@ mod tests {
         r3.min_confidence = Some(100);
         r3.require_context = true;
         let mut eng3 = Engine::new(vec![r3]).with_intel(intel(Some(&dir), None));
-        assert!(eng3.process(&alert_event()).is_empty());
+        assert!(eng3.process_alerts(&alert_event()).is_empty());
         assert!(
-            eng3.process(&weak_http_context()).is_empty(),
+            eng3.process_alerts(&weak_http_context()).is_empty(),
             "情报加分不得绕过 min_confidence=100"
         );
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- TTL / 容量治理可见性（V-06）----
+
+    #[test]
+    fn ttl_prune_reports_expired_state_instead_of_silent_retain() {
+        let mut r = rule();
+        r.require_context = true;
+        let mut eng = Engine::new(vec![r]);
+
+        // 一条挂起告警（require_context 且无上下文）
+        assert!(eng.process_alerts(&alert_event()).is_empty());
+        assert_eq!(eng.pending_len(), 1);
+        assert_eq!(eng.scores_len(), 1);
+
+        // 另一条 5-tuple 的上下文条目
+        let ctx = HookEvent {
+            source: "zeek".into(),
+            kind: "event".into(),
+            event: Some("http_request".into()),
+            src: Some("198.51.100.7".into()),
+            dst: Some("10.0.0.9".into()),
+            sport: Some(12345),
+            dport: Some(443),
+            ..Default::default()
+        };
+        assert!(eng.process_alerts(&ctx).is_empty());
+        assert_eq!(eng.contexts_len(), 1);
+
+        // 未过期：什么都不清
+        assert!(eng.prune().is_empty());
+        assert_eq!(eng.pending_len(), 1);
+        assert_eq!(eng.contexts_len(), 1);
+        assert_eq!(eng.scores_len(), 1);
+
+        // 时间推进过 TTL：三类状态都被清理，且过期 pending 产出可见的降级告警（R4-1）
+        let future = Instant::now() + eng.ttl + Duration::from_millis(1);
+        let degraded = eng.prune_at(future);
+        assert_eq!(eng.pending_len(), 0);
+        assert_eq!(eng.pending_expired(), 1);
+        assert_eq!(eng.contexts_len(), 0);
+        assert_eq!(eng.contexts_expired(), 1);
+        assert_eq!(eng.scores_len(), 0);
+        assert!(eng.scores_expired() >= 1);
+        assert_eq!(degraded.len(), 1, "过期 pending 必须产出可见的降级告警");
+        assert_eq!(
+            degraded[0].1.degraded.as_deref(),
+            Some("context-missing")
+        );
+        assert_eq!(degraded[0].1.reason, "context-missing");
+        assert!(
+            degraded[0].1.evidence.contains("context-missing"),
+            "evidence 必须写明 context-missing: {}",
+            degraded[0].1.evidence
+        );
+        // 原始事件随降级告警一起返回（hook 据此投递给分析流水线）
+        assert_eq!(degraded[0].0.sid, Some(9103001));
+    }
+
+    #[test]
+    fn engine_pending_overflow_emits_degraded_alert() {
+        // R5-2：溢出不是"只计数"——被挤掉的最旧挂起告警必须产出 degraded=pending-overflow。
+        let mut r = rule();
+        r.require_context = true;
+        let mut eng = Engine::new(vec![r]);
+        eng.max_pending = 2;
+        let mut degraded = Vec::new();
+        for _ in 0..4 {
+            for alert in eng.process_alerts(&alert_event()) {
+                degraded.push(alert);
+            }
+        }
+        assert_eq!(eng.pending_len(), 2, "引擎 pending 必须有界");
+        assert_eq!(eng.pending_overflow(), 2, "挤掉的最旧 pending 必须计数");
+        assert_eq!(degraded.len(), 2, "溢出必须产出可见降级告警");
+        assert!(degraded
+            .iter()
+            .all(|a| a.degraded.as_deref() == Some("pending-overflow")));
+        assert!(
+            degraded[0].evidence.contains("pending-overflow"),
+            "evidence 必须写明 pending-overflow: {}",
+            degraded[0].evidence
+        );
+    }
+
+    #[test]
+    fn engine_score_table_evicts_oldest_when_over_cap() {
+        let mut eng = Engine::new(vec![rule()]);
+        eng.max_scores = 2;
+        for i in 0..4u64 {
+            let mut ev = alert_event();
+            ev.community_id = Some(format!("cid-{i}"));
+            let _ = eng.process_alerts(&ev);
+        }
+        assert_eq!(eng.scores_len(), 2, "超上限只淘汰最旧条目，表必须有界");
+        assert!(eng.scores_evicted() >= 1, "淘汰必须计数（不得静默丢弃）");
+    }
+
+    fn slow_rule(window_sec: Option<u64>) -> Rule {
+        let json = match window_sec {
+            Some(w) => format!(
+                r#"{{"id":"r-slow","name":"slow","source":"suricata","kind":"alert","signature_contains":"SQL","score":20,"threshold":100,"reason":"slow","score_window_sec":{w}}}"#
+            ),
+            None => r#"{"id":"r-slow","name":"slow","source":"suricata","kind":"alert","signature_contains":"SQL","score":20,"threshold":100,"reason":"slow"}"#.to_string(),
+        };
+        serde_json::from_str::<Rule>(&json).expect("slow rule")
+    }
+
+    #[test]
+    fn slow_accumulating_rule_needs_explicit_score_window() {
+        // 默认窗口（60s）：每次命中后跨 90s，累计分被窗口清掉 —— 明确断言"永不达标"，
+        // 而不是靠 60s 巧合（R4-2）。
+        let mut eng = Engine::new(vec![slow_rule(None)]);
+        let mut fired = 0;
+        for _ in 0..5 {
+            fired += eng.process_alerts(&alert_event()).len();
+            eng.prune_at(Instant::now() + Duration::from_secs(90));
+        }
+        assert_eq!(fired, 0, "默认 60s 窗口下跨窗口的慢速累积不得靠巧合达标");
+        assert!(eng.scores_expired() >= 5, "每次过期都必须计数");
+
+        // 规则显式声明 1h 窗口：同样的跨 90s 命中能累计到 threshold=100 并输出。
+        let mut eng = Engine::new(vec![slow_rule(Some(3600))]);
+        let mut fired = 0;
+        for _ in 0..5 {
+            fired += eng.process_alerts(&alert_event()).len();
+            eng.prune_at(Instant::now() + Duration::from_secs(90));
+        }
+        assert_eq!(fired, 1, "显式窗口内第 5 次命中必须达标并输出");
+        assert_eq!(eng.scores_expired(), 0, "窗口内不得发生过期");
+    }
+
+    #[test]
+    fn expired_pending_emits_degraded_alert_even_below_min_confidence() {
+        // 降级告警是"无法判定"的可见事实，不能被规则门槛吞掉（普通告警仍受门槛约束）。
+        let mut r = rule();
+        r.require_context = true;
+        r.min_confidence = Some(99);
+        let mut eng = Engine::new(vec![r]);
+        assert!(eng.process_alerts(&alert_event()).is_empty());
+        let alerts = eng.prune_at(Instant::now() + eng.ttl + Duration::from_millis(1));
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].1.degraded.as_deref(), Some("context-missing"));
+        assert_eq!(alerts[0].1.reason, "context-missing");
+        // 普通路径（有上下文但证据不足）仍被 min_confidence 过滤 —— 见 min_confidence_* 测试。
+    }
+
+    #[test]
+    fn score_window_is_monotonic_max_across_rules_sharing_a_key() {
+        // R5-3：同一 group_key 先被短窗口规则命中、后被长窗口规则命中时，
+        // 窗口必须取 max（长窗口），不能被短窗口改写导致长窗口累积提前过期。
+        let mut short = slow_rule(Some(60));
+        short.id = "r-short".into();
+        short.threshold = 20; // 短规则单事件就输出，不影响窗口断言
+        let mut long = slow_rule(Some(3600));
+        long.id = "r-long".into();
+        long.threshold = 20;
+        let mut eng = Engine::new(vec![long, short]);
+        // 两条规则都命中同一 community_id → 同一个累计分条目；规则顺序 = long 先、short 后，
+        // 若 window 用"后写覆盖"，长窗口会被 short 的 60s 改写并在 120s 处提前过期。
+        let mut ev = alert_event();
+        ev.community_id = Some("shared-key".into());
+        let _ = eng.process_alerts(&ev);
+        assert_eq!(eng.scores_len(), 1);
+        // 时间推进超过短窗口（60s）但仍远小于长窗口（3600s）：条目必须存活
+        eng.prune_at(Instant::now() + Duration::from_secs(120));
+        assert_eq!(eng.scores_expired(), 0, "长窗口累积不得被短窗口提前清掉");
+        assert_eq!(eng.scores_len(), 1);
+    }
+
+    #[test]
+    fn maintenance_runs_without_new_events_and_returns_degraded_alerts() {
+        // R5-1：维护接口与"事件到达"解耦——不调用 process() 也能触发过期判定与降级输出。
+        let mut r = rule();
+        r.require_context = true;
+        let mut eng = Engine::new(vec![r]);
+        eng.ttl = Duration::from_millis(0);
+        assert!(eng.process_alerts(&alert_event()).is_empty());
+        assert_eq!(eng.pending_len(), 1);
+        std::thread::sleep(Duration::from_millis(2));
+        let degraded = eng.maintenance();
+        assert_eq!(degraded.len(), 1, "无新事件也必须按时触发过期降级");
+        assert_eq!(degraded[0].1.degraded.as_deref(), Some("context-missing"));
+        assert_eq!(eng.pending_len(), 0);
+        assert!(eng.pending_expired() >= 1);
+    }
+
+    #[test]
+    fn event_driven_degraded_alert_carries_its_own_event() {
+        // R6-1：事件驱动路径上 prune 产出的 context-missing 降级告警必须配对它**自己的原事件**，
+        // 而不是触发本次 prune 的那条事件（否则 analysis.decide 会拿到别的事件的 payload/sid）。
+        let mut r = rule();
+        r.require_context = true;
+        let mut eng = Engine::new(vec![r]);
+        eng.ttl = Duration::from_millis(0);
+        let mut first = alert_event();
+        first.payload = Some("first-payload".into());
+        assert!(eng.process(&first).is_empty());
+        std::thread::sleep(Duration::from_millis(2));
+
+        let mut later = alert_event();
+        later.sid = Some(9999001);
+        later.payload = Some("later-payload".into());
+        later.community_id = Some("later-cid".into());
+        let pairs = eng.process(&later);
+        assert_eq!(pairs.len(), 1, "本次事件只应输出过期降级告警");
+        let (event, alert) = &pairs[0];
+        assert_eq!(
+            event.sid,
+            Some(9103001),
+            "降级告警必须配对它自己的 sid（不是后续事件的 sid）"
+        );
+        assert_eq!(
+            event.payload.as_deref(),
+            Some("first-payload"),
+            "payload 也必须是降级告警自己的"
+        );
+        assert_ne!(event.sid, later.sid);
+        assert_eq!(alert.degraded.as_deref(), Some("context-missing"));
     }
 }

@@ -83,6 +83,10 @@ const SEND_FAILURE_THRESHOLD: u64 = 3;
 /// 无 sink 文档向 stderr 输出的上限（避免刷屏；计数始终累加）。
 const NO_SINK_STDERR_LIMIT: u64 = 5;
 
+/// 分析层 pending（等 match_context）容量上限：超限后**立即 fail-closed 判定**并计数，
+/// 不做无界缓存、也不静默丢事件（V-06）。
+const PENDING_LIMIT: usize = 1024;
+
 /// 分析流水线健康状态：可计数、可探测、可失败。
 ///
 /// - `available`：分析线程是否仍在工作（启动置 true，panic/退出置 false）；
@@ -92,7 +96,9 @@ const NO_SINK_STDERR_LIMIT: u64 = 5;
 /// - `documents_without_sink`：没有任何 sink 可写的文档数（不得静默丢文档）；
 /// - `config_errors`：`--match-buffers` / `--sid-library` / `--rules-meta` 读取或解析失败；
 /// - `triage_dropped`：triage 队列满或 worker 不可用导致丢弃的文件任务数；
-/// - `triage_timeouts`：triage 外部命令超时次数（与 bad-json 严格区分）。
+/// - `triage_timeouts`：triage 外部命令超时次数（与 bad-json 严格区分）；
+/// - `pending_expired`：等 match_context 超时后按 fail-closed 立即判定的告警数（V-06）；
+/// - `pending_overflow`：pending 达到容量上限后改为立即 fail-closed 判定的次数（V-06）。
 #[derive(Debug, Default)]
 pub struct PipelineHealth {
     available: AtomicBool,
@@ -103,6 +109,8 @@ pub struct PipelineHealth {
     config_errors: AtomicU64,
     triage_dropped: AtomicU64,
     triage_timeouts: AtomicU64,
+    pending_expired: AtomicU64,
+    pending_overflow: AtomicU64,
     reason: Mutex<Option<String>>,
 }
 
@@ -141,6 +149,16 @@ impl PipelineHealth {
 
     pub fn triage_timeouts(&self) -> u64 {
         self.triage_timeouts.load(Ordering::Relaxed)
+    }
+
+    /// 等 match_context 超时后按 fail-closed 立即判定的告警数。
+    pub fn pending_expired(&self) -> u64 {
+        self.pending_expired.load(Ordering::Relaxed)
+    }
+
+    /// pending 达到容量上限、改为立即 fail-closed 判定并计数的次数。
+    pub fn pending_overflow(&self) -> u64 {
+        self.pending_overflow.load(Ordering::Relaxed)
     }
 
     fn set_available(&self, available: bool) {
@@ -190,6 +208,14 @@ impl PipelineHealth {
 
     fn record_triage_timeout(&self) {
         self.triage_timeouts.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn record_pending_expired(&self, count: u64) {
+        self.pending_expired.fetch_add(count, Ordering::Relaxed);
+    }
+
+    fn record_pending_overflow(&self) -> u64 {
+        self.pending_overflow.fetch_add(1, Ordering::Relaxed) + 1
     }
 }
 
@@ -1124,6 +1150,8 @@ struct Analyzer {
     app_tx_lua_logged: HashSet<u64>,
     /// 等待 match_context 的挂起告警（顺序问题根治）。
     pending: Vec<PendingAlert>,
+    /// pending 容量上限（生产用 `PENDING_LIMIT`，测试可下调）。
+    pending_limit: usize,
     /// 与流水线共享的健康状态（文档错误/无 sink/配置错误/线程存活）。
     health: Arc<PipelineHealth>,
     /// 共享的文档出口（分析线程与 triage worker 共用）。
@@ -1172,6 +1200,7 @@ impl Analyzer {
             whitelist,
             app_tx_lua_logged: HashSet::new(),
             pending: Vec::new(),
+            pending_limit: PENDING_LIMIT,
             health,
             docs,
             triage_tx,
@@ -1213,9 +1242,12 @@ impl Analyzer {
         let mut decision = Decision {
             verdict: "uncertain".into(),
             confidence: alert.confidence,
-            // 情报决策必须体现在 reason 上（例如白名单降级 → intel-allowlist），
-            // 没有情报决策时才回退到 engine-alert。
-            reason: intel_reason(alert).unwrap_or_else(|| "engine-alert".into()),
+            // 决策依据优先级：情报决策（intel-*） > 引擎降级标记（degraded-*） > engine-alert。
+            // degraded-* 来自 `require_context` 规则等不到上下文的 fail-closed 降级告警（R4-1），
+            // 不能让它在文档里退化成看不出原因的 engine-alert。
+            reason: intel_reason(alert)
+                .or_else(|| alert.degraded.as_ref().map(|d| format!("degraded-{d}")))
+                .unwrap_or_else(|| "engine-alert".into()),
             evidence: if alert.evidence.is_empty() {
                 Vec::new()
             } else {
@@ -1224,6 +1256,9 @@ impl Analyzer {
             validator_used: false,
             validator_reason: None,
         };
+        if let Some(label) = alert.degraded.as_deref() {
+            decision.evidence.push(format!("degraded={label}"));
+        }
         if let Some(label) = alert.intel_decision.as_deref() {
             decision.evidence.push(format!("intel_decision={label}"));
             if let Some(hits) = alert.intel.as_ref() {
@@ -1278,9 +1313,11 @@ impl Analyzer {
                         decision.verdict = normalize_verdict(&v.verdict);
                         decision.confidence = v.confidence.unwrap_or(decision.confidence).min(100);
                         if !v.reason.is_empty() {
-                            // 情报决策依据（intel-*）是"情报参与过决策"的证据，优先级最高：
-                            // validator 的空泛 reason（如 stub-validator）不得覆盖它，只单独记录。
-                            if decision.reason.starts_with("intel-") {
+                            // 决策依据（intel-* / degraded-*）优先级最高：validator 的空泛 reason
+                            // （如 stub-validator）不得覆盖它，只单独记录。
+                            if decision.reason.starts_with("intel-")
+                                || decision.reason.starts_with("degraded-")
+                            {
                                 decision.evidence.push(format!("validator-reason={}", v.reason));
                                 decision.validator_reason = Some(v.reason);
                             } else {
@@ -1331,9 +1368,27 @@ impl Analyzer {
     fn process(&mut self, event: HookEvent, alert: EngineAlert) {
         // 顺序根治：match_context 与 alert 走不同 socket 连接，到达顺序无保证。
         // 若该 SID 声明的 context-only buffer 只是"还没到"，短暂挂起，
-        // 等匹配的 match_context 到达后立刻判定；超时则按 fail-closed 处理
-        // （不建 key、不抑制），绝不丢弃事件。
-        if self.should_defer_for_context(&event, &alert) {
+        // 等匹配的 match_context 到达后立刻判定。
+        //
+        // 超时/超限语义（V-06，与 README 一致）：不是"绝不丢事件"，而是"显式降级、绝不静默"：
+        // - 过期（`maintenance` 每轮扫描，不依赖 recv 空闲）→ 立即 fail-closed 判定（不建 key、不抑制），
+        //   计数 `pending_expired` + 日志；
+        // - 容量上限（`pending_limit`）→ 同样立即 fail-closed 判定，计数 `pending_overflow` + 限流日志。
+        //
+        // 已经带 `degraded` 标记的告警（引擎 context-missing 降级输出）不再二次挂起：
+        // 它的语义就是"无法判定"，再等一次 context 只会重复延迟，直接按 fail-closed 判定。
+        if alert.degraded.is_none() && self.should_defer_for_context(&event, &alert) {
+            if self.pending.len() >= self.pending_limit {
+                let overflow = self.health.record_pending_overflow();
+                if overflow <= 5 || overflow % 1000 == 0 {
+                    eprintln!(
+                        "xbits: pending context queue full (limit={}); resolving sid={} fail-closed immediately (no suppression key; overflow={overflow})",
+                        self.pending_limit, alert.signature_id
+                    );
+                }
+                self.process_now(event, alert);
+                return;
+            }
             self.pending.push(PendingAlert {
                 event,
                 alert,
@@ -1420,7 +1475,8 @@ impl Analyzer {
         }
     }
 
-    /// 超过等待窗口仍未拿到 context：按 fail-closed 直接判定（不抑制）。
+    /// 超过等待窗口仍未拿到 context：按 fail-closed 直接判定（不建 key、不抑制），
+    /// 并计数 `pending_expired` + 日志（V-06：超时判定必须可见，不再静默留到下次空闲）。
     fn flush_expired_pending(&mut self) {
         let now = Instant::now();
         let timeout = self.config.pending_context_timeout;
@@ -1434,9 +1490,25 @@ impl Analyzer {
             }
         }
         self.pending = remaining;
+        if expired.is_empty() {
+            return;
+        }
+        let count = expired.len();
+        self.health.record_pending_expired(count as u64);
+        eprintln!(
+            "xbits: pending context timeout: {count} alert(s) resolved fail-closed (no suppression key; total={})",
+            self.health.pending_expired()
+        );
         for pending in expired {
             self.process_now(pending.event, pending.alert);
         }
+    }
+
+    /// 每轮循环都要做的维护：与"是否收到消息"解耦地扫描过期 pending。
+    ///
+    /// 旧实现只在 `recv_timeout` 的 Timeout 分支里做，持续流量下 recv 永不超时 → 过期判定饿死。
+    fn maintenance(&mut self) {
+        self.flush_expired_pending();
     }
 
     fn process_now(&mut self, event: HookEvent, alert: EngineAlert) {
@@ -1770,6 +1842,8 @@ fn normalized_document(
             "validator_used": decision.validator_used,
             // 情报决策依据：命中项、白名单命中/基线提示与决策标签（见 engine.rs 的 INTEL_* 常量）
             "intel_decision": alert.intel_decision.clone(),
+            // 降级标记：`context-missing` 表示该告警是"等不到上下文"的 fail-closed 降级输出（R4-1）
+            "degraded": alert.degraded.clone(),
         },
         "intel": alert.intel.clone(),
         "allowlist": alert.allowlist.clone(),
@@ -1981,10 +2055,20 @@ impl AnalysisPipeline {
                                 ));
                                 break;
                             }
+                            // 与消息处理解耦：即使持续有流量（recv 永不 Timeout），每轮也要扫描过期 pending，
+                            // 否则超时判定被饿死（V-06）。
+                            let outcome = catch_unwind(AssertUnwindSafe(|| analyzer.maintenance()));
+                            if let Err(payload) = outcome {
+                                thread_health.fail(format!(
+                                    "analysis thread panicked while maintaining pending alerts: {}",
+                                    describe_panic(payload)
+                                ));
+                                break;
+                            }
                         }
                         Err(mpsc::RecvTimeoutError::Timeout) => {
                             let outcome = catch_unwind(AssertUnwindSafe(|| {
-                                analyzer.flush_expired_pending()
+                                analyzer.maintenance()
                             }));
                             if let Err(payload) = outcome {
                                 thread_health.fail(format!(
@@ -2290,6 +2374,66 @@ mod tests {
     }
 
     #[test]
+    fn pending_expiry_is_scanned_without_idle_and_counted() {
+        // V-06：持续有流量（recv 永不 Timeout）时，过期判定也必须发生。
+        // 这里模拟 pipeline 每处理完一条 job 就调用 maintenance() 的行为。
+        let dir = std::env::temp_dir().join(format!("xbits-pending-exp-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out = dir.join("docs.jsonl");
+        let mut analyzer = Analyzer::new(AnalysisConfig {
+            pending_context_timeout: Duration::from_millis(5),
+            analysis_file: Some(out.clone()),
+            ..Default::default()
+        });
+        analyzer
+            .match_buffers
+            .insert("9103001".to_string(), meta(&["http.header"]));
+
+        // 连续注入两条告警（中间没有空闲窗口，旧实现永远不会判定过期）
+        analyzer.process(event(), alert());
+        analyzer.process(event(), alert());
+        assert_eq!(analyzer.pending.len(), 2);
+
+        std::thread::sleep(Duration::from_millis(20));
+        analyzer.maintenance();
+
+        assert_eq!(analyzer.pending.len(), 0);
+        assert_eq!(analyzer.health.pending_expired(), 2);
+        let docs = std::fs::read_to_string(&out).unwrap_or_default();
+        let lines = docs.lines().filter(|l| !l.trim().is_empty()).count();
+        assert_eq!(lines, 2, "过期告警必须各落一条 fail-closed 文档，不得静默丢弃");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pending_overflow_is_bounded_visible_and_fail_closed() {
+        // V-06：pending 有容量上限；超限不是静默丢弃，而是立即 fail-closed 判定 + 计数。
+        let dir = std::env::temp_dir().join(format!("xbits-pending-of-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out = dir.join("docs.jsonl");
+        let mut analyzer = Analyzer::new(AnalysisConfig {
+            pending_context_timeout: Duration::from_secs(60), // 不靠超时清理
+            analysis_file: Some(out.clone()),
+            ..Default::default()
+        });
+        analyzer.pending_limit = 2;
+        analyzer
+            .match_buffers
+            .insert("9103001".to_string(), meta(&["http.header"]));
+
+        for _ in 0..4 {
+            analyzer.process(event(), alert());
+        }
+
+        assert_eq!(analyzer.pending.len(), 2, "pending 必须有界");
+        assert_eq!(analyzer.health.pending_overflow(), 2);
+        let docs = std::fs::read_to_string(&out).unwrap_or_default();
+        let lines = docs.lines().filter(|l| !l.trim().is_empty()).count();
+        assert_eq!(lines, 2, "超限告警必须立即 fail-closed 落文档，不得静默丢弃");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn truncates_payload() {
         assert_eq!(truncate("abcdef", 3), "abc".to_string());
     }
@@ -2484,6 +2628,27 @@ mod tests {
         // 没有情报决策时保持原有语义
         let plain = analyzer.decide(&event(), &alert());
         assert_eq!(plain.reason, "validator-missing");
+    }
+
+    #[test]
+    fn degraded_alert_is_visible_in_reason_and_document() {
+        // R4-1：引擎 context-missing 降级告警在分析层也要保留"降级"这个决策依据。
+        let analyzer = Analyzer::new(AnalysisConfig::default());
+        let mut al = alert();
+        al.degraded = Some("context-missing".into());
+        al.reason = "context-missing".into();
+        al.evidence = "suricata-sqli; degraded=context-missing: context never arrived".into();
+        let decision = analyzer.decide(&event(), &al);
+        assert_eq!(decision.reason, "degraded-context-missing");
+        assert!(decision
+            .evidence
+            .iter()
+            .any(|e| e == "degraded=context-missing"));
+        // validator 状态只记 evidence，不能覆盖 degraded-* 决策依据
+        assert!(decision.evidence.iter().any(|e| e == "validator-missing"));
+        let doc = normalized_document(&event(), &al, &decision, "", 64);
+        assert_eq!(doc["xbits"]["degraded"], "context-missing");
+        assert_eq!(doc["xbits"]["reason"], "degraded-context-missing");
     }
 
     #[test]

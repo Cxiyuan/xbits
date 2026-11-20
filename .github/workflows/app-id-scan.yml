@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - 'app-id/**'
+      - '.github/workflows/app-id-scan.yml'
   workflow_dispatch:
 
 jobs:

@@ -9,6 +9,19 @@ on:
       - "app-id/**"
       - "规则检测/**"
       - "测试用例/generate_web_pcaps.py"
+      # 覆盖门禁与 hook 矩阵读 cases/recon_cases/web_cases/backdoor_cases.json；
+      # 镜像 Dockerfile 还会 COPY classification.config / reference.config 进镜像。
+      - "测试用例/*.json"
+      - "测试用例/*.config"
+      - "测试用例/generate_pcaps.py"
+      - "测试用例/generate_recon_pcaps.py"
+      - "测试用例/generate_backdoor_pcaps.py"
+      # 契约（qa/QA_REPORT.md V-16/C7）要求新模块也必须触发镜像侧验证。
+      # 注意：本 workflow 的步骤与 Dockerfile 目前并不直接读取 triage/intel/allowlist，
+      # 这三条属“保底触发”——保证数据/规则子模块变更不会被镜像构建链路整体忽略。
+      - "triage/**"
+      - "threat-intel/**"
+      - "allowlist/**"
       - ".github/workflows/xbits-images.yml"
   pull_request:
     paths:
@@ -17,6 +30,19 @@ on:
       - "app-id/**"
       - "规则检测/**"
       - "测试用例/generate_web_pcaps.py"
+      # 覆盖门禁与 hook 矩阵读 cases/recon_cases/web_cases/backdoor_cases.json；
+      # 镜像 Dockerfile 还会 COPY classification.config / reference.config 进镜像。
+      - "测试用例/*.json"
+      - "测试用例/*.config"
+      - "测试用例/generate_pcaps.py"
+      - "测试用例/generate_recon_pcaps.py"
+      - "测试用例/generate_backdoor_pcaps.py"
+      # 契约（qa/QA_REPORT.md V-16/C7）要求新模块也必须触发镜像侧验证。
+      # 注意：本 workflow 的步骤与 Dockerfile 目前并不直接读取 triage/intel/allowlist，
+      # 这三条属“保底触发”——保证数据/规则子模块变更不会被镜像构建链路整体忽略。
+      - "triage/**"
+      - "threat-intel/**"
+      - "allowlist/**"
       - ".github/workflows/xbits-images.yml"
 
 env:
@@ -31,6 +57,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+
+      # 纯静态门禁（同 xbits-ci 的 workflow-paths job）：本 workflow 的 paths: 必须覆盖
+      # 它实际读取的仓库路径，避免漏监听后「改了输入 CI 不跑」。
+      - name: Assert workflow paths cover every QA-read repo path
+        run: python3 xbits/test/qa_workflow_paths.py
 
       - name: Set up Python
         uses: actions/setup-python@v5.4.0

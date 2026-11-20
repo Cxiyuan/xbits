@@ -9,6 +9,25 @@ on:
       - "测试用例/generate_recon_pcaps.py"
       - "测试用例/generate_web_pcaps.py"
       - "测试用例/generate_backdoor_pcaps.py"
+      # 本 workflow 直接跑 triage 单测 / YARA 校验 / qa_file_triage（见 match-context job），
+      # 也间接受 threat-intel、allowlist 数据影响（triage 默认 hash 情报 + xbits 情报查询）。
+      - "triage/**"
+      - "threat-intel/**"
+      - "allowlist/**"
+      # suricata-live job 会 cp 这些配置文件与 .yaml.in 生成运行时配置。
+      - "测试用例/*.config"
+      - "测试用例/*.yaml.in"
+      # suricata-live job 只 stage 这 4 个自研场景目录的 rules/lua/lst；不整目录监听
+      # 规则检测/**，避免与 suricata-* 场景工作流对同一批文件重复触发。
+      - "规则检测/suricata/DNS隧道与带外检测/*.rules"
+      - "规则检测/suricata/DNS隧道与带外检测/lua/**"
+      - "规则检测/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst"
+      - "规则检测/suricata/侦察与攻击工具指纹/*.rules"
+      - "规则检测/suricata/侦察与攻击工具指纹/lua/**"
+      - "规则检测/suricata/Web漏洞利用/*.rules"
+      - "规则检测/suricata/Web漏洞利用/lua/**"
+      - "规则检测/suricata/后门通信/*.rules"
+      - "规则检测/suricata/后门通信/lua/**"
       - ".github/workflows/xbits-ci.yml"
   pull_request:
     paths:
@@ -17,6 +36,25 @@ on:
       - "测试用例/generate_recon_pcaps.py"
       - "测试用例/generate_web_pcaps.py"
       - "测试用例/generate_backdoor_pcaps.py"
+      # 本 workflow 直接跑 triage 单测 / YARA 校验 / qa_file_triage（见 match-context job），
+      # 也间接受 threat-intel、allowlist 数据影响（triage 默认 hash 情报 + xbits 情报查询）。
+      - "triage/**"
+      - "threat-intel/**"
+      - "allowlist/**"
+      # suricata-live job 会 cp 这些配置文件与 .yaml.in 生成运行时配置。
+      - "测试用例/*.config"
+      - "测试用例/*.yaml.in"
+      # suricata-live job 只 stage 这 4 个自研场景目录的 rules/lua/lst；不整目录监听
+      # 规则检测/**，避免与 suricata-* 场景工作流对同一批文件重复触发。
+      - "规则检测/suricata/DNS隧道与带外检测/*.rules"
+      - "规则检测/suricata/DNS隧道与带外检测/lua/**"
+      - "规则检测/suricata/DNS隧道与带外检测/dns_tunnel_allow.lst"
+      - "规则检测/suricata/侦察与攻击工具指纹/*.rules"
+      - "规则检测/suricata/侦察与攻击工具指纹/lua/**"
+      - "规则检测/suricata/Web漏洞利用/*.rules"
+      - "规则检测/suricata/Web漏洞利用/lua/**"
+      - "规则检测/suricata/后门通信/*.rules"
+      - "规则检测/suricata/后门通信/lua/**"
       - ".github/workflows/xbits-ci.yml"
 
 env:
@@ -24,6 +62,19 @@ env:
   ZEEK_IMAGE: zeek/zeek:9.0.1@sha256:524cb0ce29f26a6a954fb9c357a8f92b95812476d8240f0ece26617ace249dd0
 
 jobs:
+  workflow-paths:
+    name: CI paths consistency gate (static)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # 纯静态门禁：每个 workflow 自己的 paths: 必须覆盖它实际读取的仓库路径。
+      # 防的是「新增目录（triage/、threat-intel/、allowlist/…）没进 paths → 改被测代码
+      # CI 一次都不跑」这类结构性假绿（qa/QA_REPORT.md V-16 / S-01）。
+      - name: Assert workflow paths cover every QA-read repo path
+        run: python3 xbits/test/qa_workflow_paths.py
+
   zeek-plugin-build:
     name: Zeek 9.0.1 thin hook plugin build
     needs: rust

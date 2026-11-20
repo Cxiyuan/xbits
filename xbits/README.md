@@ -279,7 +279,37 @@ Context-only buffer（`lua`、`http.header`、`file.data`、`http.uri.raw`、
 
 跨 socket 顺序：`match_context` 与 `alert` 来自不同连接、到达顺序无保证。xbits 对
 声明了 context-only buffer 的告警在缺 context 时短暂挂起（默认 500ms，`--pending-context-ms`
-可调），context 到达即判定；超时按 fail-closed 处理（不建 key、不抑制），绝不丢事件。
+可调），context 到达即判定。
+
+**挂起/过期语义（与实现一致，不承诺"绝不丢事件"）**：
+
+- 分析层（等 `match_context` 告警）：过期判定与消息处理解耦——每轮循环（含持续有流量、
+  `recv` 不超时的情况）都会扫描一次，过期即**立即 fail-closed 判定**（不建 key、不抑制），
+  计数 `pending_expired` 并打日志；pending 有容量上限（`PENDING_LIMIT`，默认 1024），
+  达到上限后的新告警**立即 fail-closed 判定**并计数 `pending_overflow`（限流日志）；
+- 引擎层（`require_context` 规则等 Zeek 上下文）：挂起超过 TTL **不再丢弃、也不再只是计数**，
+  而是按 fail-closed 产出一条**降级告警**——`degraded=context-missing`、`reason=context-missing`、
+  evidence 写明"上下文始终没到"，随正常告警一起写 stdout 并进入分析流水线（`xbits.degraded`）。
+  引擎侧计数为 `pending_expired`；**待处理队列满时**同样产出可见降级告警（`degraded=pending-overflow`）
+  并计数 `pending_overflow`，不再只计数/打日志。
+  降级告警是"无法判定"的可见事实，**不套用规则的 `min_confidence`**（它始终带 `degraded` 标记）；
+- **维护与事件到达解耦（R5-1）**：hook listener 用 `read_timeout(200ms)` 读取已连接 socket，
+  并对 accept 做非阻塞轮询（空闲 20ms、按 200ms 节流维护）；因此即使流量停止，
+  挂起告警也会按 TTL 触发降级输出与计数。读取使用**残留半行缓冲**，超时/分段读取都不会丢半行 JSON；
+- 引擎其它 TTL/容量治理同样可见：过期 context / 累计分分别计数 `contexts_expired`、`scores_expired`；
+  累计分表超容量上限（`MAX_SCORES`）**只淘汰最旧条目**（不再整表清空），计数 `scores_evicted`；
+- 两层计数都会出现在 hook listener 的故障消息里，为避免同名混指，引擎层一律加 `engine_` 前缀导出：
+  `engine_pending_expired` / `engine_pending_overflow` / `engine_contexts_expired` /
+  `engine_scores_expired` / `engine_scores_evicted`（分析层则是 `pending_expired` / `pending_overflow`）。
+
+**累计分窗口（R4-2 / R5-3）**：累计分按 `group_by` 分组、窗口内累计，窗口从最近一次命中开始滑动；
+默认窗口与事件 TTL 相同（60s）。同一 `group_by` 被多条规则共享时，**窗口取单调最大值**——
+短窗口规则不会把长窗口规则已累积的分提前清掉（长窗口优先；条目仍按最近命中时间滑动）。
+`threshold > score` 的慢速累积规则必须在规则里显式声明
+`score_window_sec`（例如 `"score_window_sec": 3600`），否则事件间隔超过默认窗口时累计分会被清掉、
+**永远不会达标**；`threshold == score` 的规则单事件即可达标，无需窗口。窗口过期计数
+`scores_expired`（导出为 `engine_scores_expired`），超容量淘汰计数 `scores_evicted`
+（导出为 `engine_scores_evicted`），见 `engine.rs` 的 `score_for`/`prune_at`。
 
 `--fp-confidence N` 是误报入白名单的置信度门槛：仅当 validator 明确判定
 `false_positive` 且置信度 ≥ N 时才写入抑制 key，避免低置信误报误杀后续真实威胁。
@@ -367,6 +397,9 @@ xbits --hook-socket /var/run/xbits/hook.sock --rules xbits/rules/analysis.json \
   （历史上曾用 `.max(min_confidence)` 抬升，导致过滤条件恒假，已修正）；
 - `sid_in`: 按精确 SID 集合选择规则，避免 `signature_contains` 宽匹配；
 - `score` / `threshold`: 累计分数达到阈值后才输出；
+- `score_window_sec`: 累计分窗口（秒，可选）。未设置时用引擎默认窗口（与事件 TTL 相同，默认 60s）；
+  `threshold > score` 的慢速累积规则必须显式声明足够长的窗口，否则窗口过期会清掉累计分、永不达标
+  （窗口语义与计数见上文「累计分窗口」）；
 - `alert_kind`: xbits 接管 Zeek `XbitsAlert::emit` 的告警类别管理（例如只接收 `scanner`）。
 
 xbits 通过 5-tuple 缓冲关联 Suricata alert 与 Zeek context；上下文缺失时不输出高置信度告警。
@@ -385,5 +418,23 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 - Zeek 仅保留 `conn/http/dns/ssl/app_identity/scan_report` 等元数据日志；
 - Suricata EVE 使用 `filetype: xbits-hook`，不落盘 `eve.json`/`fast.log`；
 - xbits 输出的统一告警 JSONL 是唯一告警落盘入口，包含 `confidence`、`evidence`、`rule_id`、`alert_kind` 等字段。
+
+## 10. 已知限制（low，尚未修复）
+
+以下项在第六轮 QA 中确认为 low 级遗留，**尚未修复**，在此如实记录（不隐藏，也不冒充已修）：
+
+- **R6-2 hook 接线缺 Unix socket 集成测试**：`hook.rs` 的 listener / `read_timeout` / 定时维护逻辑
+  只有编译期覆盖；e2e（`qa_*.py`）走整链，不断言 listener 内部的维护节拍与半行缓冲行为。
+- **R6-3 accept 持续连接可饿死 tick**：listener 一次只服务一条连接；若客户端长期占住连接且持续有数据，
+  accept 轮询侧的维护 tick 不会执行（该连接的 `read_timeout` 仍提供维护，只是"无连接侧 tick"被推迟）。
+- **R6-4 pending 单行长度无上限**：`serve_stream` 的行缓冲按换行切分，没有单行最大长度限制；
+  异常客户端发送超长且无换行的数据会持续占用内存（现有 Suricata/Zeek 插件不会这样做）。
+- **R5-4 `threshold > score` 无加载期校验**：引擎不会在加载规则时提示"`threshold > score` 但未声明
+  `score_window_sec`"；只靠本文档约定与单测保证（当前 `xbits/rules/*.json` 无此类规则）。
+- **R5-5 引擎计数仅故障消息导出**：`engine_*` 计数只出现在 hook listener 的故障消息里（且需要挂载分析
+  流水线、在其不可用时才打印）；没有独立的 metrics/周期输出接口，正常运行时只能从 TTL 日志观察。
+- **R5-6 degraded 与 intel 同时命中时 reason 取 intel**：降级告警若同时带情报决策，`reason` 为 `intel-*`；
+  降级标记仍保留在 `xbits.degraded` 字段与 `evidence`（`degraded=…`）里，但下游需并读 `reason` 与
+  `degraded` 两个字段，才能同时看出"情报决策 + 上下文缺失/pending 溢出降级"。
 
 

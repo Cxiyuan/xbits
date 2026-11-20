@@ -148,6 +148,13 @@ pub struct Rule {
     pub score: u64,
     #[serde(default = "one")]
     pub threshold: u64,
+    /// 累计分窗口（秒），按规则声明；未设置时用引擎默认窗口（与事件 TTL 相同，默认 60s）。
+    ///
+    /// `threshold > score` 的慢速累积规则**必须显式声明足够长的窗口**：窗口内同一 `group_by`
+    /// 的命中累计分达到 `threshold` 才输出；窗口过期后累计分从 0 重新开始（窗口语义见
+    /// engine.rs 的 `score_for`/`prune_at`，R4-2）。
+    #[serde(default)]
+    pub score_window_sec: Option<u64>,
     #[serde(default)]
     pub reason: Option<String>,
 }
