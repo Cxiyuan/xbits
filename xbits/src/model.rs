@@ -167,6 +167,46 @@ fn contains_ci(haystack: &str, needle: &str) -> bool {
     haystack.to_lowercase().contains(&needle.to_lowercase())
 }
 
+/// 规则加载期校验（R5-4 / R15-4）：`threshold > score` 的慢速累积规则**必须**显式声明
+/// 一个**正整数** `score_window_sec`。否则默认窗口（引擎事件 TTL，60s）会在两次命中之间
+/// 把累计分清掉，规则永远无法达标——这类误配以前只能靠运行时的 `scores_expired` 间接察觉。
+///
+/// R15-4：`score_window_sec: 0` 是非法值（运行时窗口为 0 秒，累计分立即过期），但它曾能
+/// 绕过"未声明"判定。这里把 0 视为"未声明/非法"一律拒绝：要么删掉该字段用默认 TTL，
+/// 要么给正整数秒。
+///
+/// 返回 `Err` 时由调用方 fail-fast（`main.rs` 的 `load_rules` 转成非零退出），
+/// 错误信息点名 rule id 与相关数值，便于直接定位规则文件中的条目。
+impl Rule {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.score_window_sec == Some(0) {
+            return Err(format!(
+                "rule id={} name={}: score_window_sec=0 is not allowed (a zero-second window \
+                 expires the accumulated score immediately; delete the field to use the default \
+                 TTL, or give a positive number of seconds)",
+                self.id, self.name
+            ));
+        }
+        if self.threshold > self.score && self.score_window_sec.is_none() {
+            return Err(format!(
+                "rule id={} name={}: threshold={} > score={} but score_window_sec is not declared; \
+                 the default window would reset the accumulated score between hits and the rule \
+                 could never reach its threshold (set a positive \"score_window_sec\" or make threshold <= score)",
+                self.id, self.name, self.threshold, self.score
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// 批量加载期校验（R5-4）：任一条规则非法即整体失败，不做"跳过坏规则继续跑"的静默降级。
+pub fn validate_rules(rules: &[Rule]) -> Result<(), String> {
+    for rule in rules {
+        rule.validate()?;
+    }
+    Ok(())
+}
+
 impl Rule {
     pub fn matches(&self, ev: &HookEvent) -> bool {
         if let Some(v) = &self.source {
@@ -262,5 +302,82 @@ mod tests {
         let mut ev = base_event();
         ev.source = "zeek".into();
         assert!(!rule.matches(&ev));
+    }
+
+    #[test]
+    fn validate_accepts_threshold_at_or_below_score() {
+        // 单事件即可达标（threshold <= score）无需窗口；默认 score/threshold = 1 同样合法。
+        let rules: Vec<Rule> = serde_json::from_str(
+            r#"[
+                {"id":"r-eq","name":"eq","score":20,"threshold":20},
+                {"id":"r-below","name":"below","score":30,"threshold":10},
+                {"id":"r-default","name":"default"}
+            ]"#,
+        )
+        .expect("rules");
+        assert_eq!(validate_rules(&rules), Ok(()));
+        for rule in &rules {
+            assert_eq!(rule.validate(), Ok(()));
+        }
+    }
+
+    #[test]
+    fn validate_rejects_threshold_above_score_without_window() {
+        // R5-4：threshold > score 且未声明 score_window_sec → 加载期必须报错，
+        // 且错误信息点名 rule id 与两个数值（否则运维只能靠 scores_expired 猜）。
+        let rule: Rule = serde_json::from_str(
+            r#"{"id":"r-slow","name":"slow","score":20,"threshold":100}"#,
+        )
+        .expect("rule");
+        let err = rule.validate().expect_err("must reject");
+        assert!(err.contains("r-slow"), "错误必须点名 rule id: {err}");
+        assert!(err.contains("threshold=100"), "错误必须带 threshold: {err}");
+        assert!(err.contains("score=20"), "错误必须带 score: {err}");
+        assert!(err.contains("score_window_sec"), "错误必须指出缺失字段: {err}");
+
+        // 批量入口同样 fail-fast（第一条非法即返回，不静默跳过）。
+        let valid: Rule = serde_json::from_str(
+            r#"{"id":"r-ok","name":"ok","score":20,"threshold":20}"#,
+        )
+        .expect("rule");
+        let err = validate_rules(&[valid, rule]).expect_err("batch must reject");
+        assert!(err.contains("r-slow"), "{err}");
+    }
+
+    #[test]
+    fn validate_accepts_threshold_above_score_with_explicit_window() {
+        // 显式声明窗口 = 慢速累积规则，合法（窗口语义见 engine.rs score_for）。
+        let rule: Rule = serde_json::from_str(
+            r#"{"id":"r-slow","name":"slow","score":20,"threshold":100,"score_window_sec":3600}"#,
+        )
+        .expect("rule");
+        assert_eq!(rule.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validate_rejects_zero_score_window() {
+        // R15-4：`score_window_sec: 0` 曾能绕过“未声明”校验（运行时窗口 0 秒、累计分立即过期）。
+        let slow_zero: Rule = serde_json::from_str(
+            r#"{"id":"r-zero-slow","name":"zero-slow","score":20,"threshold":100,"score_window_sec":0}"#,
+        )
+        .expect("rule");
+        let err = slow_zero.validate().expect_err("zero window must be rejected");
+        assert!(err.contains("r-zero-slow"), "错误必须点名 rule id: {err}");
+        assert!(err.contains("score_window_sec=0"), "错误必须指出 0 非法: {err}");
+        assert!(err.contains("positive"), "错误必须给出修法: {err}");
+
+        // 即使 threshold <= score，0 也是非法值（不是合法窗口）。
+        let eq_zero: Rule = serde_json::from_str(
+            r#"{"id":"r-zero-eq","name":"zero-eq","score":20,"threshold":20,"score_window_sec":0}"#,
+        )
+        .expect("rule");
+        assert!(eq_zero.validate().is_err(), "0 秒窗口在任何规则上都非法");
+
+        // 正整数窗口（哪怕 1 秒）合法。
+        let positive: Rule = serde_json::from_str(
+            r#"{"id":"r-pos","name":"pos","score":20,"threshold":100,"score_window_sec":1}"#,
+        )
+        .expect("rule");
+        assert_eq!(positive.validate(), Ok(()));
     }
 }

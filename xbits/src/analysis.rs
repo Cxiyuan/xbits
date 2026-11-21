@@ -348,6 +348,27 @@ fn intel_reason(alert: &EngineAlert) -> Option<String> {
     Some(reason.to_string())
 }
 
+/// 归一化文档 `xbits.reason`（R5-6）：**单字段**给出完整决策语义。
+///
+/// - 只有情报决策 → `intel-*`（前缀不变，既有消费者按前缀匹配仍兼容）；
+/// - 只有降级标记 → `degraded-<label>`（例如 `degraded-context-missing`）；
+/// - 两者同时命中 → `intel-*+degraded-<label>`，情报部分在前，既保留前缀兼容性，
+///   又让下游只读一个字段就能知道"情报命中 + 降级判定"；
+/// - 都没有 → `engine-alert`（保持旧值）。
+fn decision_reason(alert: &EngineAlert) -> String {
+    let intel = intel_reason(alert);
+    let degraded = alert
+        .degraded
+        .as_deref()
+        .map(|label| format!("degraded-{label}"));
+    match (intel, degraded) {
+        (Some(intel), Some(degraded)) => format!("{intel}+{degraded}"),
+        (Some(intel), None) => intel,
+        (None, Some(degraded)) => degraded,
+        (None, None) => "engine-alert".into(),
+    }
+}
+
 struct MatchContextEntry {
     value: String,
     at: Instant,
@@ -1306,12 +1327,9 @@ impl Analyzer {
         let mut decision = Decision {
             verdict: "uncertain".into(),
             confidence: alert.confidence,
-            // 决策依据优先级：情报决策（intel-*） > 引擎降级标记（degraded-*） > engine-alert。
-            // degraded-* 来自 `require_context` 规则等不到上下文的 fail-closed 降级告警（R4-1），
-            // 不能让它在文档里退化成看不出原因的 engine-alert。
-            reason: intel_reason(alert)
-                .or_else(|| alert.degraded.as_ref().map(|d| format!("degraded-{d}")))
-                .unwrap_or_else(|| "engine-alert".into()),
+            // R5-6：情报决策与降级标记同时命中时用 `intel-*+degraded-*` 组合成单字段，
+            // 不再让降级语义被 intel-* 吞掉（见 decision_reason；情报前缀保持兼容）。
+            reason: decision_reason(alert),
             evidence: if alert.evidence.is_empty() {
                 Vec::new()
             } else {
@@ -2904,6 +2922,43 @@ mod tests {
         let doc = normalized_document(&event(), &al, &decision, "", 64);
         assert_eq!(doc["xbits"]["degraded"], "context-missing");
         assert_eq!(doc["xbits"]["reason"], "degraded-context-missing");
+    }
+
+    #[test]
+    fn degraded_and_intel_together_yield_one_combined_reason() {
+        // R5-6：两种决策依据同时命中 → `reason` 单字段给出完整语义，intel-* 前缀保留兼容。
+        let analyzer = Analyzer::new(AnalysisConfig::default());
+        let mut al = alert();
+        al.intel_decision = Some("threat-hit".into());
+        al.intel = Some(json!([{"type": "ip", "value": "203.0.113.9"}]));
+        al.degraded = Some("context-missing".into());
+
+        let both = analyzer.decide(&event(), &al);
+        assert_eq!(both.reason, "intel-threat+degraded-context-missing");
+        // 组合值仍以 intel- 开头：validator 不能覆盖，既有前缀匹配消费者不受影响。
+        assert!(both.reason.starts_with("intel-"));
+        assert!(both
+            .evidence
+            .iter()
+            .any(|e| e == "validator-missing"), "validator 状态不得覆盖组合 reason");
+        let doc = normalized_document(&event(), &al, &both, "", 64);
+        assert_eq!(
+            doc["xbits"]["reason"], "intel-threat+degraded-context-missing",
+            "下游只读 xbits.reason 即可读出完整语义"
+        );
+        assert_eq!(doc["xbits"]["degraded"], "context-missing");
+
+        // 两种单命中组合保持原值（组合只在两者同时命中时发生）。
+        let mut intel_only = al.clone();
+        intel_only.degraded = None;
+        assert_eq!(analyzer.decide(&event(), &intel_only).reason, "intel-threat");
+        let mut degraded_only = al.clone();
+        degraded_only.intel_decision = None;
+        degraded_only.intel = None;
+        assert_eq!(
+            analyzer.decide(&event(), &degraded_only).reason,
+            "degraded-context-missing"
+        );
     }
 
     #[test]

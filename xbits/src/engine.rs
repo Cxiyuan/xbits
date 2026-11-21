@@ -216,6 +216,9 @@ pub struct Engine {
     correlation_overflow: u64,
     correlation_timeouts: u64,
     correlation_pairs: u64,
+    /// 响应侧命中但同 key 没有可配对的请求等待（"只发响应无请求"等路径）的计数。
+    /// R12-4：这条路径以前完全静默，现在计数 + 限流日志（不产出告警，也不假装配对）。
+    correlation_unmatched_responses: u64,
     /// TTL/容量治理的可观测计数：过期清理不再静默（V-06）。
     pending_expired: u64,
     pending_overflow: u64,
@@ -228,6 +231,9 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// 构造引擎。**规则须已通过 [`crate::model::validate_rules`]**：加载期校验（R5-4）
+    /// 在规则文件入口（`main.rs::load_rules` / hook listener）执行，`Engine::new` 本身不 panic，
+    /// 以便单测直接构造"threshold > score 无窗口"的非法规则来断言其运行期后果。
     pub fn new(rules: Vec<Rule>) -> Self {
         Self {
             rules,
@@ -241,6 +247,7 @@ impl Engine {
             correlation_overflow: 0,
             correlation_timeouts: 0,
             correlation_pairs: 0,
+            correlation_unmatched_responses: 0,
             pending_expired: 0,
             pending_overflow: 0,
             contexts_expired: 0,
@@ -257,6 +264,14 @@ impl Engine {
         self
     }
 
+    /// 测试专用：覆盖事件 TTL（生产默认 60s）。仅 `cfg(test)` 暴露，避免扩大公共 API；
+    /// 供 hook 集成测试用极短 TTL 验证"长连接持续写入时维护 tick 仍按时执行"（R6-3）。
+    #[cfg(test)]
+    pub fn with_ttl(mut self, ttl: Duration) -> Self {
+        self.ttl = ttl;
+        self
+    }
+
     /// TTL 过期被清理的关联等待条目数（等待响应超时未配对）。
     pub fn correlation_timeouts(&self) -> u64 {
         self.correlation_timeouts
@@ -270,6 +285,11 @@ impl Engine {
     /// 关联等待表溢出（挤掉最旧）计数。
     pub fn correlation_overflow(&self) -> u64 {
         self.correlation_overflow
+    }
+
+    /// 响应侧命中但无可配对请求等待的次数（R12-4：不再静默）。
+    pub fn correlation_unmatched_responses(&self) -> u64 {
+        self.correlation_unmatched_responses
     }
 
     /// 当前等待中的关联条目数（测试/诊断用）。
@@ -979,16 +999,36 @@ impl Engine {
     }
 
     /// 响应侧命中 → 若等待表有同 key 且请求侧在 depends 里，消费配对并计数。
+    ///
+    /// R12-4：响应侧命中但**没有**可配对的请求等待（"只发响应无请求"，或同 key 的等待
+    /// 属于别的请求 SID）以前完全静默；现在累计 `correlation_unmatched_responses` 并限流
+    /// 打日志（前 5 次 + 每 1000 次），告警本身仍正常输出，只是不带 `correlated` 标记。
     fn consume_correlation(&mut self, key: &str, response_sid: u64) -> Option<u64> {
         let deps = self.success_rules.requests_for(response_sid)?;
-        let wait = self.correlations.get(key)?;
-        let matched = deps
-            .iter()
-            .find(|d| wait.request_sids.contains(*d))
-            .copied()?;
-        self.correlations.remove(key);
-        self.correlation_pairs += 1;
-        Some(matched)
+        let matched = self
+            .correlations
+            .get(key)
+            .and_then(|wait| deps.iter().find(|d| wait.request_sids.contains(*d)).copied());
+        match matched {
+            Some(request_sid) => {
+                self.correlations.remove(key);
+                self.correlation_pairs += 1;
+                Some(request_sid)
+            }
+            None => {
+                self.correlation_unmatched_responses += 1;
+                if self.correlation_unmatched_responses <= 5
+                    || self.correlation_unmatched_responses % 1000 == 0
+                {
+                    eprintln!(
+                        "xbits: engine response-side success_rule hit without a matching request wait (sid={response_sid}, key={key}, wait_present={}); alert is emitted without correlated mark (total={})",
+                        self.correlations.contains_key(key),
+                        self.correlation_unmatched_responses
+                    );
+                }
+                None
+            }
+        }
     }
 }
 
@@ -1648,6 +1688,44 @@ mod tests {
         assert!(alerts[0].correlated.is_none());
         assert_eq!(eng.correlation_pairs(), 0);
         assert_eq!(eng.correlations_len(), 1);
+        assert_eq!(
+            eng.correlation_unmatched_responses(),
+            1,
+            "不同 cid 的响应无等待可配对，必须计数（R12-4）"
+        );
+    }
+
+    #[test]
+    fn response_without_matching_request_is_counted_not_silent() {
+        // R12-4：只发响应（无请求等待）与"同 key 等待但请求 SID 不在 depends"两条路径
+        // 以前完全静默；现在告警照常输出（不带 correlated），但必须计数。
+        let rules = SuccessRules::parse(success_json()).unwrap();
+        let mut eng =
+            Engine::new(vec![correlation_rule_for(14030020)]).with_success_rules(rules);
+        let alerts = eng.process_alerts(&corr_event(14030020, "1:cidR="));
+        assert_eq!(alerts.len(), 1, "未配对的响应侧告警仍正常输出");
+        assert!(alerts[0].correlated.is_none());
+        assert_eq!(eng.correlation_pairs(), 0);
+        assert_eq!(eng.correlation_unmatched_responses(), 1);
+
+        // 同 key 有等待，但该等待的请求 SID 不在响应规则的 depends 里 → 仍算未配对。
+        let json = r#"[{"sid":14030020,"depends":[14030019]},{"sid":14030022,"depends":[14030023]}]"#;
+        let mut eng = Engine::new(vec![
+            correlation_rule_for(14030019),
+            correlation_rule_for(14030022),
+        ])
+        .with_success_rules(SuccessRules::parse(json).unwrap());
+        let _ = eng.process_alerts(&corr_event(14030019, "1:cidM="));
+        assert_eq!(eng.correlations_len(), 1);
+        let alerts = eng.process_alerts(&corr_event(14030022, "1:cidM="));
+        assert_eq!(alerts.len(), 1);
+        assert!(alerts[0].correlated.is_none());
+        assert_eq!(eng.correlation_unmatched_responses(), 1);
+        assert_eq!(
+            eng.correlations_len(),
+            1,
+            "不匹配的等待条目不得被消费（它还在等自己的响应）"
+        );
     }
 
     #[test]

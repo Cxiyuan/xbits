@@ -15,12 +15,20 @@ fn load_rules(path: Option<String>) -> io::Result<Vec<Rule>> {
         None => Ok(Vec::new()),
         Some(path) => {
             let data = fs::read_to_string(&path)?;
-            serde_json::from_str::<Vec<Rule>>(&data).map_err(|err| {
+            let rules = serde_json::from_str::<Vec<Rule>>(&data).map_err(|err| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!("bad rules file {path}: {err}"),
                 )
-            })
+            })?;
+            // R5-4：规则加载期校验，非法配置直接非零退出（不静默加载后"永不达标"）。
+            xbits::model::validate_rules(&rules).map_err(|err| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("bad rules file {path}: {err}"),
+                )
+            })?;
+            Ok(rules)
         }
     }
 }
@@ -65,6 +73,9 @@ fn main() -> io::Result<()> {
     let mut threat_intel_dir: Option<PathBuf> = None;
     let mut allowlist_dir: Option<PathBuf> = None;
     let mut success_rules: Option<PathBuf> = None;
+    // R5-5：默认 0 = 关闭周期统计（保持现有 stderr/输出契约不变；显式 --stats-interval 才启用）。
+    let mut stats_interval_secs: u64 = 0;
+    let mut stats_file: Option<PathBuf> = None;
 
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -185,6 +196,14 @@ fn main() -> io::Result<()> {
                     io::Error::new(io::ErrorKind::InvalidInput, "--success-rules value missing")
                 })?));
             }
+            "--stats-interval" => {
+                stats_interval_secs = parse_u64(args.next(), "--stats-interval")?;
+            }
+            "--stats-file" => {
+                stats_file = Some(PathBuf::from(args.next().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "--stats-file value missing")
+                })?));
+            }
             "--once" => once = true,
             "--stdin" => stdin_mode = true,
             "--help" | "-h" => {
@@ -206,7 +225,10 @@ fn main() -> io::Result<()> {
                          --threat-intel-dir DIR   # 读 ip.txt/domain.txt/md5.txt/sha1.txt/sha256.txt（威胁方向，参与评分）\n\
                          --allowlist-dir DIR      # 读 domain.txt/ip.txt/public_dns.txt（白名单，参与降级）\n\
                        请求→响应关联(V-14 方案①,未指定即关闭):\n\
-                         --success-rules FILE     # success_rules.json（请求→响应配对，correlated 字段 + 计数）"
+                         --success-rules FILE     # success_rules.json（请求→响应配对，correlated 字段 + 计数）\n\
+                        运行期统计(R5-5，默认关闭):\n\
+                          --stats-interval N       # 每 N 秒输出一行 xbits.stats JSON；0=关闭（默认）\n\
+                          --stats-file FILE        # 写文件（启动创建/截断），不指定则写 stderr"
                 );
                 return Ok(());
             }
@@ -281,6 +303,10 @@ fn main() -> io::Result<()> {
             threat_intel_dir.as_ref(),
             allowlist_dir.as_ref(),
         ));
+        let stats_config = xbits::hook::HookStatsConfig {
+            interval: Duration::from_secs(stats_interval_secs),
+            file: stats_file,
+        };
         return run_hook_listener_full(
             &path,
             rules,
@@ -288,6 +314,7 @@ fn main() -> io::Result<()> {
             pipeline.as_ref(),
             Some(intel),
             success,
+            stats_config,
         );
     }
 
@@ -297,4 +324,55 @@ fn main() -> io::Result<()> {
     }
 
     xbits::run_listener(&socket, &mut out, once)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_rules_path(tag: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "xbits-rules-{tag}-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    #[test]
+    fn load_rules_accepts_valid_file() {
+        let path = temp_rules_path("ok");
+        std::fs::write(
+            &path,
+            r#"[{"id":"r1","name":"r1","score":20,"threshold":20}]"#,
+        )
+        .expect("write rules");
+        let rules = load_rules(Some(path.to_string_lossy().into_owned())).expect("valid rules");
+        assert_eq!(rules.len(), 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn load_rules_fails_fast_on_threshold_above_score_without_window() {
+        // R5-4：加载期校验必须是 fail-fast（非零退出），错误信息点名 rule id / 两个数值 / 文件路径。
+        let path = temp_rules_path("bad");
+        std::fs::write(
+            &path,
+            r#"[{"id":"r-slow","name":"slow","score":20,"threshold":100}]"#,
+        )
+        .expect("write rules");
+        let err = load_rules(Some(path.to_string_lossy().into_owned())).expect_err("must fail");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        let msg = err.to_string();
+        assert!(msg.contains("r-slow"), "错误必须点名 rule id: {msg}");
+        assert!(msg.contains("threshold=100"), "错误必须带 threshold: {msg}");
+        assert!(msg.contains("score=20"), "错误必须带 score: {msg}");
+        assert!(
+            msg.contains(path.to_string_lossy().as_ref()),
+            "错误必须带规则文件路径: {msg}"
+        );
+        let _ = std::fs::remove_file(&path);
+    }
 }

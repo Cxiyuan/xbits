@@ -45,35 +45,30 @@ fn is_public_suffix(domain: &str) -> bool {
     !domain.contains('.') || PUBLIC_SUFFIXES.contains(&domain)
 }
 
-/// IP 地址集合（V-23）：合法文本解析为 `IpAddr` 后按**地址值**比较，非法文本
-/// 保留原文小写到 `invalid_text` 并在加载报告里计数 warn（不静默丢弃、不 panic）。
+/// IP 地址集合（V-23 / R14-2）：合法文本解析为 `IpAddr` 后按**地址值**比较；
+/// 非法文本在**加载期拒绝**（计入 `SetLoad.invalid_ip_warnings` + 报告样本），
+/// 不进入集合、不参与任何匹配——与 Python `allowlist/tools/ipnorm.py::canonical_ip`
+/// 返回 `None` 的策略一致（两侧都"拒绝并计数"，不再让非法原文成为可命中的名单条目）。
 ///
-/// 与 Python `allowlist/tools/ipnorm.py::canonical_ip` 同语义：IPv4 原样、
-/// IPv6 压缩小写（Python 3.12 `ipaddress` 对 IPv4-mapped 仍打印点分尾，见下）。
-/// 域名/哈希仍用 `HashSet<String>`，与 IP 分表，避免类型混用。
+/// 与 Python 的合法值语义一致：IPv4 原样、IPv6 压缩小写（Python 3.12 `ipaddress`
+/// 对 IPv4-mapped 仍打印点分尾，见下）。域名/哈希仍用 `HashSet<String>`，与 IP 分表，
+/// 避免类型混用。
 #[derive(Debug, Default)]
 struct IpSet {
     parsed: HashSet<IpAddr>,
-    invalid_text: HashSet<String>,
 }
 
 impl IpSet {
     fn is_empty(&self) -> bool {
-        self.parsed.is_empty() && self.invalid_text.is_empty()
+        self.parsed.is_empty()
     }
 
-    /// 查询：事件 IP 同样 parse 后按 `IpAddr` 比较；非法输入只与同样非法的原文
-    /// （trim + 小写）匹配，绝不退化成"前缀/包含"猜测。
+    /// 查询：事件 IP 同样 parse 后按 `IpAddr` 比较。非法输入（含 zone id / 拼写错误）
+    /// 直接返回 false——加载期已统一拒绝非法条目，查询侧不得再"按原文相等"命中。
     fn contains(&self, ip: &str) -> bool {
-        let v = ip.trim();
-        if v.is_empty() {
-            return false;
-        }
-        if let Some(addr) = canonical_addr(v) {
-            self.parsed.contains(&addr)
-        } else {
-            self.invalid_text.contains(&v.to_ascii_lowercase())
-        }
+        canonical_addr(ip)
+            .map(|addr| self.parsed.contains(&addr))
+            .unwrap_or(false)
     }
 }
 
@@ -176,7 +171,7 @@ pub struct SetLoad {
     pub rejected_public_suffixes: usize,
     /// 被拒绝条目的样本（最多 5 条，便于排查）。
     pub rejected_sample: Vec<String>,
-    /// IP 数据集里无法 parse 的条目数（V-23：保留原文小写并 warn，不静默丢弃）。
+    /// IP 数据集里无法 parse 的条目数（R14-2：加载期拒绝并计数，不进入匹配集合）。
     pub invalid_ip_warnings: usize,
     /// 非法 IP 文本样本（最多 5 条）。
     pub invalid_ip_sample: Vec<String>,
@@ -208,7 +203,7 @@ impl IntelState {
 
 #[derive(Debug, Default)]
 pub struct ThreatIntel {
-    /// 威胁 IP：按 `IpAddr` 比较（IPv6 多写法互认），非法文本另存。
+    /// 威胁 IP：按 `IpAddr` 比较（IPv6 多写法互认）；非法文本加载期已拒绝。
     ips: IpSet,
     /// 恶意域名：**精确匹配**（与 `threat-intel/tools/query.py` 的集合语义一致）。
     domains: HashSet<String>,
@@ -262,8 +257,10 @@ fn load_set(path: &Path) -> (HashSet<String>, Option<String>) {
     (lines.into_iter().collect(), error)
 }
 
-/// 加载 IP 数据集（V-23）：合法文本 parse 为 `IpAddr` 按值比较；非法文本保留
-/// 原文小写并计数 warn（写入 `SetLoad.invalid_ip_warnings`，报告可见）。
+/// 加载 IP 数据集（R14-2）：合法文本 parse 为 `IpAddr` 按值比较；非法文本（含
+/// zone id / 拼写错误）**跳过、不进集合、不参与匹配**，同时计入
+/// `SetLoad.invalid_ip_warnings` 与样本（报告可见），与 Python `canonical_ip`
+/// 返回 `None` 的处理对齐——两侧都"拒绝并计数"，而不是一侧保留成可命中的原文。
 fn load_ip_dataset(
     dir: &Path,
     file: &str,
@@ -281,19 +278,17 @@ fn load_ip_dataset(
                 set.parsed.insert(addr);
             }
             Err(_) => {
-                // 非法 IP（含 zone id / 拼写错误）保留原文小写，查询侧仅与同样非法的
-                // 原文相等才命中；绝不按子串/前缀猜测。
                 invalid_ip_warnings += 1;
                 if invalid_ip_sample.len() < 5 {
                     invalid_ip_sample.push(value.clone());
                 }
-                set.invalid_text.insert(value);
+                // 不 insert：非法条目不得成为名单命中项。
             }
         }
     }
     stats.push(SetLoad {
         name: label,
-        entries: set.parsed.len() + set.invalid_text.len(),
+        entries: set.parsed.len(),
         error,
         rejected_public_suffixes: 0,
         rejected_sample: Vec::new(),
@@ -426,6 +421,12 @@ impl IntelService {
         }
     }
 
+    /// 各数据集加载统计（只读）：条目数、失败原因、被拒绝条目/非法 IP 计数。
+    /// 供测试与运行期观测读取，避免调用方自行解析 `report()` 文本。
+    pub fn stats(&self) -> &[SetLoad] {
+        &self.stats
+    }
+
     /// 启动时逐项打印用的报告行（状态 + 每个数据集的条目数/失败原因）。
     pub fn report(&self) -> Vec<String> {
         let mut lines = vec![format!("intel={}", self.state().as_str())];
@@ -452,9 +453,10 @@ impl IntelService {
                 ));
             }
             if stat.invalid_ip_warnings > 0 {
-                // V-23：非法 IP 文本保留原文小写并计数 warn——不静默丢弃。
+                // R14-2：非法 IP 文本加载期拒绝（不计入 entries、不参与匹配），
+                // 但必须计数 + 样本可见——不是静默丢弃。
                 line.push_str(&format!(
-                    "（非法 IP 文本 {} 条，保留原文待排查: {}）",
+                    "（非法 IP 文本 {} 条，已拒绝且不参与匹配: {}）",
                     stat.invalid_ip_warnings,
                     stat.invalid_ip_sample.join(", ")
                 ));
@@ -962,13 +964,16 @@ mod tests {
         assert_eq!(canonical_ip_text("::a00:1"), "::a00:1"); // 非 mapped，不点分
         assert_eq!(canonical_ip_text("0:0:0:0:0:0:0:1"), "::1");
         assert_eq!(canonical_ip_text("203.0.113.9"), "203.0.113.9");
-        // zone id 与非法文本：保留原文小写，不 panic
+        // 非法输入不会进名单（见 invalid_ip_text_is_rejected_and_counted）；这里的
+        // 小写原文兜底只用于标注路径，不 panic、也不产生命中。
         assert_eq!(canonical_ip_text("FE80::1%eth0"), "fe80::1%eth0");
         assert_eq!(canonical_ip_text("not-an-ip"), "not-an-ip");
     }
 
     #[test]
-    fn invalid_ip_text_is_kept_and_warned_not_dropped() {
+    fn invalid_ip_text_is_rejected_and_counted() {
+        // R14-2：与 Python canonical_ip 返回 None 对齐——非法条目加载期拒绝、
+        // 计数 + 报告可见，但绝不参与匹配（不再"同样非法原文相等即命中"）。
         let threat = tmpdir("bad-ip");
         let allow = tmpdir("bad-ip-allow");
         write(
@@ -978,21 +983,26 @@ mod tests {
         write(&allow.join("ip.txt"), "bad:ip:text\n2001:db8::2\n");
         let svc = IntelService::load(Some(&threat), Some(&allow));
         let report = svc.report().join("\n");
-        // 计数 warn：两个非法条目 + 白名单一个，报告逐项可见（不静默丢弃）
-        assert!(
-            report.contains("非法 IP 文本 2 条"),
-            "report: {report}"
-        );
+        // 计数 warn：威胁 2 条 + 白名单 1 条，报告逐项可见（拒绝但不是静默丢弃）
+        assert!(report.contains("非法 IP 文本 2 条"), "report: {report}");
+        assert!(report.contains("非法 IP 文本 1 条"), "report: {report}");
         assert!(report.contains("not-an-ip"), "report: {report}");
         assert!(report.contains("fe80::1%eth0"), "report: {report}");
+        assert!(report.contains("已拒绝且不参与匹配"), "report: {report}");
         assert!(svc.threat_ip("2001:db8::1"));
-        // 非法文本只与同样非法的原文小写相等才命中，绝不模糊匹配
-        assert!(svc.threat_ip("NOT-AN-IP"));
+        assert!(svc.allowlisted_ip("2001:db8::2"));
+        // 非法原文（各种大小写/截断）一律不命中
+        assert!(!svc.threat_ip("NOT-AN-IP"));
+        assert!(!svc.threat_ip("not-an-ip"));
         assert!(!svc.threat_ip("not-an-ip-extra"));
-        assert!(svc.allowlisted_ip("BAD:IP:TEXT"));
+        assert!(!svc.allowlisted_ip("BAD:IP:TEXT"));
         assert!(!svc.allowlisted_ip("bad:ip"));
         // zone id 不能与去掉 zone 的地址串味
         assert!(!svc.threat_ip("fe80::1"));
+        assert!(!svc.threat_ip("FE80::1%eth0"));
+        // 非法条目不计入 entries（与 Python 丢弃一致）
+        let stat = svc.stats().iter().find(|s| s.name == "threat/ip.txt").expect("stat");
+        assert_eq!(stat.entries, 1);
         let _ = fs::remove_dir_all(&threat);
         let _ = fs::remove_dir_all(&allow);
     }

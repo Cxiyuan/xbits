@@ -337,19 +337,19 @@
 | V-20 | **Verified** | t26 C9（`dcaae21`）engines 三态 + 签名拆分；第八轮 | `engine_status{tool}={present,ok,error}` + `degraded/engine_errors`；`signed_present` 存在性探测 ≠ `signature_verified`（恒 False），伪证书不洗白。 |
 | V-21 | **Verified** | t52 C10-A（工作区，未单独 commit；本地自测 + 负控）；t58 接入 CI | 采集器重写为 `SourceResult{ok,fetched,http_code,error,last_success_utc}` + 最小产出阈值 + 同盘临时目录校验后逐文件 `os.replace`（失败回滚）；任一源失败非零退出且旧 data/exports 不被触碰，`collect_last_attempt.json` 记录失败。8 例本地自测全过，负控（把失败判定改 `ok=True`）4 例 FAIL。CI 实跑以 Actions 为准。 |
 | V-22 | **Verified** | t54 C10-C（工作区）+ captain 转 t58 CI 阻塞修复（同一 attempt 追加证据） | `refresh.py` 改 sources.json 唯一真源（type/path/output/kind/options 全校验）；ip.txt 只来自 custom/ip.txt，public_dns.txt 单向派生自 public_dns_servers.txt，交集非空 FAIL；`--check` 逐项比对 custom↔data，漂移非零。真实快照 ip.txt 15→0、public_dns 15 不变，交集 0；`--check` rc=0。15 例自测全过（含声明源缺失非零）。 |
-| V-23 | **Verified** | t26 C9（`dcaae21`）Python 侧 `canonical_ip()` + t53 C10-B（工作区）Rust 侧 `IpSet{parsed:HashSet<IpAddr>, invalid_text}` / `canonical_addr()`；第八/十轮复核 | add/refresh/query 与 xbits `intel.rs` 现均按地址值归一比较（IPv6 压缩小写、zone 拒绝、非法文本计数不静默）；端到端 `add public_dns 2001:db8::1 → refresh → query` 命中，展开式/大写写法亦命中；原"Rust 侧残留"已消除。 |
+| V-23 | **Verified** | t26 C9（`dcaae21`）Python 侧 `canonical_ip()` + t53 C10-B（工作区）Rust 侧 `IpSet{parsed:HashSet<IpAddr>}` / `canonical_addr()`；第八/十轮复核；R14-2（A2）收紧非法输入策略 | add/refresh/query 与 xbits `intel.rs` 现均按地址值归一比较（IPv6 压缩小写、zone 拒绝）；`IpSet` 只存合法 `IpAddr`，非法条目加载期拒绝 + 计数（`invalid_ip_warnings`）且不参与匹配，非法查询值两侧都直接判不命中；端到端 `add public_dns 2001:db8::1 → refresh → query` 命中，展开式/大写写法亦命中。 |
 | V-24 | **Verified** | t55 C10-D（规则检测侧）+ t56 C10-E（文档收口，工作区） | 规则侧：`convert_probe_zeek.py` 删写盘逻辑变为纯解析工具，`qa_zeek_file_set.py` 三层守卫接入 CI，QA JSON 重生 3 个 zeek_scripts；文档侧：`xbits/README.md` 的 17,477 老数改为读产物的 19,447/6,094/app_tx_lua=0 并点名验证脚本，"绝不丢事件"改为 fail-closed+降级可见+§11 R6-2/3/4 边界；`threat-intel/README.md` xbits 行写明 V-14 `--success-rules` 与情报决策链已落地。R12-5 已随 t55 消除；R12-6（success_rules 章节重复）与 R12-7（PCAP 每类仅 1 对）为独立 low 项，仍列在下方索引。 |
 
-### 尚未修复项索引（按 ID，来源：第五～十三轮 verifier 复核）
+### 未修项索引（按 ID，来源：第五～十五轮 verifier 复核；含已修复项的最终状态）
 
 | ID | 状态 | 一句话 | 归属 |
 |---|---|---|---|
-| R5-4 | **尚未修复** | `threshold > score` 无加载期校验（only 文档+单测约束） | 引擎规则加载 |
-| R5-5 | **尚未修复** | 引擎计数仅故障消息导出，无 metrics/周期快照 | 可观测 |
-| R5-6 | **尚未修复** | degraded+intel 同现时 `reason` 取 intel，需并读 degraded | 可观测 |
-| R6-2 | **尚未修复** | hook listener/read_timeout/维护节拍无 Unix socket 集成测试 | 测试覆盖 |
-| R6-3 | **尚未修复** | accept 持续连接可饿死无连接侧维护 tick | 状态机 |
-| R6-4 | **尚未修复** | pending 单行长度无上限（无换行超长数据占内存） | 健壮性 |
+| R5-4 | **已修复（A1）** | `model.rs::validate_rules` + `main.rs::load_rules` 加载期 fail-fast：`threshold > score` 且无 `score_window_sec` 直接非零退出，错误点名 rule id / 数值 / 路径；`run_hook_listener_full` 库入口同样校验 | 引擎规则加载（已修） |
+| R5-5 | **已修复（A2）** | `hook.rs::stats_snapshot`/`stats_json` 输出稳定单行 `xbits.stats`（`analysis.*` 11 字段、`engine.*` 14 字段）；`--stats-interval N`（默认 0=关闭）+ `--stats-file PATH`，accept tick 与长连接 read_timeout tick 均输出；单测锁定 schema/字段/节流 | 可观测（已修） |
+| R5-6 | **已修复（A2）** | `analysis.rs::decision_reason` 合成单字段 `xbits.reason`：`intel-*+degraded-<label>`（如 `intel-threat+degraded-context-missing`）；单命中保持 `intel-*`/`degraded-*`，前缀兼容；单测覆盖组合+单命中+文档 | 可观测（已修） |
+| R6-2 | **部分覆盖（A1/A3）** | `serve_stream` 层已有真实 UnixStream 单测：`long_connection_still_runs_maintenance_tick`（维护节拍 + 半行缓冲）与 `serve_stream_survives_overlong_line_and_processes_next_event`（>1 MiB 无换行输入后正常事件仍产出告警）；剩余缺口为 listener 外层 accept 轮询/空闲维护节拍的端到端断言 | 测试覆盖（部分） |
+| R6-3 | **已修复（A3）** | `hook.rs::serve_stream` 循环顶部按 `MAINTENANCE_TICK` 检查维护截止时间，长连接持续有数据时也执行 `engine.maintenance()`（超时分支保留空闲兜底）；单测 `long_connection_still_runs_maintenance_tick`（5ms tick + 20ms TTL + 持续写入）断言降级输出与 `pending_expired>=1` | 状态机（已修） |
+| R6-4 | **已修复（A1）** | `hook.rs::LineBuffer` 单行上限 1 MiB，超限整行丢弃 + 计数 + 限流日志（连接继续、后续行不受影响）；单测覆盖跨 chunk / EOF 尾行 / 超长 / 节流 | 健壮性（已修） |
 | R8-4 | **尚未修复** | semgrep JSON `errors[]` 仅写 info，rc≠0 带 errors 仍 ok=True | Python 判定 |
 | R8-5 | **尚未修复** | `engines[tool]` 语义从"已安装"变"present and ok"的迁移提示不足 | 文档 |
 | R8-6 | **尚未修复** | `assert_hook_output.py` 坏 JSON 行静默跳过（报 "0 matched" 而非"行损坏"） | 测试可观测 |
@@ -359,19 +359,29 @@
 | R9-5 | **尚未修复** | strict 模式 PASS 文案仍提示"未启用 strict-warnings"，易误读 | 测试文案 |
 | R11-1 | **尚未修复** | YARA 缓存键不覆盖跨目录 include（当前 triage/rules 未用，风险低） | 缓存 |
 | R12-2 | **尚未修复（已接受基线）** | 676 处 `content;buffer` 后置写法仍在转换规则库；已锁为棘轮基线 | 规则语义 |
-| R12-4 | **尚未修复** | 关联计数未进 hook 故障消息；响应无等待路径无输出 | 可观测 |
+| R12-4 | **已修复（A1）** | `hook.rs::engine_failure_stats` 导出 `correlated_pairs`/`correlation_timeouts`/`correlation_overflow`，新增 `correlation_unmatched_responses`（响应无请求路径不再静默）；单测锁定 | 可观测（已修） |
 | R12-5 | **已修复（t55 / 规则检测侧）** | `规则检测/README.md` zeek 段现列 3 个行为脚本并指向 `allowlist/`、`threat-intel/`；`qa_zeek_file_set.py` 三层守卫接入 CI，不再有 `zeek/威胁情报/` 陈旧提法 | 文档（已修） |
-| R12-6 | **尚未修复** | `xbits/README.md` success_rules 两处重复章节（§8.2/§10） | 文档 |
+| R12-6 | **已修复（D1）** | `xbits/README.md` §8.2 为唯一主文（CLI/字段/配对算法/TTL/容量/计数/限制/CI 断言），§10 改为一句指针；数字口径统一（1,546 剥离链 vs 产物 996 条映射） | 文档（已修） |
 | R12-7 | **尚未修复** | PCAP 每类 buffer 仅 1 对正负例（建议 2~3） | 测试覆盖 |
 | R13-1 | **已修复（t51 / tests-auditor）** | `check_rule_pcap_bytes()` 按 SID 读规则原文与 PCAP 载荷做运行时断言（buffer/flow/content hex/pcre/URI），pos 必含 neg 必缺；接在 `--generate`/`--eve-root` 前；负例（改坏 PCAP、改坏规则）均 FAIL 点名 SID | 测试真实性 |
-| R13-2 | **已修复（本轮）** | `engine.rs:829-844` `emits_alert` 预检已纳入 `benign`/`min_confidence`，与 `make_alert_full` 同口径；补测 `correlation_wait_not_registered_for_benign_or_below_min_confidence` | 关联状态机 |
+| R13-2 | **已修复（本轮）** | `engine.rs::emits_alert` 预检已纳入 `benign`/`min_confidence`，与 `make_alert_full` 同口径；补测 `correlation_wait_not_registered_for_benign_or_below_min_confidence` | 关联状态机 |
 | R13-3 | **已修复（本轮）** | 本节 + `xbits/README.md` §11 全量清单即为该项修复 | 文档 |
+| R14-2 | **已修复（A2）** | `intel.rs::IpSet` 删除 `invalid_text`，`contains()` 只按合法 `IpAddr`；`load_ip_dataset` 对非法条目（含 zone id）拒绝、不计入 `entries`、不参与匹配，仍累计 `invalid_ip_warnings`/样本并在 report 打印"已拒绝且不参与匹配"，与 Python `canonical_ip` 返回 `None` 对齐；单测覆盖计数/报告/不命中（该项为第十四轮新增，此前未列入本索引，现补录闭合） | 数据质量（已修） |
+| R15-4 | **已修复（t7）** | `model.rs::Rule::validate` 把 `score_window_sec: 0` 一律拒绝（与 threshold/score 无关；`threshold == score` 的 0 同样非法），报错点名 rule id 并给修法；单测 `validate_rejects_zero_score_window` 覆盖 0+threshold>score、threshold==score 的 0、正整数窗口三态；README §7/§9 已注明 0 非法 | 规则加载（已修） |
+| R15-5 | **已修复（t7）** | `StatsSnapshot` 顶层新增 `hook_lines_dropped`/`hook_lines_dropped_bytes`（跨连接累计，`serve_stream` 检测到丢弃即 `record_line_drops`）；stderr 限流日志外提供稳定 JSON 出口；单测 `stats_counts_dropped_lines_from_line_buffer` + schema 字段恒存在断言；README §8 stats 示例已含两字段 | 可观测（已修） |
 
 > 说明：R8-1/R8-2/R8-3/R9-1/R10-1/R12-1/R12-3 等已在对应轮次 Verified（见 `qa/FIX_REVIEW.md`
-> 第八～十一、十三轮），故不在本"尚未修复"索引内；上表只列第十三轮复核确认仍在的项。
+> 第八～十一、十三轮），故不在本索引内；本表为第五～十五轮复核的全量状态索引。
 > **第十四轮（C10）更新**：R12-5 已随 t55 修复并改为"已修复"；V-21/V-22/V-23/V-24 已在上方状态表全部
 > 更新为 Verified（V-21 t52、V-22 t54、V-23 t26+t53、V-24 t55+t56），其对应 finding id（PY-01、
-> PY-09/PY-10、PY-11）不再计入未修项。R12-6/R12-7 仍为独立 low 遗留。
+> PY-09/PY-10、PY-11）不再计入未修项。
+> **low 收口轮更新**：R5-4/R6-4/R12-4 已随 A1 修复、R5-5/R5-6/R14-2 已随 A2 修复、R12-6 已随 D1
+> 修复（§8.2 唯一主文、§10 变指针），上述七条已改为"已修复"；R14-2 为第十四轮新增项，本轮补录索引。
+> R6-3 已随 A3 修复。至此 A 批七项（R5-4/R5-5/R5-6/R6-3/R6-4/R12-4/R14-2）与 D 批 R12-6 全部"已修复"；
+> R12-7 仍为独立 low 遗留。
+> **第十五轮（verifier）更新**：R6-2 改"部分覆盖"（A1/A3 已补真实 UnixStream 单测，缺口收窄为
+> accept 轮询/空闲维护端到端）；V-23 描述更新为当前实现（`IpSet` 只存合法 `IpAddr`，已无
+> `invalid_text`）；R15-1/2/3/6 均为文档过时表述修正；R15-4/R15-5 已随 t7 修复并补入索引（见上表）。
 
 ---
 

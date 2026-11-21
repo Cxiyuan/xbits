@@ -48,6 +48,11 @@ Python API：`tools/query.py` 的 `AllowlistStore`（domain 按后缀匹配，IP
 > `query.py --ip 2001:0db8:0:0:0:0:0:1` 及 xbits 侧查询命中同一表示；单测见
 > `allowlist/tests/test_allowlist.py`。
 
+> **非法输入的处置（已知限制，R15-6）**：query.py 的 `lookup_ip` / `lookup_domain` 对非法输入
+> （无法解析的 IP、空值）直接返回未命中（`None` / `matched=false`）——**静默跳过且不计数**；
+> 仅 `add.py` / `refresh.py` 在写入侧拒绝非法 IP。把非法输入误当"查询未命中"排查时，需人工确认
+> 输入本身合法。
+
 ## xbits 消费
 xbits 启动参数 `--allowlist-dir allowlist/data`（见 xbits README）：
 - 告警分析时查 `domain/ip` 白名单 → 命中则**降级**：`confidence -= 25`、

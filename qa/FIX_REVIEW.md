@@ -1109,3 +1109,175 @@
 **C10 可关闭**：V-21/V-22/V-23/V-24 均有真实代码、可跑门禁与负例证据，不是文档改名；README §11 与 QA_REPORT 状态如实。剩余仅为 R14-1/R14-2 两个 low 项，以及 §11 已列明的其它遗留（R5-4/5/6、R6-2/3/4、R8-4/5/6、R9-2/3/4/5、R11-1、R12-2/4/6/7 等）。
 
 **第十四轮复核边界**：未运行 `cargo test`/CI/docker；V-23 的 Rust 语义为静态代码核对 + Python 模拟；其余结论来自本地 Python 单测/门禁与临时目录对抗。
+
+---
+
+# 第十五轮：A/D 批（low-cleanup：R5-4/5/6、R6-3/4、R12-4/6、R14-2）复核
+
+> 对抗式复核：只读工作树，未推送、未跑 `cargo`/CI/docker。Rust 侧结论来自静态代码核对 + 仓库内单测在册（**未执行** `cargo test`，最终以 CI 实跑为准）；另实跑了两项只读检查：`xbits/test/qa_workflow_paths.py`（PASS）与 Python `allowlist/tools/ipnorm.py::canonical_ip` 行为探针；README stats 示例 JSON 也实跑解析校验字段数。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| R5-4 加载期校验 | **Verified** | `model.rs::validate_rules` 已接入 `main.rs::load_rules` 与 `run_hook_listener_full`；构造 `threshold>score` 无窗口规则会返回带 rule id/threshold/score/路径的错误，`main` 返回 `io::Result` → 非零退出；全仓库规则 JSON 扫描 0 违规（合法规则不受影响） |
+| R5-5 stats 周期输出 | **Verified** | 单行 `xbits.stats` JSON schema 固定（analysis 11 / engine 14 字段，示例 JSON 实跑解析通过）；`--stats-interval` 默认 0=关闭、`--stats-file` 可选；accept tick 与长连接读取循环 tick 均 `maybe_emit`；关闭时不创建文件、不输出 |
+| R5-6 intel+degraded 单字段 | **Verified** | `analysis.rs::decision_reason`：组合命中 `intel-*+degraded-<label>`，单命中保持 `intel-*`/`degraded-*`；`xbits.degraded` 与 evidence 明细仍在，validator 仍不能覆盖；单测覆盖组合/两种单命中/归一化文档 |
+| R6-3 长连接维护 tick | **Verified（静态 + 单测在册）** | `serve_stream` 每次循环顶部按 `maintenance_tick` 检查并调 `maintenance`，不再依赖 `read` 超时；超时分支保留兜底；`long_connection_still_runs_maintenance_tick`（真实 UnixStream）用 5ms tick + 20ms TTL 断言降级输出与 `pending_expired>=1`，并验证半行不丢 |
+| R6-4 单行上限 | **Verified（静态 + 单测在册）** | `LineBuffer` 单行上限 1 MiB，超限整行丢弃并进入丢弃模式到下一个换行，`dropped_lines/dropped_bytes` 计数 + 首/每 1000 行限流 stderr；`UnixStream` 端到端测试证明后续正常行仍产出告警 |
+| R12-4 关联计数可见 | **Verified** | `hook.rs::engine_failure_stats` 导出 `correlated_pairs`/`correlation_timeouts`/`correlation_overflow`/`correlation_unmatched_responses`；`engine.rs::consume_correlation` 对"响应侧命中但无可配对请求"计数 + 限流 eprintln（告警仍输出、无 `correlated` 标记），不误消费其它请求的等待 |
+| R14-2 非法 IP 双侧一致 | **Verified** | Rust `IpSet` 删除 `invalid_text`：加载期拒绝、不计入 `entries`、不参与匹配，仍计数 `invalid_ip_warnings` + 样本并在 report 打印"已拒绝且不参与匹配"；Python `canonical_ip` 对同一批非法/zone 输入实跑均返回 `None`；两侧合法值语义一致 |
+| R12-6 文档去重与状态 | **Partially** | success_rules 唯一主文 + §10 指针 + 数字口径（996/527、1,546=670+876）均核实无误；但 §11/§7.1/QA_REPORT 中 R6-2 的"只有编译期覆盖、只能静态核对"在 A1/A3 新增真实 UnixStream 单测后已过时，§11 的"4 MiB+"也与实际端到端测试输入（约 1.06 MiB）不符 → 状态未完全"如实" |
+| 回归（C1~C10 / paths） | **Verified（附注）** | `qa_workflow_paths.py` 实跑 PASS（193 资源 / 202 paths）；本批未改任何 `xbits/test/*.py`、`测试用例/*.py`，既有断言仅在 `intel.rs` 有一处 V-23 语义反转（见下）；无新增需补 paths 的文件 |
+
+## 逐项证据
+
+### R5-4 —— **Verified**
+
+- 校验实现：`xbits/src/model.rs:170-196`（`Rule::validate` + `validate_rules`，消息含 `rule id=`/`name=`/`threshold=`/`score=`/`score_window_sec`）。
+- 入口接线：`xbits/src/main.rs:13-34`（`load_rules` 在反序列化后立刻 `validate_rules`，并包成 `bad rules file {path}: {err}`；`main` 为 `io::Result<()>`，`?` 冒泡即非零退出）；`xbits/src/hook.rs:740-743`（库入口 `run_hook_listener_full` 再校验一次）。
+- 单测在册：`model.rs:296 validate_accepts_threshold_at_or_below_score`、`:313 validate_rejects_threshold_above_score_without_window`、`:336 validate_accepts_threshold_above_score_with_explicit_window`；`main.rs:345`/`:358`（后者断言错误含 rule id、`threshold=100`、`score=20`、文件路径）。
+- 合法规则不受影响：脚本扫描 `xbits/rules/*.json`、`xbits/testdata/match_context_rules.json`（7 条）等所有规则数组，`threshold>score && score_window_sec==null` 违规 = **0**；`规则检测/**/audit_rules.json`、`success_rules.json` 同样 0。
+- 边角（见 R15-4）：校验只判 `score_window_sec.is_none()`，`"score_window_sec": 0` 仍可通过但窗口为 0 依旧永不累计。
+
+### R5-5 —— **Verified**
+
+- 结构/序列化：`xbits/src/hook.rs:107-235`（`AnalysisStatsSnapshot` 11 字段、`EngineStatsSnapshot` 14 字段、`StatsSnapshot{event,ts_unix_ms,analysis,engine}`、`stats_snapshot`/`stats_json` 单行输出）；字段数已与 README §8 示例 JSON 逐键实跑比对一致（analysis=11、engine=14）。
+- 周期：`hook.rs:249-300` `StatsEmitter`（`interval`，`last.elapsed() >= interval` 才输出并重置）；长连接读取循环 `hook.rs:641`、accept 循环 `hook.rs:809` 均调用 `maybe_emit`，故长连接占用 accept 侧也不停表。
+- CLI 与默认关闭：`xbits/src/main.rs:76-78`（默认 `stats_interval_secs=0`）、`:199-206`（`--stats-interval`/`--stats-file` 解析，缺值报错）、`:306-318`（构造 `HookStatsConfig` 传入 listener）、`:230-231`（help 文案）；默认 0 时 `StatsEmitter::new` 不创建文件、`maybe_emit` 直接返回（`hook.rs:257-299`，单测 `:1109` 断言关闭不创建文件）。
+- 单测在册：`hook.rs:1044 stats_json_has_stable_schema_and_fields`、`:1081 stats_json_exposes_analysis_health_fields`、`:1109 stats_emitter_respects_interval_and_writes_one_json_line`。
+
+### R5-6 —— **Verified**
+
+- 实现：`xbits/src/analysis.rs:351-371` `decision_reason`（`Some(intel)+Some(degraded) → "{intel}+{degraded}"`；其余分支保持原值）；`decide` 用 `decision_reason(alert)` 赋 `reason`（`:1332`），evidence 另记 `degraded=`/`intel_decision=`（`:1341-1349`）；归一化文档 `xbits.reason` 取 `decision.reason`、`xbits.degraded` 仍独立保留（`:1923-1936`）。
+- 兼容性：validator 覆盖逻辑（`:1398-1411`）对 `starts_with("intel-")`/`"degraded-"` 一律不覆盖，只入 evidence；组合串仍以 `intel-` 开头。
+- 单测：`analysis.rs:2928-2960 degraded_and_intel_together_yield_one_combined_reason`（组合、`intel` only、`degraded` only、文档字段、validator-missing 证据）。
+
+### R6-3 —— **Verified（静态核对 + 单测在册，未执行 cargo）**
+
+- 代码：`xbits/src/hook.rs:636-646` 循环顶部 `if last_maintenance.elapsed() >= maintenance_tick { maintenance(...) }`；`hook.rs:670-677` 超时分支仍维护并刷新 `last_maintenance`；`hook.rs:631` read_timeout 用同一 tick，空闲连接同样推进。
+- 单测：`hook.rs:974-1041 long_connection_still_runs_maintenance_tick`（真实 `UnixStream`，5ms tick + 20ms TTL，持续空行保持 `read` 不超时但只靠循环顶部维护推进；断言 `degraded:context-missing` 与 `pending_expired>=1`，并断言分段写入的半行事件仍产出告警）。
+- 测试专用注入：`engine.rs:264-272 Engine::with_ttl`（`#[cfg(test)]`），仅测试可见，未扩大公共 API。
+
+### R6-4 —— **Verified（静态核对 + 单测在册，未执行 cargo）**
+
+- 代码：`hook.rs:24 MAX_LINE_BYTES=1MiB`；`hook.rs:32-97 LineBuffer`（`push` 按 `\n` 切分，`push_fragment` 的 `buf.len()+fragment.len() > MAX` → 整行丢弃、`dropped_lines+=1`、`discarding = !terminated`，`buf.clear()+shrink_to(4096)` 保持有界；`finish` 的 EOF 尾行不丢）；`hook.rs:99-118 report_line_drops`（首次必打 + 每 1000 行汇总）；`hook.rs:633-668` 接入 `serve_stream`。
+- 单测：`hook.rs:841`（跨 chunk 半行）、`:855`（EOF 无换行尾行）、`:867`（无换行超长有界、只计一次、恢复后正常行）、`:895`（单 chunk 超长不吐截断行）、`:911`（汇总节流）、`:926 serve_stream_survives_overlong_line_and_processes_next_event`（真实 `UnixStream`，超长无换行后正常事件仍产一条告警）。
+- 说明（见 R15-5）：`dropped_lines/dropped_bytes` 是连接内计数，只经 stderr 报告，未进 `xbits.stats`/故障消息；不影响"有界丢弃并计数"的字面验收，但跨连接不可聚合。
+
+### R12-4 —— **Verified**
+
+- 故障消息导出：`hook.rs:469-486 engine_failure_stats` 输出 `correlated_pairs`/`correlation_timeouts`/`correlation_overflow`/`correlation_unmatched_responses`（引擎侧权威值），`hook.rs:497-526 ensure_pipeline_healthy` 拼进消息。
+- 无等待响应可见化：`engine.rs:1006-1036 consume_correlation` 在无匹配等待时 `correlation_unmatched_responses += 1` 并限流 `eprintln`（前 5 次 + 每 1000 次），不 `remove` 其它请求的等待（`correlations_len` 保持）；访问器 `engine.rs:291`。
+- 单测：`hook.rs:1157 failure_stats_export_correlation_counters`（只发响应无请求 → `correlation_unmatched_responses=1`、其余计数为 0、`engine_failure_stats(None)==""`）；`engine.rs:1700-1724 response_without_matching_request_is_counted_not_silent`（两条路径 + 不误消费等待）。
+
+### R14-2 —— **Verified**
+
+- Rust：`intel.rs:48-82 IpSet{parsed}`、`contains` 仅合法 `IpAddr`（非法/zone → false）、`canonical_addr` 拒空串与 `%`；`intel.rs:257-301 load_ip_dataset` 对非法条目只计数 `invalid_ip_warnings` + 样本、不 insert、`entries` 只计 parsed；`intel.rs:455-462 report` 打印"非法 IP 文本 N 条，已拒绝且不参与匹配"。
+- 单测：`intel.rs:973-1008 invalid_ip_text_is_rejected_and_counted`（2+1 条计数、样本可见、非法原文大小写/截断均不命中、`entries==1`）；`:956-971 canonical_ip_text` 仅标注路径保留小写原文。
+- Python 实跑：`allowlist/tools/ipnorm.py:23-34 canonical_ip`，探针结果 `8.8.8.8→8.8.8.8`、`FE80::1A2B:3C4D→fe80::1a2b:3c4d`、`fe80::1%eth0/not-an-ip/bad:ip:text/''→None`；`add.py:88-113` 打印 `[SKIP]` 并累计 `skipped`、`refresh.py:62-77` 记 `bad` 行并非零退出，`test_allowlist.py:51-52/92-102` 覆盖。
+- 细微差异（见 R15-6）：`query.py:52-58` 只读归一化时静默跳过非法项（不计数），README"两者都计入报告"更准确的对象是 add/refresh 与 Rust 的 threat/allowlist 两组 set。
+
+### R12-6 —— **Partially**
+
+- 已核实（通过）：
+  - 唯一主文：`xbits/README.md:432-480` §8.2 承载 CLI/字段/配对算法/TTL/容量/计数/限制/CI 断言；`README.md:516-520` §10 仅一句指针；全文 `success_rules` 命中仅这两节 + §11 状态行，无第二份正文。
+  - 数字口径：实跑产物 `success_rules.json` = 996 条、带 `depends` 527 条；`semantic_gaps.json` `flowbits-correlation=670`、`dependency-correlation=876`（合计 1,546），与 `README.md:437-449`、`:606-609` 一致。
+  - §11 条数 = 23（与任务口径一致）；A/D 八条的"已修复（本轮 A1/A2/A3/D1）"逐条能落到本批 diff（R5-4/R6-4/R12-4→A1、R5-5/R5-6/R14-2→A2、R6-3→A3、R12-6→D1）。
+- 未通过（详见 R15-1/2/3）：R6-2 的过时描述使"§11 与 QA_REPORT 状态如实"不成立；`4 MiB+` 数字不符；QA_REPORT V-23 行仍写已删除的 `invalid_text`。
+
+## 回归检查（C1~C10 断言 / qa_workflow_paths）
+
+- `git diff --name-only`：仅 `xbits/src/{analysis,engine,hook,intel,main,model}.rs` + `xbits/README.md` + `qa/QA_REPORT.md`（另有与本批无关、会话开始前即存在的 `CLAUDE.md` 删除与未跟踪 `AGENTS.md`/`.agent-teams/`）。**未改任何既有测试脚本**。
+- 既有断言：diff 中删除的断言仅 `intel.rs` V-23 旧行为两行（见 `git diff` 的 `assert!(svc.threat_ip("NOT-AN-IP"))` / `assert!(svc.allowlisted_ip("BAD:IP:TEXT"))`），已按 R14-2 反转为 `assert!(!...)`（行为契约变更，不是放宽；`intel.rs:995-999`），`report.contains("非法 IP 文本 2 条")` 保留并加 1 条。其余新增断言 142 行，均为加强。
+- `qa_workflow_paths.py` 实跑：`CI PATHS: PASS`（7 个 workflow push==PR；193 个被读资源 / 202 条 paths 全覆盖）。本批无新增仓库文件，无需补 paths。
+- 待同步（见 R15-3）：`qa/QA_REPORT.md:340` V-23 行仍描述 `IpSet{parsed, invalid_text}`，与 R14-2 后代码不符；`:343` 标题"尚未修复项索引"与 `:372`"上表只列第十三轮…"在本批把"已修复"项与 R14-2 列入后已过时（状态列本身正确）。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R15-1 | low | `xbits/README.md:548-550`、`xbits/README.md:306-307`、`qa/QA_REPORT.md:350` | R6-2 仍写"hook listener/read_timeout/定时维护逻辑**只有编译期覆盖**""半行缓冲/EOF 尾行/饿死 tick **只能静态核对**""缺 Unix socket 集成测试"；但 A1/A3 已在 `hook.rs:841-1041` 加入真实 `UnixStream` 单测覆盖半行/EOF/超长/维护 tick | 改为"serve_stream 层已有 UnixStream 单测；listener accept 循环与整链 e2e 仍缺"，并在 §11 标注 R6-2 为**部分覆盖/仍待补**，使状态如实 |
+| R15-2 | low | `xbits/README.md:562` | `（4 MiB+ 无换行输入后…）` 与实现不符：真实 `UnixStream` 端到端测试写入 `MAX_LINE_BYTES + 64KiB ≈ 1.06 MiB`（`hook.rs:926-940`）；4 MiB 只是 `LineBuffer` 纯单测（`hook.rs:867-893`）的累计量 | 改为"约 1 MiB 超长无换行输入后…"，或分别标注两类测试的输入量 |
+| R15-3 | low | `qa/QA_REPORT.md:340`、`:343`、`:372` | V-23 行仍写 `IpSet{parsed:HashSet<IpAddr>, invalid_text}` 与"非法文本计数不静默"，但 R14-2 已删除 `invalid_text` 且改为拒绝/不参与匹配；"尚未修复项索引"标题与"只列第十三轮…"注释在本批加入已修复项/R14-2 后过时 | 更新 V-23 描述为拒绝策略；标题/注释改为"遗留项状态索引（含已修复）"并说明含第十四/十五轮 |
+| R15-4 | low/info | `xbits/src/model.rs:177-187` | R5-4 只校验 `score_window_sec.is_none()`；显式 `"score_window_sec": 0` 可通过校验，但窗口 0 仍会立即清分、规则永不达标（可绕过守卫） | 追加 `Some(0)` 视为非法（或文档/校验要求窗口 >0），并补单测 |
+| R15-5 | info | `xbits/src/hook.rs:32-118`、`:633-668` | 超长行 `dropped_lines/dropped_bytes` 只在连接内计数并经 stderr 限流打印，未进 `xbits.stats`/故障消息，跨连接无法聚合观测 | 可选：把两个计数提升为进程级并在 `StatsSnapshot.engine` 增字段（需同步 README schema 与单测） |
+| R15-6 | info | `allowlist/tools/query.py:52-58`、`xbits/README.md:424-426` | Python 只有 add/refresh 对非法 IP 计数告警，query 读取时静默跳过；README"两者都计入报告"表述易被读成 Rust/Python 都计数 | 文档写明"Python add/refresh 计数、query 跳过；Rust 两组 set 计数" |
+
+## 收口结论
+
+- **A 批（R5-4/R5-5/R5-6/R6-3/R6-4/R12-4/R14-2）：可关闭**。七项均有真实代码 + 入口接线 + 单测在册，未发现阻断性缺陷；R15-4/R15-5 属低危边角，可作为后续 low 项，不阻塞 A。
+- **D 批（R12-6）：暂不可关闭（Partially）**。success_rules 去重与数字口径已达成，但任务要求"§11 与 QA_REPORT 状态如实"，而 R15-1（R6-2 过时描述）明确把已新增的 UnixStream 单测说成"只有编译期覆盖/只能静态核对"，R15-2/R15-3 也存在同类过时表述。建议 D1 补 3 处文档（README §7.1/§11 R6-2、README §11 R6-4 的 4 MiB、QA_REPORT V-23 行与索引标题）后即可关闭；这几处均为低危文档项，不影响 A。
+
+**第十五轮复核边界**：未运行 `cargo test`/CI/docker，Rust 结论为静态代码核对 + 仓库单测在册（未执行）；已实跑 `qa_workflow_paths.py`（PASS）、Python `canonical_ip` 行为探针与 README stats 示例 JSON 解析；其余为只读静态核对。
+
+---
+
+# 第十六轮：R15 收尾（t6 文档修正 + t7 代码修复）复核
+
+> 对抗式复核：只读工作树，未推送、未跑 `cargo`/CI/docker。已实跑：旧表述残留 grep（README/QA_REPORT 定向 =0）、§11↔QA_REPORT 索引集合双向比对（SET IDENTICAL）、`qa_workflow_paths.py`（PASS）、README stats 示例 JSON 解析（含新字段）、Python `canonical_ip` 探针、R15-4 校验决策表模拟。Rust 单测结论为静态核对 + 在册（未执行，最终以 CI 为准）。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| R15-1 R6-2 过时表述 | **Verified** | README §7.1/§11 与 QA_REPORT 三处改为「部分覆盖（A1/A3）」并点名两个真实单测，旧说法定向 grep = 0；剩余缺口如实写为 accept 轮询/空闲维护端到端 |
+| R15-2 量级修正 | **Verified** | README §11 R6-4 行改「写入 `MAX_LINE_BYTES + 64 KiB` ≈ 1.06 MiB」，与 `hook.rs` 端到端测试实际输入一致；「4 MiB+」grep = 0 |
+| R15-3 状态索引同步 | **Verified** | QA_REPORT V-23 行改描述当前实现（无 `invalid_text`），索引标题改「第五～十五轮」，尾注加第十五轮更新块；§11 25 条 ↔ 索引 25 行集合完全一致（独立双向比对） |
+| R15-4 score_window_sec=0 拒绝 | **Verified（静态 + 单测在册）** | `model.rs::Rule::validate` 先判 `== Some(0)` 一律拒绝（threshold>score 与 threshold==score 的 0 都拒），报错含 rule id/`score_window_sec=0 is not allowed`/修法；入口 `main.rs:25` 复用；单测三态覆盖（0+slow、0+eq、正整数 1 合法） |
+| R15-5 丢行计数入 stats | **Verified（静态 + 单测在册）** | `StatsSnapshot` 顶层 `hook_lines_dropped`/`hook_lines_dropped_bytes`，`serve_stream` 每轮 `record_line_drops`（`Ok(n)` 分支），`maybe_emit` 用 `stats_snapshot_with_drops` 序列化；单测 1→2 递增 + 序列化可见 + schema 恒存在；README 示例 JSON 与说明同步 |
+| R15-6 查询侧差异说明 | **Verified** | `allowlist/README.md`、`threat-intel/README.md` 各加「非法输入的处置」块（query 直接未命中、静默跳过不计数，threat-intel 补 hash 非 hex 同样处理），`xbits/README.md:434-437` 交叉引用；与 `query.py` 代码行为一致 |
+| 回归 | **Verified（附注）** | `qa_workflow_paths.py` PASS（193/202）；本批改动为 3 个 README + QA_REPORT + `model.rs`/`hook.rs`（后者带单测），既有断言除第十五轮已记录的 V-23 反转外无再放宽 |
+
+## 逐项证据
+
+### R15-1 —— **Verified**
+
+- 定向 grep（`xbits/README.md`、`qa/QA_REPORT.md`）：`只有编译期覆盖` = 0、`缺 Unix socket 集成测试` = 0（`qa/FIX_REVIEW.md` 中的命中均为第十五轮及更早的历史轮次记录，非当前状态描述）。
+- README §7.1 边界（`xbits/README.md:306-313`）：「R6-2 部分覆盖」+ 两个单测名 + 剩余缺口（accept 轮询/空闲维护端到端）；§11 R6-2 行（`:559-566`）同口径；QA_REPORT R6-2 行（`:350`）同口径并标「测试覆盖（部分）」。
+- 与代码一致：两个单测真实存在（`hook.rs:1003 long_connection_still_runs_maintenance_tick`、`:966 serve_stream_survives_overlong_line_and_processes_next_event`），「部分覆盖」定性成立（listener 外层 accept 循环确无端到端断言）。
+
+### R15-2 —— **Verified**
+
+- `xbits/README.md:575-578`：「真实 `UnixStream` 端到端自测（写入 `MAX_LINE_BYTES + 64 KiB` ≈ 1.06 MiB 的无换行输入后，后续正常事件仍产出告警）」；与 `hook.rs:971`（`MAX_LINE_BYTES + 64 * 1024`）一致。
+- 定向 grep：`4 MiB\+` 在 README/QA_REPORT = 0（FIX_REVIEW 历史记录除外）。
+
+### R15-3 —— **Verified**
+
+- QA_REPORT V-23 行（`qa/QA_REPORT.md:340`）：`IpSet{parsed:HashSet<IpAddr>}`、非法条目「加载期拒绝 + 计数且不参与匹配」，并注 R14-2（A2）收紧；残留 `invalid_text` 仅存于 R14-2 状态行（`:369`，描述的是删除动作本身）与第十五轮尾注（`:384`），均为历史口径，不是当前实现描述。
+- 索引标题 `qa/QA_REPORT.md:343`：「未修项索引（按 ID，来源：第五～十五轮 verifier 复核；含已修复项的最终状态）」；`第五～十三轮|第五～十四轮` grep = 0；尾注第十五轮更新块在 `:382-384`。
+- 独立集合比对（脚本提取 `- \*\*R..-..` 与 `^\| R..-.. \|`）：README §11 = 25 条（R5-4…R14-2 + R15-4/R15-5），QA 索引 = 25 行，`Compare-Object` 双向 diff = **空（SETS IDENTICAL）**；状态口径抽查（R5-4/5/6、R6-3/4、R12-4/5/6、R14-2 FIXED，R6-2 PARTIAL，R8/R9/R11/R12-2/R12-7/R13-3 OPEN）两侧一致。
+
+### R15-4 —— **Verified（静态 + 单测在册，未执行 cargo）**
+
+- 实现：`xbits/src/model.rs:181-196`——`if self.score_window_sec == Some(0) { return Err(...) }` 在前，`threshold > score && is_none()` 在后；0 报错含 `score_window_sec=0 is not allowed` 与修法（删字段/正整数秒），未声明分支文本改为 `set a positive \"score_window_sec\"`。
+- 入口：`main.rs:25`（`load_rules` → `validate_rules`）与 `hook.rs` 库入口不变，仍 fail-fast 非零退出。
+- 单测：`model.rs:358 validate_rejects_zero_score_window`——①`threshold=100>score=20, window=0` 报错点名 id + `score_window_sec=0` + `positive`；②`threshold==score, window=0` 也拒；③`window=1` 合法。决策表模拟（PowerShell）：`0+slow→REJECT(0)`、`0+eq→REJECT(0)`、`window>0+slow→ACCEPT`、`none+slow→REJECT(no window)`。
+- 类型边界：`score_window_sec: Option<u64>`（`model.rs:157`），负数/字符串在 serde 反序列化层即失败，加载同样非零退出。
+
+### R15-5 —— **Verified（静态 + 单测在册，未执行 cargo）**
+
+- 字段：`hook.rs:167/169` `StatsSnapshot` 顶层 `hook_lines_dropped`/`hook_lines_dropped_bytes`；`hook.rs:214-226` `stats_snapshot` 委托 `stats_snapshot_with_drops`（默认 0,0），`maybe_emit` 传 `self.lines_dropped/bytes`（`:340-346`）。
+- 累计：`StatsEmitter::record_line_drops`（`:306-309`，max 累计）；接线在 `serve_stream` 的 `Ok(n)` 分支（`:708`），emitter 由 listener 持有跨连接存活、`LineBuffer` 每连接新建（`serve_stream` 定义 `:659`，生产路径仅此一处调用），跨连接累计语义成立。
+- 单测：`hook.rs:1200 stats_counts_dropped_lines_from_line_buffer`（4 MiB 无换行→1、恢复后单 chunk 再丢→2、序列化 `"hook_lines_dropped":2`）；schema 测试 `:1119-1120` 断言无丢弃时两字段恒存在且为 0。
+- 文档：README §8 示例 JSON（`:387-388`）实测解析出 `hook_lines_dropped:0`/`hook_lines_dropped_bytes:0`（top keys 6 个），`:392-395` 说明 stderr 限流与 stats 出口的分工；QA_REPORT R15-5 行（`:372`）与 README §11 R15-5 行（`:591-596`）一致。
+
+### R15-6 —— **Verified**
+
+- `allowlist/README.md:51-55`：query `lookup_ip/lookup_domain` 非法输入直接未命中、**静默跳过且不计数**；仅 add/refresh 写入侧拒绝——与 `allowlist/tools/query.py:79-88`（`canonical_ip` 返回 None 即未命中）一致。
+- `threat-intel/README.md:40-45`：`lookup_ip/lookup_domain/lookup_hash` 同口径，并注明 hash 非 hex 同样静默、与 xbits 引擎加载期计数不同——与 `threat-intel/tools/query.py:63-83`（`HASH_LEN`/`RX_HEX` 不匹配 → None）一致。
+- `xbits/README.md:434-437` §8.1 交叉引用「人工查询 CLI 的差异（R15-6，已知限制）」。
+
+### 回归 —— **Verified（附注）**
+
+- `qa_workflow_paths.py` 实跑 PASS（7 workflow push==PR；193 资源/202 paths）。新增改动文件均已被既有覆盖面覆盖（`allowlist/**`、`threat-intel/**`、`xbits/**`、`qa/` 为审计文档不在触发面，`model.rs/hook.rs` 属 `xbits/**`）。
+- 既有断言：本批唯一代码改动是 `model.rs` 校验强化（新增 0 拒绝分支 + 三态单测）与 `hook.rs` stats 扩展（新增两字段 + 两测试），无删除断言；第十五轮已记录的 `intel.rs` V-23 反转（`assert!(!svc.threat_ip("NOT-AN-IP"))` 等，`intel.rs:995-999`）确认为**收紧**——旧断言「非法原文相等即命中」改为「一律不命中」，行为契约变严，不是放宽。
+- D1 不变量复查（防回归）：§8.2 唯一主文（`README.md:442`）+ §10 指针（`:527`）；数字 996/527（产物实跑一致）、1,546=670+876（`semantic_gaps.json` 实跑一致，README `:447-449`/`:641-642`）。
+
+## 收口结论（A/D 批最终）
+
+- **A 批（R5-4/R5-5/R5-6/R6-3/R6-4/R12-4/R14-2 + 收尾 R15-4/R15-5）：可关闭**。七项主体在第十五轮 Verified，本轮复核确认 R15-4（0 窗口拒绝）与 R15-5（丢行计数入 stats）两个边角已闭环，且文档与代码一致。遗留仅为「未跑 cargo/CI」的程序性边界（Rust 单测与 e2e 由 `xbits-cross-engine-8.0.8-9.0.1` 工作流实跑确认）。
+- **D 批（R12-6）：可关闭**。第十五轮的 3 处过时表述（R15-1/2/3）已全部修正并经独立 grep/集合比对验证；success_rules 唯一主文、数字口径、§11↔QA_REPORT 索引（25=25 集合一致）与状态如实性均达成。R15-6 的查询侧差异也已写入三份 README。
+- **low-cleanup 收口后的剩余项**：B 批 8 项（R8-4/R8-5/R8-6/R9-2/R9-3/R9-4/R9-5/R12-7）尚未动工；R6-2 标「部分覆盖」（缺口：accept 轮询/空闲维护端到端）；R12-2 留待用户确认。这些是下一批（B）与用户决策项，不属于 A/D 批验收范围。
+
+**第十六轮复核边界**：未运行 `cargo test`/CI/docker，Rust 结论为静态代码核对 + 仓库单测在册（未执行）；已实跑定向 grep、§11↔QA 索引集合比对、`qa_workflow_paths.py`（PASS）、README stats 示例 JSON 解析、`success_rules.json`/`semantic_gaps.json` 计数复核、R15-4 决策表模拟与 Python `canonical_ip` 探针（第十五轮）。

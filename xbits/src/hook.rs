@@ -1,8 +1,11 @@
-use std::io::{self, BufReader, Read, Write};
+use std::fs::File;
+use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, UNIX_EPOCH};
+
+use serde::Serialize;
 
 use crate::analysis::AnalysisPipeline;
 use crate::engine::Engine;
@@ -13,6 +16,329 @@ use crate::model::{HookEvent, Rule};
 const MAINTENANCE_TICK: Duration = Duration::from_millis(200);
 /// accept 空闲时的轮询间隔（无连接时也要按 tick 推进维护，但不忙等）。
 const ACCEPT_IDLE_SLEEP: Duration = Duration::from_millis(20);
+/// hook 行缓冲的单行上限（R6-4）。
+///
+/// 正常 hook 事件远小于该值：Suricata EVE 的 payload / HTTP body 在分析层受
+/// `--max-payload`（默认 16KiB）约束，1MiB 留出 64 倍余量；同时把"无换行的异常输入"
+/// 限制在常量内存内——超限整行丢弃（不中断连接、不影响后续正常行），并计数 + 限流告警。
+pub const MAX_LINE_BYTES: usize = 1024 * 1024;
+
+/// 按换行切分的 hook 行缓冲，带单行长度上限（R6-4）。
+///
+/// 与旧实现（`pending: Vec<u8>` 无限追加）的区别：单行超过 [`MAX_LINE_BYTES`] 时
+/// **整行丢弃**并进入 `discarding` 状态，直到下一个换行才恢复；因此无换行超长输入
+/// 只会占用不超过 `MAX_LINE_BYTES` 的缓冲，不会无限增长。
+#[derive(Debug, Default)]
+struct LineBuffer {
+    buf: Vec<u8>,
+    /// 当前行已因超限被丢弃：持续丢到下一个换行，避免无换行输入无限占内存。
+    discarding: bool,
+    dropped_lines: u64,
+    dropped_bytes: u64,
+}
+
+impl LineBuffer {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// 追加一段读取数据，返回其中完整（以 `\n` 结尾）且未超限的行。
+    fn push(&mut self, chunk: &[u8]) -> Vec<Vec<u8>> {
+        let mut lines = Vec::new();
+        let mut rest = chunk;
+        while let Some(pos) = rest.iter().position(|b| *b == b'\n') {
+            self.push_fragment(&rest[..pos], true, &mut lines);
+            rest = &rest[pos + 1..];
+        }
+        if !rest.is_empty() {
+            self.push_fragment(rest, false, &mut lines);
+        }
+        lines
+    }
+
+    fn push_fragment(&mut self, fragment: &[u8], terminated: bool, lines: &mut Vec<Vec<u8>>) {
+        if self.discarding {
+            self.dropped_bytes = self.dropped_bytes.saturating_add(fragment.len() as u64);
+            if terminated {
+                self.discarding = false;
+            }
+            return;
+        }
+        if self.buf.len().saturating_add(fragment.len()) > MAX_LINE_BYTES {
+            // 整行丢弃（含已缓冲部分与本段），并进入丢弃模式直到换行。
+            self.dropped_lines = self.dropped_lines.saturating_add(1);
+            self.dropped_bytes = self
+                .dropped_bytes
+                .saturating_add(self.buf.len() as u64)
+                .saturating_add(fragment.len() as u64);
+            self.buf.clear();
+            self.buf.shrink_to(4096);
+            self.discarding = !terminated;
+            return;
+        }
+        self.buf.extend_from_slice(fragment);
+        if terminated {
+            lines.push(std::mem::take(&mut self.buf));
+        }
+    }
+
+    /// 连接结束：返回最后一行（可能没有换行符）。被丢弃的超长行不返回。
+    fn finish(&mut self) -> Option<Vec<u8>> {
+        let line = if !self.discarding && !self.buf.is_empty() {
+            Some(std::mem::take(&mut self.buf))
+        } else {
+            None
+        };
+        self.buf.clear();
+        self.discarding = false;
+        line
+    }
+}
+
+/// 超长行丢弃的可见化（R6-4）：首次必打，之后每 1000 行汇总一次（不刷屏、不静默）。
+fn report_line_drops(lines: &LineBuffer, reported: &mut u64) {
+    let dropped = lines.dropped_lines;
+    if dropped == *reported {
+        return;
+    }
+    let first = *reported == 0;
+    let milestone = dropped / 1000 > *reported / 1000;
+    if first || milestone || dropped % 1000 == 0 {
+        eprintln!(
+            "xbits: hook dropped {} overlong line(s) >{} bytes (total_dropped={}, total_bytes={}); connection continues",
+            dropped - *reported,
+            MAX_LINE_BYTES,
+            dropped,
+            lines.dropped_bytes
+        );
+        *reported = dropped;
+    }
+}
+
+// ---- R5-5：运行期统计快照（稳定 JSON schema） ----
+
+/// 分析层计数快照（`PipelineHealth` 的公开读取面）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AnalysisStatsSnapshot {
+    pub available: bool,
+    pub send_failures: u64,
+    pub document_errors: u64,
+    pub documents_without_sink: u64,
+    pub config_errors: u64,
+    pub triage_dropped: u64,
+    pub triage_timeouts: u64,
+    pub pending_expired: u64,
+    pub pending_overflow: u64,
+    pub correlated_pairs: u64,
+    pub correlation_timeouts: u64,
+}
+
+/// 引擎计数快照（不用 `engine_` 前缀：这是独立的 stats 命名空间 `engine.*`）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct EngineStatsSnapshot {
+    pub rules: usize,
+    pub pending: usize,
+    pub contexts: usize,
+    pub scores: usize,
+    pub correlations: usize,
+    pub pending_expired: u64,
+    pub pending_overflow: u64,
+    pub contexts_expired: u64,
+    pub scores_expired: u64,
+    pub scores_evicted: u64,
+    pub correlation_pairs: u64,
+    pub correlation_timeouts: u64,
+    pub correlation_overflow: u64,
+    pub correlation_unmatched_responses: u64,
+}
+
+/// 单行 JSON 统计快照：字段固定，消费者可按路径稳定读取。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct StatsSnapshot {
+    /// 固定事件名，便于从混合 stderr/日志流里过滤。
+    pub event: &'static str,
+    /// UTC 毫秒时间戳。
+    pub ts_unix_ms: u64,
+    /// 未启用分析流水线时为 `null`（schema 仍存在，字段稳定）。
+    pub analysis: Option<AnalysisStatsSnapshot>,
+    pub engine: EngineStatsSnapshot,
+    /// R6-4/R15-5：hook 侧因超过 `MAX_LINE_BYTES` 被整行丢弃的行数（跨连接累计，
+    /// 随快照生成时的观察者值）。超限丢弃只进 stderr 限流日志，stats 是稳定可解析出口。
+    pub hook_lines_dropped: u64,
+    /// R6-4/R15-5：被丢弃的超长行累计字节数（近似，含缓冲与分段）。
+    pub hook_lines_dropped_bytes: u64,
+}
+
+/// 生成统计快照（纯函数，便于单测锁定 schema）。
+pub fn stats_snapshot(
+    pipeline: Option<&AnalysisPipeline>,
+    engine: &Engine,
+    ts_unix_ms: u64,
+) -> StatsSnapshot {
+    self::stats_snapshot_with_drops(pipeline, engine, ts_unix_ms, 0, 0)
+}
+
+/// 带 hook 侧丢弃计数的快照（`serve_stream` 用 `LineBuffer` 的观察值调用）。
+pub fn stats_snapshot_with_drops(
+    pipeline: Option<&AnalysisPipeline>,
+    engine: &Engine,
+    ts_unix_ms: u64,
+    lines_dropped: u64,
+    lines_dropped_bytes: u64,
+) -> StatsSnapshot {
+    StatsSnapshot {
+        event: "xbits.stats",
+        ts_unix_ms,
+        analysis: pipeline.map(|p| {
+            let health = p.health();
+            AnalysisStatsSnapshot {
+                available: health.is_available(),
+                send_failures: health.send_failures(),
+                document_errors: health.document_errors(),
+                documents_without_sink: health.documents_without_sink(),
+                config_errors: health.config_errors(),
+                triage_dropped: health.triage_dropped(),
+                triage_timeouts: health.triage_timeouts(),
+                pending_expired: health.pending_expired(),
+                pending_overflow: health.pending_overflow(),
+                correlated_pairs: health.correlated_pairs(),
+                correlation_timeouts: health.correlation_timeouts(),
+            }
+        }),
+        engine: EngineStatsSnapshot {
+            rules: engine.rules_len(),
+            pending: engine.pending_len(),
+            contexts: engine.contexts_len(),
+            scores: engine.scores_len(),
+            correlations: engine.correlations_len(),
+            pending_expired: engine.pending_expired(),
+            pending_overflow: engine.pending_overflow(),
+            contexts_expired: engine.contexts_expired(),
+            scores_expired: engine.scores_expired(),
+            scores_evicted: engine.scores_evicted(),
+            correlation_pairs: engine.correlation_pairs(),
+            correlation_timeouts: engine.correlation_timeouts(),
+            correlation_overflow: engine.correlation_overflow(),
+            correlation_unmatched_responses: engine.correlation_unmatched_responses(),
+        },
+        hook_lines_dropped: lines_dropped,
+        hook_lines_dropped_bytes: lines_dropped_bytes,
+    }
+}
+
+/// 序列化为单行 JSON（字段均为基本类型，序列化失败属于程序错误）。
+pub fn stats_json(
+    pipeline: Option<&AnalysisPipeline>,
+    engine: &Engine,
+    ts_unix_ms: u64,
+) -> String {
+    serde_json::to_string(&stats_snapshot(pipeline, engine, ts_unix_ms))
+        .expect("stats snapshot is serializable")
+}
+
+fn now_unix_ms() -> u64 {
+    UNIX_EPOCH
+        .elapsed()
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
+}
+
+/// `--stats-interval` / `--stats-file` 的运行期配置。
+#[derive(Debug, Clone)]
+pub struct HookStatsConfig {
+    /// 输出间隔；`Duration::ZERO` = 关闭（CLI 默认值，保持现有 stderr 契约）。
+    pub interval: Duration,
+    /// 指定时写文件（启动时创建/截断），否则写 stderr；均是一行一条 JSON。
+    pub file: Option<PathBuf>,
+}
+
+impl Default for HookStatsConfig {
+    fn default() -> Self {
+        Self {
+            interval: Duration::ZERO,
+            file: None,
+        }
+    }
+}
+
+/// 周期统计发射器。由 listener 与 `serve_stream` 共享：即使某条连接长期占用，
+/// 读取循环的 `read_timeout` 也按同一节拍输出，不被 accept 侧饿死。
+pub struct StatsEmitter {
+    interval: Duration,
+    last: Instant,
+    /// `None` = 关闭；`Some(None)` = 写 stderr；`Some(Some(writer))` = 写文件。
+    state: Option<Option<BufWriter<File>>>,
+    /// R15-5：hook 侧超长行丢弃计数（跨连接累计，由 serve_stream 累加）。
+    lines_dropped: u64,
+    lines_dropped_bytes: u64,
+}
+
+impl StatsEmitter {
+    fn new(config: HookStatsConfig) -> io::Result<Self> {
+        let state = if config.interval.is_zero() {
+            None
+        } else {
+            Some(match config.file {
+                Some(path) => Some(BufWriter::new(File::create(path)?)),
+                None => None,
+            })
+        };
+        Ok(Self {
+            interval: config.interval,
+            last: Instant::now(),
+            state,
+            lines_dropped: 0,
+            lines_dropped_bytes: 0,
+        })
+    }
+
+    fn disabled() -> Self {
+        Self {
+            interval: Duration::ZERO,
+            last: Instant::now(),
+            state: None,
+            lines_dropped: 0,
+            lines_dropped_bytes: 0,
+        }
+    }
+
+    /// R15-5：`serve_stream` 在检测到新的超长行丢弃时调用（增量累计）。
+    fn record_line_drops(&mut self, lines: &LineBuffer) {
+        self.lines_dropped = self.lines_dropped.max(lines.dropped_lines);
+        self.lines_dropped_bytes = self.lines_dropped_bytes.max(lines.dropped_bytes);
+    }
+
+    fn maybe_emit(
+        &mut self,
+        pipeline: Option<&AnalysisPipeline>,
+        engine: &Engine,
+    ) -> io::Result<()> {
+        let Some(output) = self.state.as_mut() else {
+            return Ok(());
+        };
+        if self.last.elapsed() < self.interval {
+            return Ok(());
+        }
+        let snapshot = self::stats_snapshot_with_drops(
+            pipeline,
+            engine,
+            now_unix_ms(),
+            self.lines_dropped,
+            self.lines_dropped_bytes,
+        );
+        let line = serde_json::to_string(&snapshot).expect("stats snapshot is serializable");
+        match output {
+            Some(writer) => {
+                writeln!(writer, "{line}")?;
+                writer.flush()?;
+            }
+            None => eprintln!("{line}"),
+        }
+        self.last = Instant::now();
+        Ok(())
+    }
+}
 
 fn parse_event(line: &str) -> Option<HookEvent> {
     // 1) xbits 薄插件格式
@@ -173,13 +499,39 @@ fn write_alert<W: Write + ?Sized>(writer: &mut W, alert: &crate::engine::EngineA
     Ok(())
 }
 
+/// 引擎侧计数导出（R4-1 / R12-4）：全部写进 hook 故障消息。
+///
+/// 关联计数（`correlated_pairs` / `correlation_timeouts`）取引擎侧权威值，分析层
+/// `PipelineHealth` 只是同源镜像（避免同步滞后导致读数不同）；`correlation_overflow` /
+/// `correlation_unmatched_responses` 只在引擎侧存在。
+fn engine_failure_stats(engine: Option<&Engine>) -> String {
+    let Some(engine) = engine else {
+        return String::new();
+    };
+    format!(
+        ", engine_pending_expired={}, engine_pending_overflow={}, engine_contexts_expired={}, engine_scores_expired={}, engine_scores_evicted={}, correlated_pairs={}, correlation_timeouts={}, correlation_overflow={}, correlation_unmatched_responses={}",
+        engine.pending_expired(),
+        engine.pending_overflow(),
+        engine.contexts_expired(),
+        engine.scores_expired(),
+        engine.scores_evicted(),
+        engine.correlation_pairs(),
+        engine.correlation_timeouts(),
+        engine.correlation_overflow(),
+        engine.correlation_unmatched_responses()
+    )
+}
+
 /// 分析流水线 / 引擎不可用时返回错误：让进程以非零退出，而不是静默降级继续跑。
 ///
 /// 触发来源：分析线程 panic 退出，或入队连续失败达到阈值（见 `PipelineHealth`）。
 /// 消息里同时带两层指标，且**字段名不混用**：
 /// - 分析层：`pending_expired` / `pending_overflow`（等 match_context 的告警）；
 /// - 引擎层：`engine_pending_expired` / `engine_pending_overflow` / `engine_contexts_expired` /
-///   `engine_scores_expired` / `engine_scores_evicted`（R4-1：引擎计数真正导出并被消费）。
+///   `engine_scores_expired` / `engine_scores_evicted`（R4-1：引擎计数真正导出并被消费）；
+/// - 关联（R12-4）：`correlated_pairs` / `correlation_timeouts` / `correlation_overflow` /
+///   `correlation_unmatched_responses`（"只发响应无请求"路径以前静默，现在至少有计数 +
+///   限流 stderr 日志）。
 fn ensure_pipeline_healthy(
     pipeline: Option<&AnalysisPipeline>,
     engine: Option<&Engine>,
@@ -194,18 +546,7 @@ fn ensure_pipeline_healthy(
         .failure_reason()
         .unwrap_or_else(|| "unknown (analysis thread not running)".to_string());
     let health = pipeline.health();
-    let engine_stats = engine
-        .map(|engine| {
-            format!(
-                ", engine_pending_expired={}, engine_pending_overflow={}, engine_contexts_expired={}, engine_scores_expired={}, engine_scores_evicted={}",
-                engine.pending_expired(),
-                engine.pending_overflow(),
-                engine.contexts_expired(),
-                engine.scores_expired(),
-                engine.scores_evicted()
-            )
-        })
-        .unwrap_or_default();
+    let engine_stats = engine_failure_stats(engine);
     Err(io::Error::new(
         io::ErrorKind::Other,
         format!(
@@ -309,24 +650,43 @@ fn handle_line<W: Write + ?Sized>(
 ///
 /// R5-1：超时不是错误——超时即触发一次引擎维护（所以挂起告警的 TTL 不再依赖下一条事件）；
 /// 同时半行 JSON 必须留在 `pending` 缓冲里，绝不因超时丢失。
+///
+/// R6-3：维护 tick 与"是否有数据到达"解耦。旧实现只在 `read` 超时时维护；客户端长期占住
+/// 连接且持续有数据时 `read` 永不超时，维护（过期降级告警/计数）会被无限推迟。现在每次
+/// 循环顶部按 `maintenance_tick` 截止时间检查，即使读取一直有数据也按时调用
+/// [`maintenance`]（降级告警照常写回 `writer` 并投递流水线）。超时分支仍保留一次维护，
+/// 保证空闲连接也按 tick 推进。
 fn serve_stream<W: Write + ?Sized>(
     stream: UnixStream,
     engine: &mut Engine,
     pipeline: Option<&AnalysisPipeline>,
     writer: &mut W,
+    stats: &mut StatsEmitter,
+    maintenance_tick: Duration,
 ) -> io::Result<()> {
     stream.set_nonblocking(false)?;
-    stream.set_read_timeout(Some(MAINTENANCE_TICK))?;
+    // read_timeout 用同一 tick：空闲连接最迟一个 tick 也会被唤醒做维护。
+    stream.set_read_timeout(Some(maintenance_tick))?;
     let mut reader = BufReader::new(stream);
-    let mut pending: Vec<u8> = Vec::new();
+    // R6-4：残留半行缓冲带单行上限；超长行整行丢弃并计数，连接继续服务后续行。
+    let mut lines = LineBuffer::new();
+    let mut reported_drops: u64 = 0;
+    let mut last_maintenance = Instant::now();
     let mut chunk = [0u8; 8192];
     loop {
+        // R5-5：统计节拍与事件解耦——长连接持续有数据时也在循环顶部按 interval 输出，
+        // 不依赖 accept 侧 tick（后者在长连接期间被 serve_stream 占用）。
+        stats.maybe_emit(pipeline, engine)?;
+        // R6-3：维护 tick 与数据到达解耦。持续有数据（read 不超时）时也必须按时维护。
+        if last_maintenance.elapsed() >= maintenance_tick {
+            maintenance(engine, pipeline, writer)?;
+            last_maintenance = Instant::now();
+        }
         match reader.read(&mut chunk) {
             Ok(0) => {
                 // 对端关闭：把最后一行（可能没有换行符）也处理掉，然后结束连接。
-                if !pending.is_empty() {
-                    let line = String::from_utf8_lossy(&pending).into_owned();
-                    pending.clear();
+                if let Some(line_bytes) = lines.finish() {
+                    let line = String::from_utf8_lossy(&line_bytes);
                     let trimmed = line.trim();
                     if !trimmed.is_empty() {
                         handle_line(trimmed, engine, pipeline, writer)?;
@@ -335,11 +695,7 @@ fn serve_stream<W: Write + ?Sized>(
                 break;
             }
             Ok(n) => {
-                pending.extend_from_slice(&chunk[..n]);
-                while let Some(pos) = pending.iter().position(|b| *b == b'\n') {
-                    let mut line_bytes = Vec::with_capacity(pos);
-                    line_bytes.extend_from_slice(&pending[..pos]);
-                    pending.drain(..=pos);
+                for line_bytes in lines.push(&chunk[..n]) {
                     let line = String::from_utf8_lossy(&line_bytes);
                     let trimmed = line.trim();
                     if trimmed.is_empty() {
@@ -347,6 +703,9 @@ fn serve_stream<W: Write + ?Sized>(
                     }
                     handle_line(trimmed, engine, pipeline, writer)?;
                 }
+                report_line_drops(&lines, &mut reported_drops);
+                // R15-5：丢弃计数进 stats（限流 stderr 之外的稳定可解析出口）。
+                stats.record_line_drops(&lines);
             }
             Err(err)
                 if err.kind() == io::ErrorKind::WouldBlock
@@ -354,6 +713,7 @@ fn serve_stream<W: Write + ?Sized>(
             {
                 // 空闲 tick：推进引擎维护（过期降级告警要能按时输出，R5-1）。
                 maintenance(engine, pipeline, writer)?;
+                last_maintenance = Instant::now();
             }
             Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
             Err(err) => {
@@ -392,7 +752,15 @@ pub fn run_hook_listener_with_analysis<W: Write + ?Sized>(
     writer: &mut W,
     pipeline: Option<&AnalysisPipeline>,
 ) -> io::Result<()> {
-    run_hook_listener_full(socket_path, rules, writer, pipeline, None, None)
+    run_hook_listener_full(
+        socket_path,
+        rules,
+        writer,
+        pipeline,
+        None,
+        None,
+        HookStatsConfig::default(),
+    )
 }
 
 /// 完整版 listener：可挂载统一情报服务（threat-intel + allowlist）与 success_rules
@@ -405,7 +773,24 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
     pipeline: Option<&AnalysisPipeline>,
     intel: Option<std::sync::Arc<crate::intel::IntelService>>,
     success_rules: Option<crate::engine::SuccessRules>,
+    stats_config: HookStatsConfig,
 ) -> io::Result<()> {
+    // R5-4：库 API 同样做加载期校验（`main.rs::load_rules` 已在带路径的上下文里校验过一次；
+    // 这里防止其他调用方绕过 CLI 直接把非法规则塞进 listener）。
+    crate::model::validate_rules(&rules)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, format!("bad rules: {err}")))?;
+    // R5-5：统计文件创建失败即启动失败，不静默退化成"间隔开着但没输出"。
+    if !stats_config.interval.is_zero() {
+        let sink = match &stats_config.file {
+            Some(path) => path.to_string_lossy().into_owned(),
+            None => "stderr".to_string(),
+        };
+        eprintln!(
+            "xbits: runtime stats every {:?} -> {sink} (one JSON line per tick)",
+            stats_config.interval
+        );
+    }
+    let mut stats = StatsEmitter::new(stats_config)?;
     let path = Path::new(socket_path);
     if path.exists() {
         let ft = std::fs::metadata(path)?.file_type();
@@ -460,11 +845,20 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
     listener.set_nonblocking(true)?;
     let mut last_maintenance = Instant::now();
     loop {
+        // R5-5：无连接时的统计节拍与维护节拍一起推进（正常态也有可观测出口）。
+        stats.maybe_emit(pipeline, &engine)?;
         match listener.accept() {
             Ok((stream, _)) => {
                 // 新连接时复查分析流水线健康（线程可能已在无流量期间退出）。
                 ensure_pipeline_healthy(pipeline, Some(&engine))?;
-                serve_stream(stream, &mut engine, pipeline, writer)?;
+                serve_stream(
+                    stream,
+                    &mut engine,
+                    pipeline,
+                    writer,
+                    &mut stats,
+                    MAINTENANCE_TICK,
+                )?;
             }
             Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
                 if last_maintenance.elapsed() >= MAINTENANCE_TICK {
@@ -476,5 +870,412 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
             Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
             Err(err) => return Err(err),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn line_buffer_splits_complete_lines_across_chunks() {
+        let mut lines = LineBuffer::new();
+        assert!(lines.push(b"{\"a\":1").is_empty(), "半行不返回");
+        let got = lines.push(b"}\n{\"b\":2}\n");
+        assert_eq!(
+            got,
+            vec![b"{\"a\":1}".to_vec(), b"{\"b\":2}".to_vec()],
+            "跨 chunk 的半行必须拼成完整行"
+        );
+        assert_eq!(lines.dropped_lines, 0);
+        assert_eq!(lines.finish(), None);
+    }
+
+    #[test]
+    fn line_buffer_returns_unterminated_tail_on_finish() {
+        let mut lines = LineBuffer::new();
+        assert!(lines.push(b"tail-without-newline").is_empty());
+        assert_eq!(
+            lines.finish(),
+            Some(b"tail-without-newline".to_vec()),
+            "EOF 尾行（无换行）仍须处理"
+        );
+        assert_eq!(lines.finish(), None, "finish 后不得重复返回");
+    }
+
+    #[test]
+    fn overlong_line_without_newline_is_bounded_and_dropped() {
+        // R6-4：持续发送无换行超长数据不得无界占内存；超限后整行丢弃并计数。
+        let mut lines = LineBuffer::new();
+        let chunk = vec![b'a'; 64 * 1024];
+        for _ in 0..64 {
+            assert!(lines.push(&chunk).is_empty());
+            assert!(
+                lines.buf.len() <= MAX_LINE_BYTES,
+                "行缓冲必须有界: {}",
+                lines.buf.len()
+            );
+        }
+        assert_eq!(lines.dropped_lines, 1, "超长行只计一次");
+        assert!(
+            lines.dropped_bytes > MAX_LINE_BYTES as u64,
+            "丢弃字节数必须累计: {}",
+            lines.dropped_bytes
+        );
+        assert!(lines.discarding, "无换行超长输入必须进入丢弃模式");
+
+        // 后续正常行仍被处理：换行结束丢弃行，下一行完整返回。
+        let got = lines.push(b"\n{\"ok\":true}\n");
+        assert_eq!(got, vec![b"{\"ok\":true}".to_vec()]);
+        assert_eq!(lines.dropped_lines, 1, "恢复后不得重复计数");
+        assert!(!lines.discarding);
+    }
+
+    #[test]
+    fn overlong_line_in_single_chunk_does_not_emit_partial_line() {
+        let mut lines = LineBuffer::new();
+        let mut data = vec![b'x'; MAX_LINE_BYTES + 1];
+        data.push(b'\n');
+        data.extend_from_slice(b"{\"after\":1}\n");
+        let got = lines.push(&data);
+        assert_eq!(
+            got,
+            vec![b"{\"after\":1}".to_vec()],
+            "超长行不得以截断形式交给解析器"
+        );
+        assert_eq!(lines.dropped_lines, 1);
+        assert_eq!(lines.finish(), None);
+    }
+
+    #[test]
+    fn line_drop_report_is_first_then_per_thousand() {
+        let mut lines = LineBuffer::new();
+        lines.dropped_lines = 1;
+        let mut reported = 0;
+        report_line_drops(&lines, &mut reported);
+        assert_eq!(reported, 1, "首次丢弃必须可见（不静默）");
+        lines.dropped_lines = 2;
+        report_line_drops(&lines, &mut reported);
+        assert_eq!(reported, 1, "第 2 次不刷屏");
+        lines.dropped_lines = 1000;
+        report_line_drops(&lines, &mut reported);
+        assert_eq!(reported, 1000, "每 1000 行汇总一次");
+    }
+
+    #[test]
+    fn serve_stream_survives_overlong_line_and_processes_next_event() {
+        // R6-4 自测（真实 Unix stream）：无换行超长输入不得拖垮连接，换行后的正常事件照常产出告警。
+        let rule: Rule = serde_json::from_str(
+            r#"{"id":"r-ok","name":"ok","source":"suricata","kind":"alert","sid_in":[9103001],"score":20,"threshold":20}"#,
+        )
+        .expect("rule");
+        let (client, server) = UnixStream::pair().expect("socket pair");
+        let handle = std::thread::spawn(move || {
+            let mut engine = Engine::new(vec![rule]);
+            let mut out = Vec::new();
+            serve_stream(
+                server,
+                &mut engine,
+                None,
+                &mut out,
+                &mut StatsEmitter::disabled(),
+                MAINTENANCE_TICK,
+            )
+            .expect("serve");
+            out
+        });
+        let overlong = vec![b'x'; MAX_LINE_BYTES + 64 * 1024];
+        client.write_all(&overlong).expect("write overlong line");
+        client.write_all(b"\n").expect("terminate dropped line");
+        client
+            .write_all(
+                br#"{"source":"suricata","kind":"alert","sid":9103001,"signature":"SQL","community_id":"1:cid="}"#,
+            )
+            .expect("write valid event");
+        client.write_all(b"\n").expect("terminate valid event");
+        client
+            .shutdown(std::net::Shutdown::Write)
+            .expect("shutdown write");
+        let out = handle.join().expect("server thread");
+        let text = String::from_utf8(out).expect("utf-8 alerts");
+        let alerts: Vec<_> = text.lines().collect();
+        assert_eq!(
+            alerts.len(),
+            1,
+            "超长行不得产出告警，后续正常行必须产出一条: {text}"
+        );
+        assert!(
+            alerts[0].contains("\"rule_id\":\"r-ok\""),
+            "正常事件的告警必须来自后续行: {text}"
+        );
+    }
+
+    #[test]
+    fn long_connection_still_runs_maintenance_tick() {
+        // R6-3：客户端持续写入（间隔 1ms < read_timeout 5ms，read 永不超时）时，
+        // 解耦的维护 tick 仍须按 5ms 执行：20ms TTL 的挂起告警要输出降级告警。
+        // 同时最后一条事件分两次写入（半行 + 尾），验证长连接期间半行缓冲不丢数据。
+        let ctx_rule: Rule = serde_json::from_str(
+            r#"{"id":"r-ctx","name":"ctx","source":"suricata","kind":"alert","sid_in":[9103001],"score":20,"threshold":20,"reason":"ctx","require_context":true}"#,
+        )
+        .expect("ctx rule");
+        let direct_rule: Rule = serde_json::from_str(
+            r#"{"id":"r-direct","name":"direct","source":"suricata","kind":"alert","sid_in":[9103002],"score":20,"threshold":20,"reason":"direct"}"#,
+        )
+        .expect("direct rule");
+        let engine = Engine::new(vec![ctx_rule, direct_rule]).with_ttl(Duration::from_millis(20));
+        let (client, server) = UnixStream::pair().expect("socket pair");
+        let handle = std::thread::spawn(move || {
+            let mut engine = engine;
+            let mut out = Vec::new();
+            serve_stream(
+                server,
+                &mut engine,
+                None,
+                &mut out,
+                &mut StatsEmitter::disabled(),
+                Duration::from_millis(5),
+            )
+            .expect("serve");
+            (out, engine)
+        });
+
+        // 先验证半行缓冲：一条命中 direct 规则的告警分两次写入（此时还没有 pending）。
+        client
+            .write_all(br#"{"source":"suricata","kind":"alert","sid":9103002,"signature":"HALF""#)
+            .expect("half line");
+        client
+            .write_all(b",\"community_id\":\"1:cidH=\"}\n")
+            .expect("finish half line");
+
+        // 再制造一条挂起告警（require_context 规则等不到上下文）。
+        client
+            .write_all(
+                br#"{"source":"suricata","kind":"alert","sid":9103001,"signature":"SQL","community_id":"1:cid="}"#,
+            )
+            .expect("write pending alert");
+        client.write_all(b"\n").expect("newline");
+
+        // 持续写入空行：read 不超时，但不会进入 handle_line/engine.process，
+        // 因此只有解耦的维护 tick 能推进 prune（旧实现此路径永远不维护；
+        // 末尾也不再有任何会被 process 的事件，避免 prune 由事件路径兜底）。
+        for _ in 0..80 {
+            client.write_all(b"\n").expect("write blank line");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        client
+            .shutdown(std::net::Shutdown::Write)
+            .expect("shutdown write");
+
+        let (out, engine) = handle.join().expect("server thread");
+        let text = String::from_utf8(out).expect("utf-8 output");
+        assert!(
+            text.contains("\"degraded\":\"context-missing\""),
+            "长连接持续写入时维护 tick 必须执行并输出降级告警: {text}"
+        );
+        assert!(engine.pending_expired() >= 1, "过期 pending 必须计数");
+        assert!(
+            text.contains("\"signature_id\":9103002"),
+            "半行缓冲不得丢数据（后半行事件必须产出告警）: {text}"
+        );
+    }
+
+    #[test]
+    fn stats_json_has_stable_schema_and_fields() {
+        // R5-5：单行 JSON 的字段固定（无流水线时 analysis=null，schema 仍在）。
+        let rule: Rule = serde_json::from_str(
+            r#"{"id":"r-ok","name":"ok","source":"suricata","kind":"alert","score":20,"threshold":20}"#,
+        )
+        .expect("rule");
+        let engine = Engine::new(vec![rule]);
+        let json = stats_json(None, &engine, 1_700_000_000_123);
+        assert_eq!(json.lines().count(), 1, "stats 必须单行: {json}");
+        let v: serde_json::Value = serde_json::from_str(&json).expect("stats json");
+        assert_eq!(v["event"], "xbits.stats");
+        assert_eq!(v["ts_unix_ms"].as_u64(), Some(1_700_000_000_123));
+        assert!(v["analysis"].is_null(), "无流水线时 schema 仍保留 analysis 字段");
+        let eng = &v["engine"];
+        for key in [
+            "rules",
+            "pending",
+            "contexts",
+            "scores",
+            "correlations",
+            "pending_expired",
+            "pending_overflow",
+            "contexts_expired",
+            "scores_expired",
+            "scores_evicted",
+            "correlation_pairs",
+            "correlation_timeouts",
+            "correlation_overflow",
+            "correlation_unmatched_responses",
+        ] {
+            assert!(eng.get(key).is_some(), "engine.{key} 缺失: {json}");
+        }
+        assert_eq!(eng["rules"].as_u64(), Some(1));
+        assert_eq!(eng["pending"].as_u64(), Some(0));
+        // R15-5：hook 丢弃计数字段必须始终存在（无丢弃时为 0，schema 稳定）。
+        assert_eq!(v["hook_lines_dropped"].as_u64(), Some(0), "{json}");
+        assert_eq!(v["hook_lines_dropped_bytes"].as_u64(), Some(0), "{json}");
+    }
+
+    #[test]
+    fn stats_json_exposes_analysis_health_fields() {
+        // 有流水线时 analysis.* 全部可读（ PipelineHealth 的正常态也要可观测）。
+        let pipeline = crate::analysis::AnalysisPipeline::start(
+            crate::analysis::AnalysisConfig::default(),
+        )
+        .expect("start pipeline");
+        let engine = Engine::new(vec![]);
+        let json = stats_json(Some(&pipeline), &engine, 7);
+        let v: serde_json::Value = serde_json::from_str(&json).expect("stats json");
+        let analysis = &v["analysis"];
+        assert_eq!(analysis["available"].as_bool(), Some(true), "{json}");
+        for key in [
+            "send_failures",
+            "document_errors",
+            "documents_without_sink",
+            "config_errors",
+            "triage_dropped",
+            "triage_timeouts",
+            "pending_expired",
+            "pending_overflow",
+            "correlated_pairs",
+            "correlation_timeouts",
+        ] {
+            assert!(analysis.get(key).is_some(), "analysis.{key} 缺失: {json}");
+        }
+    }
+
+    #[test]
+    fn stats_emitter_respects_interval_and_writes_one_json_line() {
+        let dir = std::env::temp_dir().join(format!(
+            "xbits-stats-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let path = dir.join("stats.jsonl");
+        let engine = Engine::new(vec![]);
+
+        // 默认 0 = 关闭：连文件都不创建，保持既有 stderr 契约。
+        let mut off = StatsEmitter::new(HookStatsConfig {
+            interval: Duration::ZERO,
+            file: Some(path.clone()),
+        })
+        .expect("emitter");
+        off.maybe_emit(None, &engine).expect("emit off");
+        assert!(!path.exists(), "默认关闭时不得创建统计文件");
+
+        // 间隔未到不输出。
+        let mut slow = StatsEmitter::new(HookStatsConfig {
+            interval: Duration::from_secs(3600),
+            file: Some(path.clone()),
+        })
+        .expect("emitter");
+        slow.maybe_emit(None, &engine).expect("emit slow");
+        assert_eq!(std::fs::read_to_string(&path).expect("read"), "");
+
+        // 间隔到达后写一行可解析 JSON。
+        let mut fast = StatsEmitter::new(HookStatsConfig {
+            interval: Duration::from_millis(1),
+            file: Some(path.clone()),
+        })
+        .expect("emitter");
+        std::thread::sleep(Duration::from_millis(5));
+        fast.maybe_emit(None, &engine).expect("emit fast");
+        let text = std::fs::read_to_string(&path).expect("read");
+        let lines: Vec<_> = text.lines().collect();
+        assert_eq!(lines.len(), 1, "一次 tick 只写一行: {text}");
+        let v: serde_json::Value = serde_json::from_str(lines[0]).expect("stats json");
+        assert_eq!(v["event"], "xbits.stats");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn stats_counts_dropped_lines_from_line_buffer() {
+        // R15-5：超长行丢弃计数必须进 stats——字段存在、随丢弃递增。
+        let engine = Engine::new(vec![]);
+        let mut lines = LineBuffer::new();
+        let mut emitter = StatsEmitter::disabled(); // 计数照记，只是不输出
+
+        // 4 MiB 无换行 → 1 行被丢弃。
+        let chunk = vec![b'a'; 64 * 1024];
+        for _ in 0..64 {
+            assert!(lines.push(&chunk).is_empty());
+        }
+        emitter.record_line_drops(&lines);
+        let snapshot = self::stats_snapshot_with_drops(
+            None,
+            &engine,
+            1,
+            emitter.lines_dropped,
+            emitter.lines_dropped_bytes,
+        );
+        assert_eq!(snapshot.hook_lines_dropped, 1, "一行超长输入 = 一次丢弃");
+        assert!(
+            snapshot.hook_lines_dropped_bytes > MAX_LINE_BYTES as u64,
+            "丢弃字节数必须累计"
+        );
+
+        // 恢复后再丢一行：计数递增。
+        let _ = lines.push(b"\n");
+        let mut data = vec![b'x'; MAX_LINE_BYTES + 1];
+        data.push(b'\n');
+        let got = lines.push(&data);
+        assert_eq!(got.len(), 1, "正常行不受影响（对照）");
+        emitter.record_line_drops(&lines);
+        let snapshot = self::stats_snapshot_with_drops(
+            None,
+            &engine,
+            2,
+            emitter.lines_dropped,
+            emitter.lines_dropped_bytes,
+        );
+        assert_eq!(
+            snapshot.hook_lines_dropped, 2,
+            "第二次丢弃必须递增计数"
+        );
+
+        // 序列化进单行 JSON 的字段可见。
+        let json = serde_json::to_string(&snapshot).expect("serialize");
+        assert!(json.contains("\"hook_lines_dropped\":2"), "{json}");
+        assert!(json.contains("\"hook_lines_dropped_bytes\":"), "{json}");
+    }
+
+    #[test]
+    fn failure_stats_export_correlation_counters() {
+        // R12-4：hook 故障消息必须带关联计数；"只发响应无请求"路径不再静默。
+        let success = crate::engine::SuccessRules::parse(
+            r#"[{"sid":14030020,"depends":[14030019]}]"#,
+        )
+        .expect("success rules");
+        let rule: Rule = serde_json::from_str(
+            r#"{"id":"r-corr","name":"corr","source":"suricata","kind":"alert","sid_in":[14030020],"score":20,"threshold":20}"#,
+        )
+        .expect("rule");
+        let mut engine = Engine::new(vec![rule]).with_success_rules(success);
+        let response_only = HookEvent {
+            source: "suricata".into(),
+            kind: "alert".into(),
+            sid: Some(14030020),
+            community_id: Some("1:cidR=".into()),
+            ..Default::default()
+        };
+        let _ = engine.process(&response_only);
+        let stats = engine_failure_stats(Some(&engine));
+        assert!(stats.contains("correlated_pairs=0"), "{stats}");
+        assert!(stats.contains("correlation_timeouts=0"), "{stats}");
+        assert!(stats.contains("correlation_overflow=0"), "{stats}");
+        assert!(
+            stats.contains("correlation_unmatched_responses=1"),
+            "只发响应无请求必须计数: {stats}"
+        );
+        assert!(stats.contains("engine_scores_evicted="), "{stats}");
+        assert_eq!(engine_failure_stats(None), "");
     }
 }

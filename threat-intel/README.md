@@ -37,6 +37,12 @@ python3 threat-intel/tools/query.py --hash <32|40|64位hex>   # 自动判 md5/sh
 ```
 Python API：见 `tools/query.py` 的 `IntelStore`（集合精确匹配，万级数据 O(1)）。
 
+> **非法输入的处置（已知限制，R15-6）**：query.py 的 `lookup_ip` / `lookup_domain` / `lookup_hash`
+> 对非法输入（无法解析的 IP、非 hex 的 hash、空值）直接返回未命中（`None` / `matched=false`）——
+> **静默跳过且不计数**，与 xbits 引擎侧（`intel.rs` 加载期拒绝 + `invalid_ip_warnings` 计数）不同；
+> 采集侧（`collect.py`）对源数据做强校验，查询侧不重复校验。人工排查时若怀疑命中应为真，
+> 先确认输入本身合法。
+
 ## 更新（可维护 SOP）
 ```bash
 python3 threat-intel/tools/collect.py                     # 全量刷新（仅全部源达标才原子替换 data/ 与 exports/）
