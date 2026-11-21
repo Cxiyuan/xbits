@@ -1281,3 +1281,92 @@
 - **low-cleanup 收口后的剩余项**：B 批 8 项（R8-4/R8-5/R8-6/R9-2/R9-3/R9-4/R9-5/R12-7）尚未动工；R6-2 标「部分覆盖」（缺口：accept 轮询/空闲维护端到端）；R12-2 留待用户确认。这些是下一批（B）与用户决策项，不属于 A/D 批验收范围。
 
 **第十六轮复核边界**：未运行 `cargo test`/CI/docker，Rust 结论为静态代码核对 + 仓库单测在册（未执行）；已实跑定向 grep、§11↔QA 索引集合比对、`qa_workflow_paths.py`（PASS）、README stats 示例 JSON 解析、`success_rules.json`/`semantic_gaps.json` 计数复核、R15-4 决策表模拟与 Python `canonical_ip` 探针（第十五轮）。
+
+---
+
+# 第十七轮：B 批（R8-4/R8-5/R8-6/R9-2/R9-3/R9-4/R9-5/R12-7）复核
+
+> 对抗式复核：只读工作树，未推送、未跑 cargo/CI/docker。除静态读码外，**实跑了 B 批全部本地自测**：`triage/tests/test_triage.py`（34 OK，skip1；R8-4 两例单跑 OK）、`xbits/test/assert_hook_output.py --self-test`（5/5）、`qa_suricata_hook_matrix.py --self-test`（15/15）、`测试用例/assert_suricata.py --self-test`（13/13，四个 cases `--cases-only` 全 PASS）、`qa_converter_pcap_regression.py --check-rule-bytes`（30 组 PASS）与 `--self-test`（13/13）、`qa_workflow_paths.py`（PASS）；另用**自建假 EVE 目录**端到端验证 R9-4 的运行时对照，并独立用规则原文↔PCAP 原始字节抽查 R12-7。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| R8-4 semgrep errors 非空 → ok=False+degraded | **Verified** | 真实 mock 单测（rc=2+errors[]）断言 `engine_status.semgrep.ok=False`、`error` 含 `json-errors: 2; first=...partial parsing`、`degraded=True`、`engine_errors` 含 semgrep，且命中仍写入 findings；rc=1+errors=[] 不误杀。34 例全量单测 OK |
+| R8-5 engines[tool] 迁移提示 | **Verified** | `triage/README.md:82-87` 与 `xbits/README.md:245-249` 均写明自 V-20 起为「present and ok」、False 可能是"装了但失败"、迁移读 `engine_status` 的 present/ok/error；未改 schema |
+| R8-6 坏 JSON 行 FAIL 点名 | **Verified** | `assert_hook_output.py` 统计 `bad-json-lines`；匹配不足且存在坏行 → FAIL 点名 `bad-json-lines: N` + 预览；匹配足够时坏行降级 WARN 不误杀；self-test 5/5（含"只有坏行"与"截断致不足"两负例）；正常全可解析路径仍 PASS |
+| R9-2 场景内 known_extra 不得抵扣 | **Verified** | `evaluate_case` 改为 `unasserted_in_scope = in_scope - require - forbid`，场景内 SID 入 known_extra 时 warning 点名 R9-2；CI `xbits-images.yml:251-255` 传 `--strict-warnings`，故该 warning 在 CI 为 FAIL；跨场景 known_extra 仍抵扣（self-test 正例）；self-test 15/15 |
+| R9-3 8 处 note 语义说明 | **Verified** | 新增 8 条 note（cases:49/194、recon:109、backdoor:3/71/85/99/113）逐条写 SID 语义/阈值/为何另一 SID 不命中；文本指纹各异，非复制粘贴；diff 仅加 note，require/forbid 未动；三文件 `--cases-only` PASS |
+| R9-4 运行时对照真实生效 | **Verified** | `runtime_control_failures` 接入 main（`assert_suricata.py:362`），forbid-only 负例的对照正例必须本次 EVE 命中；self-test 13/13 覆盖"命中通过/未命中 FAIL/无 EVE FAIL/跨场景 EXCUSED"；**自建假 EVE 端到端**：对照命中 → rc=0（1 runtime control），对照未命中 → rc=1 且点名"对照未命中，可能规则未加载" |
+| R9-5 strict PASS 文案 | **Verified** | `pass_summary`：strict → `strict-warnings: enabled (0 warnings)`；非 strict 才提示开启；main 用 `args.strict_warnings` 选择；self-test 两模式断言通过（15/15） |
+| R12-7 每组 2 对正负例 | **Verified** | CASES 9→15（新增 6 组，目录 30 PCAP）；`--check-rule-bytes` 实跑 **30 组 POS/NEG 全 PASS**；独立原始字节抽查 uri2/raw2/method2/stat2 + 原 uri 组均 pos 含、neg 缺；新增组 PCAP pos≠neg；self-test 13/13（含改坏 PCAP/规则两负例）；`pkt_data` 规则按整条报文流断言 |
+| 回归（A 批 / C1~C10 / paths） | **Verified（附注）** | `qa_workflow_paths.py` PASS（193/202）；B 批未改 `xbits/src/*`（A 批文件 mtime 16:49–18:16 早于 B 的 19:18+），A 不变量仍在（model.rs:182/358、intel.rs:995、hook.rs:167/169、engine.rs:221）；既有测试断言无放宽，唯三处变更是**收紧**（见下） |
+
+## 逐项证据
+
+### R8-4 —— **Verified**
+
+- 实现：`triage/triage.py:784-801 _semgrep_error_summary`（dict/字符串归一、截 200 字）；`_semgrep_scan` 在 `:824-844`：`errors` 非空 → `_set_engine(..., ok=False, error="exit=<rc>; json-errors: N; first=...")`（`:836-841`），命中 findings 在判 ok 之前已 append（`:831-835` 顺序），不丢证据；`_set_engine`（`:145-155`）令 `engines[name]=present and ok`，`engine_errors`/`degraded` 由 ok=False+error 派生（`:1052-1056`）。
+- 单测（实跑）：`triage/tests/test_triage.py:291 test_semgrep_json_errors_mark_engine_failed_but_keep_findings`（mock `_which`+`subprocess.run`，rc=2、errors 2 条、results 1 条 → ok False、`json-errors: 2`、`partial parsing`、degraded、finding 仍在）、`:323 test_semgrep_clean_run_without_errors_stays_ok`（rc=1、errors=[] → ok True 不误杀）。**单跑 2 tests OK；全量 34 tests OK(skip=1)**。
+
+### R8-5 —— **Verified**
+
+- `triage/README.md:82-87`「迁移提示（R8-5）」：明确 `engines[tool]` 自旧版"已安装"改为「present and ok」，False 可能=已安装但失败/超时/规则缺失，迁移读 `engine_status[tool]` 的 present/ok/error，xbits 不据此判定。
+- `xbits/README.md:245-249` 同口径迁移提示并指向 triage README；schema 未改（`_set_engine` 仍是 bool 摘要 + engine_status 三态）。
+
+### R8-6 —— **Verified**
+
+- 实现：`xbits/test/assert_hook_output.py:51-74 load()` 返回 `(events, bad_lines)`（BOM 容忍、坏行截 160 字保留）；`:96-144 evaluate()` 在 `len(matched)<min_events && bad_lines` 时 FAIL 文案含 `bad-json-lines: N` 与"failed JSON parse"；匹配足够时降级 WARN；`:147-198 run()` 打印 `bad-json-lines=` 统计并保留原有字段/signature_id/zero-allow 检查；`:225-269 self_test()` 五例。
+- 实跑 `--self-test`：**PASS (5/5)**（全可解析 PASS；坏行+匹配够 PASS 但 WARN；坏行致不足 FAIL 点名；只有坏行 FAIL 点名行损坏；文件缺失 FAIL）。CI 调用参数（`xbits-ci.yml:129`、`xbits-images.yml:383-391`）均被保留，正常路径输出仅多一行统计。
+
+### R9-2 —— **Verified**
+
+- 实现：`xbits/test/qa_suricata_hook_matrix.py:196-213` 去掉 `- known_extra`，`unasserted_in_scope = in_scope - require - forbid`；场景内 SID 出现在 known_extra 时附「R9-2 起不再抵扣」提示（`:204-209`）；跨场景抵扣逻辑 `unexplained_out = out_scope - known_extra`（`:215-220`）不变。
+- 严格模式：`xbits-images.yml:248-255` 全量矩阵步骤显式传 `--strict-warnings`，`:529-531` 将 warning 升级 FAIL，故"场景内 known_extra 抵扣"在 CI 必 FAIL。
+- self-test（实跑）：**15/15**，含 `:401-406` 负例（场景内 known_extra → 仍 warning 且点名 9103101/R9-2）与 `:412-417` 正例（跨场景 known_extra 仍抵扣）。
+
+### R9-3 —— **Verified**
+
+- 8 处新增 note：`测试用例/cases.json:49 cname_tunnel`（32hex 首标签 pcre / 请求+响应 Lua / 联合确认四条 SID 为何命中）、`:194 highfreq_long_positive`（9109007 threshold 200/60s 第 200 条触发、9109201 熵分、9109203 不升级）；`recon_cases.json:109 recon_curl_rate`（9101028 UA 侧 50/60s vs 9101109 响应 404 侧 50/60s，方向/维度不同）；`backdoor_cases.json:3/71/85/99/113` 五个 c2 用例（各 c2 lua 评分条件、哪条不成立的原因）。
+- 语义独立性：8 条文本长度 164–333、内容指纹各异，非复制粘贴；diff 仅新增 `note` 行，`require`/`forbid` 未变；`assert_suricata --cases-only` 三文件实跑 PASS（cases 23 / recon 29 / backdoor 18）。
+
+### R9-4 —— **Verified**
+
+- 实现：`测试用例/assert_suricata.py:126-135 control_map`（SID→require 它的非 pending 用例）、`:137-171 runtime_control_failures`（forbid-only 负例的每个 forbid SID，对照用例本次 EVE 必须命中；全无 EVE 数据/均未命中 → FAIL 点名；跨场景 `control_in_other_scenario` 有理由则静态 EXCUSED、运行时跳过，缺理由 FAIL）；main `:362-373` 汇总并打印 `RUNTIME CONTROL`，失败追加进 failures。
+- self-test（实跑）：**13/13**，含"对照命中→通过/未命中→FAIL 点名'可能规则未加载'/无 EVE→FAIL/跨场景 EXCUSED"。
+- **自建假 EVE 端到端**（临时目录，未触仓库）：cases={pos require 9103001, neg forbid 9103001}，pos/eve.json 命中 → rc=0、`RUNTIME CONTROL: 1 ... 0 处未命中`；清空 pos 命中 → rc=1，stderr `neg: sid=9103001 的对照用例 ['pos'] 本次实跑均未命中——对照未命中，可能规则未加载`。
+
+### R9-5 —— **Verified**
+
+- 实现：`qa_suricata_hook_matrix.py:335-350 pass_summary`：strict → `strict-warnings: enabled (0 warnings)`；非 strict → `N warnings not asserted as failures — run with --strict-warnings to gate`；main `:538` 用 `args.strict_warnings` 调用。
+- self-test（实跑）15/15 已含 `:420-436` 两模式断言；独立核对 strict 分支文本不含"run with --strict-warnings"。
+
+### R12-7 —— **Verified**
+
+- CASES：`xbits/test/qa_converter_pcap_regression.py:70-77` 新增 6 组（uri2_11021402/raw2_11020049/hdr2_11027642/method2_11021337/stat2_10020255/payload2_13020172），总数 15；`:290-340` 构造 12 个新 PCAP 对；目录实有 **30 个 .pcap**（15×pos/neg），新 6 对 pos≠neg、非空（837–923 B）。
+- 字节断言：`:617 has_pkt_data` 从规则原文提取；`:695-697` 对含 `pkt_data` 的规则改比对整条报文流；`:834` self-test 断言 `checked == 2*len(CASES)`。
+- 实跑：`--check-rule-bytes` → `RULE-BYTE CHECK: PASS (30 组 pos/neg，逐字段比对规则原文与 PCAP 载荷)`；`--self-test` → **13/13**（含改坏 PCAP 字节、改坏规则 content 两负例 FAIL 点名）。
+- 独立抽查（不依赖脚本内部函数，直接读规则原文 content 解码后搜 PCAP 原始字节）：`11021402`（http.uri）pos/neg 均含 `js/hrm/getdata.jsp`/`cmd`/`getSelectAllId`（由 pcre OR 区分）；`11020049`（http.uri.raw,pkt_data）pos 含 `%d0%af`=311、neg=-1；`11021337`（http.method,pkt_data）pos 含 `PUT`/`.jsp////`、neg 全 -1；`10020255`（http.stat_code,pkt_data）pos 含 `PhpSpy`/`www.4ngel.net`、neg 缺 `PhpSpy`；原组 `14010049` pos 含指定 URI、neg 缺。5 组均符合"pos 必含/neg 必缺"。
+
+### 回归 —— **Verified（附注）**
+
+- `qa_workflow_paths.py` 实跑 **PASS**（7 workflow push==PR；193 被读资源/202 paths；新增 PCAP 目录被 `xbits-images.yml` 的 `测试用例/converter_pcap/**` 覆盖）。
+- A 批未被动：`xbits/src/*` mtime 16:49–18:16，均早于 B 批文件 19:18+；A 不变量仍在（`model.rs:182` Some(0) 拒绝/`:358` 单测、`intel.rs:995` 反转断言、`hook.rs:167/169` 丢行字段、`engine.rs:221` 未匹配响应计数）。
+- C1~C10 既有断言无放宽；B 批三处改动均为**收紧**：R9-2 去掉 `known_extra` 抵扣（原免检通道收窄）、R12-7 自测 `checked >= 10` → `== 2*len(CASES)`、R8-6 坏行由"静默跳过"→"计数并在不足时 FAIL"。唯一新增的放宽口是 R9-4 `control_in_other_scenario`（须写理由、静态 EXCUSED、运行时跳过），本仓库当前用例**零使用**（全仓 grep 仅文档/单测示例），不构成既有断言放宽。
+
+## 本轮新发现
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R17-1 | low | `qa/QA_REPORT.md:386` | B 批更新尾注写「R9-2/R9-4/R9-5 的自测分别为 13/13、13/13、15/15」——R9-2 的自测实际是 `qa_suricata_hook_matrix --self-test` 的 **15/15**（13/13 是 R9-4 的）。同表 `:356` R9-2 行写 15/15 是对的，仅尾注笔误 | 尾注改为「15/15、13/13、15/15」 |
+| R17-2 | low | `xbits/test/qa_converter_pcap_regression.py:292-294` | uri2_11021402 的构造注释写「… content:"getSelectAllId"; **pkt_data**; pcre:…」，但该 SID 规则原文并**无** `pkt_data`（`http.uri; … pcre`），注释会误导维护者以为走了 pkt_data 分支；实际 `has_pkt_data` 由规则原文计算，行为正确，`--check-rule-bytes` 30 组 PASS | 删除注释里的 `pkt_data`（或注明"本条无 pkt_data"） |
+| R17-3 | low/process | `测试用例/converter_pcap/{uri2,raw2,hdr2,method2,stat2,payload2}_1102*__{pos,neg}.pcap`（12 个） | 新 PCAP 目前是 **untracked**（`git status` 显示 `??`），尚未 `git add`。CI 侧有 `--generate`（`xbits-images.yml:277`）会现场重建，故 CI 不依赖；但仓库交付若只 `git add` 源码会缺这 12 个夹具，且 `push` 的完成判据要求改动已提交 | 推送前 `git add 测试用例/converter_pcap`（12 个新 PCAP） |
+| R17-4 | info | `xbits/test/qa_suricata_hook_matrix.py:201-213`、`xbits-images.yml:251-255` | R9-2 的"场景内 known_extra 必 FAIL"依赖 CI 传 `--strict-warnings` 才落成 rc≠0；本地默认（非 strict）只是 warning。属设计如此、CI 已满足，但文档可更显式写出这条依赖 | 在 QA_REPORT R9-2 行注明"CI strict 下 FAIL，本地非 strict 为 warning" |
+
+## 收口结论
+
+- **B 批 8 项：可关闭**。R8-4/R8-5/R8-6/R9-2/R9-3/R9-4/R9-5/R12-7 均有真实代码/文档 + 可跑自测（本轮实跑全绿：triage 34、assert_hook_output 5/5、hook matrix 15/15、assert_suricata 13/13+cases PASS、pcap 30 组+13/13），并有两处独立对抗：R9-4 自建假 EVE 端到端 FAIL 复现、R12-7 规则原文↔PCAP 原始字节抽查。R17-1/R17-2 为低危文档/注释笔误，R17-3 为提交动作提醒，均不阻塞 B 批结论。
+- **A/D 批（前轮）不回退**：A 批不变量与路径门禁本轮复核仍成立（见回归）。R6-2 仍为「部分覆盖」（accept 轮询/空闲维护端到端缺口），R12-2 留用户确认——均不属 B 批验收范围。
+- **low-cleanup 全量余项**：B 批关闭后，本批 8 项已清零；19 条 low 的剩余为 **R6-2（部分覆盖：accept 轮询/空闲维护端到端缺口）**、**R11-1（YARA 缓存键不覆盖跨目录 include，未列入 A/B/D 批次）** 与 **R12-2（已接受基线，待用户确认清零）**。程序性边界：Rust `cargo test`/docker EVE 命中断言未在本机执行，由 `xbits-cross-engine-8.0.8-9.0.1` 与 `xbits-images` 工作流实跑确认。
+
+**第十七轮复核边界**：未运行 cargo/CI/docker；B 批 Python 自测/门禁为本地实跑（外置 CPython），Rust 侧仍为静态核对 + 单测在册；已实跑 qa_workflow_paths、triage 单测、三个 assert 脚本自测、pcap 字节断言与自测，并自建临时 EVE 目录做 R9-4 对抗（未改动仓库夹具）。

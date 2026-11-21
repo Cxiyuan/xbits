@@ -781,6 +781,27 @@ def _clamav_scan(path: str, cmd: str | None, engines: dict, status: dict,
                     error=f"run-failed: {exc}")
 
 
+def _semgrep_error_summary(err) -> str:
+    """把 semgrep JSON errors[] 的单项压成一行摘要（R8-4）。
+
+    semgrep 的 error 形状不固定：dict（含 message/type/code/path/spans）或字符串。
+    dict 优先取 message，其次 type/code（含 level），末尾补 path 便于定位。
+    """
+    if isinstance(err, dict):
+        parts = []
+        for key in ("message", "type", "code", "level"):
+            value = err.get(key)
+            if value not in (None, ""):
+                parts.append(str(value))
+        summary = "; ".join(parts) or json.dumps(err, ensure_ascii=False)
+        path = err.get("path")
+        if path:
+            summary = f"{summary} @ {path}"
+    else:
+        summary = str(err)
+    return summary[:200]
+
+
 def _semgrep_scan(path: str, category: str, cmd: str | None, config: str | None,
                   engines: dict, status: dict, findings: list, info: dict) -> None:
     if not cmd or not config or category not in ("script", "text"):
@@ -803,14 +824,22 @@ def _semgrep_scan(path: str, category: str, cmd: str | None, config: str | None,
         errors = data.get("errors", []) if isinstance(data, dict) else []
         info["semgrep"] = {"result_count": len(results)}
         if errors:
-            info["semgrep"]["errors"] = [str(e)[:120] for e in errors[:5]]
+            info["semgrep"]["errors"] = [_semgrep_error_summary(e) for e in errors[:5]]
         for r in results[:50]:
             rule_id = r.get("check_id", "semgrep")
             findings.append({"id": "semgrep." + re.sub(r"\W+", "_", rule_id)[:60],
                              "severity": "high", "detail": f"semgrep 命中: {rule_id}",
                              "weight": 25})
-        if rc == 0 or out.strip():
-            # 有 JSON 输出即视为真实执行（semgrep 对命中惯例 rc=1）
+        # R8-4：JSON 里的 errors[] 非空 = 本次执行有失败（解析/规则/文件错误），
+        # 不能因为"有输出"就判 ok=True。命中结果照常输出（不丢证据），
+        # 但 ok=False + degraded 必须可见——"部分失败"≠"扫描通过未检出"。
+        if errors:
+            detail = f"json-errors: {len(errors)}; first={_semgrep_error_summary(errors[0])}"
+            if rc != 0:
+                detail = f"exit={rc}; {detail}"
+            _set_engine(engines, status, "semgrep", present=True, ok=False, error=detail)
+        elif rc == 0 or out.strip():
+            # 有 JSON 输出且无 errors 即视为真实执行（semgrep 对命中惯例 rc=1）
             _set_engine(engines, status, "semgrep", present=True, ok=True)
         else:
             _set_engine(engines, status, "semgrep", present=True, ok=False,

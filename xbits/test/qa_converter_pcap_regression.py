@@ -20,6 +20,13 @@ Suricata 8.0.8 上按预期 buffer 语义命中——旧转换器产出"永不�
   6. payload         13020171  Havij 工具 UA（payload pcre: \r\nUser-Agent:… Havij）
      pos: UA "sqlmap/1.0 Havij 1.16"        neg: UA "Mozilla/5.0 (normal browser)"
 
+R12-7：上述 6 类 buffer 各补第 2 组正/负例（不同 SID、不同载荷形态，共 +6 对 12 PCAP）：
+  uri_2 11021402 SQL 布尔式（or）  raw_2 11020049 UTF-8 斜杠穿越 %d0%af
+  hdr_2 11027642 X-Forwarded-For SQL 注入头  method_2 11021337 PUT + .jsp////
+  stat_2 10020255 200 + PhpSpy 指纹  payload_2 13020172 sqlmap UA
+  （产品规则里没有 403 的 http.stat_code 规则，故 stat 第 2 组用另一条 200 指纹规则；
+    http.method 的产品规则都带 pkt_data，本文件的字节断言对 pkt_data 规则改为比对整条报文流。）
+
 跑法：--generate 生成 PCAP 对（scapy，本地可跑）；--run-in-ci 形态由 CI 调
 docker xbits-suricata 用 /opt/xbits/suricata-converter-pcap.yaml 跑每对 PCAP，
 EVE 输出交 assert 断言。断言规则：
@@ -60,6 +67,13 @@ CASES = [
     # `alert tcp any 443 -> any any`（t48 已翻），故 pos 现在应当命中。
     # 保留 t48 依赖标记以便回溯；若后续规则回退，本例会立刻暴露。
     ("tlsreneg_11021334", 11021334, "payload", "TLS 重协商 magic（数字端口 443；t48 已翻，头部已核对）"),
+    # --- R12-7：6 类 buffer 的第 2 组（不同 SID / 不同载荷形态）---
+    ("uri2_11021402", 11021402, "http.uri", "SQL 注入 URI：or 布尔式（不同 SID/关键字）"),
+    ("raw2_11020049", 11020049, "http.uri.raw", "UTF-8 斜杠穿越 %d0%af（不同 SID）"),
+    ("hdr2_11027642", 11027642, "http.header", "X-Forwarded-For SQL 注入头（不同 SID）"),
+    ("method2_11021337", 11021337, "http.method", "PUT + .jsp////（不同 SID；规则含 pkt_data）"),
+    ("stat2_10020255", 10020255, "http.stat_code", "200 + PhpSpy 指纹（不同 SID；产品无 403 stat_code 规则）"),
+    ("payload2_13020172", 13020172, "payload", "sqlmap UA（另一种工具 UA，不同 SID）"),
 ]
 
 T48_DEPENDENT_CASES = {"tlsreneg_11021334"}
@@ -271,6 +285,57 @@ def build_pairs() -> dict[str, dict[str, list]]:
     pairs["tlsreneg_11021334"] = {
         "pos": raw_packets(40017, 443, b"\x16\x03\x01\x00\x30" + magic + b"\x00\x10", 1.6),
         "neg": raw_packets(40018, 443, b"\x16\x03\x01\x00\x30" + bytes(16) + b"\x00\x10", 1.7),
+    }
+
+    # ---- R12-7：6 类 buffer 的第 2 组 ----
+
+    # 10. http.uri —— 11021402: http.uri; content:"js/hrm/getdata.jsp"; content:"cmd";
+    #     content:"getSelectAllId"; pcre:"/sql\s*=[^\r\n&=]*('|"|`|;|\x82|UNION|OR|SELECT|FROM|AND|\+|...)/"
+    #     pos：sql=1' or 1=1（or 布尔式，不同关键字）；neg：sql=1plus2（无 SQL 关键字 → pcre 不中）
+    pos_uri2 = "/js/hrm/getdata.jsp?cmd=1&getSelectAllId=1&sql=1%27or%201=1"
+    neg_uri2 = "/js/hrm/getdata.jsp?cmd=1&getSelectAllId=1&sql=1plus2"
+    pairs["uri2_11021402"] = {
+        "pos": wrap("", _response(b"ok"), 40019, "GET", pos_uri2, {"User-Agent": UA_NORMAL}, b"", 1.8),
+        "neg": wrap("", _response(b"ok"), 40020, "GET", neg_uri2, {"User-Agent": UA_NORMAL}, b"", 1.9),
+    }
+
+    # 11. http.uri.raw —— 11020049: content:"%d0%af"; pcre:"/^(GET|PUT|PROPFIND)[^\r\n]+\.\.%d0%af/i"
+    #     pos：/..%d0%afetc/passwd；neg：/..%d0%9cetc/passwd（不同字节，content/pcre 都不中）
+    pairs["raw2_11020049"] = {
+        "pos": wrap("", _response(b"ok"), 40021, "GET", "/..%d0%afetc/passwd", {"User-Agent": UA_NORMAL}, b"", 2.0),
+        "neg": wrap("", _response(b"ok"), 40022, "GET", "/..%d0%9cetc/passwd", {"User-Agent": UA_NORMAL}, b"", 2.1),
+    }
+
+    # 12. http.header —— 11027642: http.header; content:"X-Requested-With"; content:"X-Forwarded-For";
+    #     pkt_data; pcre:"/X-Forwarded-For[^\r\n&]*[^a-zA-Z](select|drop|...|union|...)[^a-zA-Z]/i"
+    #     pos：X-Forwarded-For 里带 union；neg：带 plus（无 SQL 关键字）
+    pairs["hdr2_11027642"] = {
+        "pos": wrap("", _response(b"ok"), 40023, "GET", "/", {"User-Agent": UA_NORMAL, "X-Requested-With": "XMLHttpRequest", "X-Forwarded-For": "1.1.1.1 union 1"}, b"", 2.2),
+        "neg": wrap("", _response(b"ok"), 40024, "GET", "/", {"User-Agent": UA_NORMAL, "X-Requested-With": "XMLHttpRequest", "X-Forwarded-For": "1.1.1.1 plus 2"}, b"", 2.3),
+    }
+
+    # 13. http.method —— 11021337: http.method; content:"PUT"; pkt_data; content:".jsp|2F 2F 2F 2F|"
+    #     （规则含 pkt_data，字节断言按整条请求流比对）pos：PUT /shell.jsp////；neg：POST /shell.jsp
+    pairs["method2_11021337"] = {
+        "pos": wrap("", _response(b"ok"), 40025, "PUT", "/shell.jsp////", {"User-Agent": UA_NORMAL}, b"", 2.4),
+        "neg": wrap("", _response(b"ok"), 40026, "POST", "/shell.jsp", {"User-Agent": UA_NORMAL}, b"", 2.5),
+    }
+
+    # 14. http.stat_code —— 10020255: http.stat_code; content:"200"; content:"PhpSpy";
+    #     content:"www.4ngel.net"; pcre:"/Powered\s+?by\s*?<[^>]+?>PhpSpy/i"
+    #     pos：200 + Powered by <b>PhpSpy</b> + www.4ngel.net；neg：OtherShell（无 PhpSpy 指纹）
+    phpspy_ok = b"Powered by <b>PhpSpy</b> www.4ngel.net"
+    phpspy_bad = b"Powered by <b>OtherShell</b> www.4ngel.net"
+    pairs["stat2_10020255"] = {
+        "pos": wrap("", _response(phpspy_ok, ctype="text/html"), 40027, "GET", "/p.php", {"User-Agent": UA_NORMAL}, b"", 2.6),
+        "neg": wrap("", _response(phpspy_bad, ctype="text/html"), 40028, "GET", "/p.php", {"User-Agent": UA_NORMAL}, b"", 2.7),
+    }
+
+    # 15. payload —— 13020172: content:"sqlmap"; pcre:"/\r\nUser-Agent:[+\s]*sqlmap\/\d+\.\d+/i"
+    #     pos：UA "sqlmap/1.0"（另一种工具 UA）；neg：普通浏览器 UA
+    pairs["payload2_13020172"] = {
+        "pos": wrap("", _response(b"ok"), 40029, "GET", "/news.php?id=1", {"User-Agent": "sqlmap/1.0"}, b"", 2.8),
+        "neg": wrap("", _response(b"ok"), 40030, "GET", "/news.php?id=1", {"User-Agent": UA_NORMAL}, b"", 2.9),
     }
 
     return pairs
@@ -548,6 +613,8 @@ def extract_rule_expectations(rule_line: str) -> dict:
         "contents": contents,
         "pcre": pcre_list,
         "has_lua": "lua:" in low,
+        # R12-7：带 pkt_data 的规则，后续 content/pcre 匹配的是整条报文流而非 sticky buffer
+        "has_pkt_data": "pkt_data" in low,
     }
 
 
@@ -625,6 +692,9 @@ def check_rule_pcap_bytes(
             target = resp if exp["direction"] == "server_to_client" else req
             if exp["buffer"] in ("http.uri", "http.uri.raw", "http.method"):
                 target = stream  # URI/方法已从对应流切出
+            if exp.get("has_pkt_data"):
+                # R12-7：规则在 sticky buffer 之外还要求 pkt_data → 后续字节比对整条报文流
+                target = resp if exp["direction"] == "server_to_client" else req
             missing_content = [c for c in exp["contents"] if c not in target]
             missing_pcre = []
             for pat, flags in exp["pcre"]:
@@ -760,8 +830,8 @@ rule-files:
     f, _, st = check_rule_pcap_bytes(byte_tmp, verbose=False)
     checks.append(
         (
-            "字节断言：9 组 pos/neg 规则原文↔PCAP 全匹配 → 通过",
-            not f and st["checked"] >= 10,
+            f"字节断言：{st['cases']} 组 pos/neg 规则原文↔PCAP 全匹配 → 通过",
+            not f and st["checked"] == 2 * len(CASES),
             str(f[:2]),
         )
     )

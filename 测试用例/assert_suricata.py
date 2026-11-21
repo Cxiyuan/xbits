@@ -18,6 +18,17 @@ R8-2：forbid-only 负例必须有"必中对照"。
   无法建立对照的用例必须显式 `"pending": true` 并写 `note` 说明原因（跳过但有可见
   输出）。pending 用例的 require 不进入对照池（它本身不被断言，不能当证据）。
 
+R9-4：静态对照之上补**运行时对照**（读同一次 `--eve-root`）。
+  对每个 forbid-only 负例的每个 forbid SID，在本次实跑的 EVE 目录里找到"require 了
+  该 SID 的对照用例"，断言对照用例**确实命中**该 SID；对照用例全都没命中
+  → FAIL 并点名"对照未命中，可能规则未加载"（静态门禁只能证明 cases 文本里有人
+  require 它，不能证明规则真的加载并命中）。
+
+  若某对照正例属于别的场景目录、不在同次运行（例如 DNS 用例的 forbid SID 只在
+  web 场景里被 require），用例可写
+  `"control_in_other_scenario": {"<sid>": "<理由>"}` 显式登记——静态门禁放行、
+  运行时跳过，并打印 `EXCUSED` 行；理由为空即 FAIL。
+
 用例可带 `note` 说明设计意图，note 会被打印，便于 review 时看到。
 """
 from __future__ import annotations
@@ -79,13 +90,92 @@ def analyze_cases(cases: Dict[str, dict]) -> Tuple[List[str], List[str], Set[int
             continue
         if require:
             continue  # 自带必中证据
-        missing_control = sorted(forbid - control_pool)
+        excused = spec.get("control_in_other_scenario") or {}
+        if not isinstance(excused, dict):
+            failures.append(
+                "%s: control_in_other_scenario 必须是 {sid: reason} 映射" % name
+            )
+            excused = {}
+        excused_sids = set()
+        for raw_sid, reason in excused.items():
+            try:
+                sid = int(raw_sid)
+            except (TypeError, ValueError):
+                failures.append("%s: control_in_other_scenario 的 key 不是 SID: %r" % (name, raw_sid))
+                continue
+            if not str(reason or "").strip():
+                failures.append(
+                    "%s: control_in_other_scenario[%s] 必须写明理由（跨场景对照的依据）" % (name, sid)
+                )
+                continue
+            excused_sids.add(sid)
+            pending_lines.append(
+                "%s: EXCUSED sid=%s（对照正例在其它场景目录，不在本次运行）reason=%s"
+                % (name, sid, reason)
+            )
+        missing_control = sorted(forbid - control_pool - excused_sids)
         if missing_control:
             failures.append(
                 "%s: forbid-only 负例缺少必中对照 —— 这些 SID 没有在本文件的任何非 pending 用例 "
-                "require 中出现过，规则未加载时该负例也会通过: %s" % (name, missing_control)
+                "require 中出现过，也未用 control_in_other_scenario 登记理由，规则未加载时该负例也会通过: %s"
+                % (name, missing_control)
             )
     return failures, pending_lines, control_pool
+
+
+def control_map(cases: Dict[str, dict]) -> Dict[int, List[str]]:
+    """SID → 在本文件中 require 它的非 pending 用例名列表（运行时对照候选）。"""
+    controls: Dict[int, List[str]] = {}
+    for name, spec in cases.items():
+        if spec.get("pending"):
+            continue
+        for sid in spec.get("require", []):
+            controls.setdefault(int(sid), []).append(name)
+    return controls
+
+
+def runtime_control_failures(
+    cases: Dict[str, dict], actual_by_case: Dict[str, Set[int]]
+) -> Tuple[List[str], int]:
+    """R9-4：forbid-only 负例的 forbid SID，其对照正例必须在**本次实跑**里命中。
+
+    返回 (failures, checked)。对照用例缺失（没有任何 require 者）交给静态门禁，
+    这里只对"有对照候选"的 SID 断言运行时证据。
+    """
+    failures: List[str] = []
+    controls = control_map(cases)
+    checked = 0
+    for name, spec in cases.items():
+        if spec.get("pending"):
+            continue
+        require = {int(x) for x in spec.get("require", [])}
+        forbid = {int(x) for x in spec.get("forbid", [])}
+        if require or not forbid:
+            continue  # 只对 forbid-only 负例做运行时对照
+        excused = set()
+        for raw_sid in (spec.get("control_in_other_scenario") or {}):
+            try:
+                excused.add(int(raw_sid))
+            except (TypeError, ValueError):
+                continue
+        for sid in sorted(forbid - excused):
+            ctrl_cases = controls.get(sid) or []
+            if not ctrl_cases:
+                continue  # 静态门禁负责报"缺少必中对照"
+            checked += 1
+            observed = {c: actual_by_case.get(c) for c in ctrl_cases}
+            if all(v is None for v in observed.values()):
+                failures.append(
+                    "%s: sid=%s 的对照用例 %s 都没有 EVE 数据，无法证明规则已加载"
+                    % (name, sid, sorted(ctrl_cases))
+                )
+                continue
+            if not any(v is not None and sid in v for v in observed.values()):
+                failures.append(
+                    "%s: sid=%s 的对照用例 %s 本次实跑均未命中——对照未命中，可能规则未加载"
+                    % (name, sid, sorted(ctrl_cases))
+                )
+    return failures, checked
 
 
 def self_test() -> int:
@@ -135,9 +225,63 @@ def self_test() -> int:
          any("缺少必中对照" in x for x in f))
     )
 
+    # R9-4：跨场景对照可显式登记理由（静态放行 + 可见 EXCUSED），缺理由即 FAIL。
+    excused_ok = {
+        "neg": {
+            "require": [],
+            "forbid": [9109999],
+            "control_in_other_scenario": {"9109999": "对照正例在 web 场景目录，本次运行不含"},
+        }
+    }
+    f, lines, _ = analyze_cases(excused_ok)
+    checks.append(
+        (
+            "R9-4：control_in_other_scenario 有理由 → 静态放行且打印 EXCUSED",
+            not f and any("EXCUSED" in x and "9109999" in x for x in lines),
+        )
+    )
+    excused_no_reason = {
+        "neg": {"require": [], "forbid": [9109999], "control_in_other_scenario": {"9109999": "  "}}
+    }
+    f, _, _ = analyze_cases(excused_no_reason)
+    checks.append(
+        ("R9-4：control_in_other_scenario 缺理由 → FAIL", any("必须写明理由" in x for x in f))
+    )
+
+    # R9-4：运行时对照——对照用例实跑命中才通过；全不命中必须 FAIL 点名"可能规则未加载"。
+    rt_cases = {
+        "pos": {"require": [9103001]},
+        "neg": {"require": [], "forbid": [9103001]},
+    }
+    rt_ok, rt_checked = runtime_control_failures(rt_cases, {"pos": {9103001}})
+    checks.append(
+        ("R9-4：对照用例本次命中 → 运行时对照通过", not rt_ok and rt_checked == 1, str(rt_ok))
+    )
+    rt_bad, _ = runtime_control_failures(rt_cases, {"pos": set()})
+    checks.append(
+        (
+            "R9-4：对照用例本次未命中 → FAIL 点名对照未命中/可能规则未加载",
+            any("对照未命中" in x and "可能规则未加载" in x for x in rt_bad),
+            str(rt_bad),
+        )
+    )
+    rt_missing, _ = runtime_control_failures(rt_cases, {})
+    checks.append(
+        ("R9-4：对照用例没有 EVE 数据 → FAIL（不能默认通过）", any("没有 EVE 数据" in x for x in rt_missing))
+    )
+    rt_excused, rt_checked2 = runtime_control_failures(
+        {"neg": {"require": [], "forbid": [9109999], "control_in_other_scenario": {"9109999": "web 场景"}}},
+        {},
+    )
+    checks.append(
+        ("R9-4：跨场景已登记的 SID 不做运行时对照", not rt_excused and rt_checked2 == 0, str(rt_excused))
+    )
+
     bad = 0
-    for name, ok in checks:
-        print(("PASS " if ok else "FAIL ") + name)
+    for item in checks:
+        name, ok = item[0], item[1]
+        detail = item[2] if len(item) > 2 else ""
+        print(("PASS " if ok else "FAIL ") + name + ("" if ok else f"  [{detail[:160]}]"))
         bad += 0 if ok else 1
     print(f"\nSELF-TEST: {'PASS' if bad == 0 else 'FAIL'} ({len(checks) - bad}/{len(checks)})")
     return 0 if bad == 0 else 1
@@ -178,6 +322,7 @@ def main() -> int:
 
     failures = []
     asserted = 0
+    actual_by_case: Dict[str, Set[int]] = {}
     for name, spec in sorted(cases.items()):
         note = str(spec.get("note") or "").strip()
         if spec.get("pending"):
@@ -191,6 +336,7 @@ def main() -> int:
             continue
 
         actual = read_alerts(eve_path)
+        actual_by_case[name] = actual
         asserted += 1
         require = {int(sid) for sid in spec.get("require", [])}
         forbid = {int(sid) for sid in spec.get("forbid", [])}
@@ -212,12 +358,22 @@ def main() -> int:
             )
         )
 
+    # R9-4：forbid-only 负例的对照正例必须在本次实跑里命中，否则"规则根本没加载"也会绿。
+    rt_failures, rt_checked = runtime_control_failures(cases, actual_by_case)
+    for item in rt_failures:
+        print("%-28s %-4s reason=control-not-hit %s" % (item.split(":", 1)[0], "FAIL", item), file=sys.stderr)
+        failures.append(item)
+    print(
+        "\nRUNTIME CONTROL: %d 个 forbid SID 的对照正例已实跑核验（%d 处未命中）"
+        % (rt_checked, len(rt_failures))
+    )
+
     if failures:
         print("\nFAILED cases: %s" % ", ".join(failures), file=sys.stderr)
         return 1
     print(
-        "\nall %d Suricata cases passed (%d asserted, %d pending skipped)"
-        % (len(cases), asserted, len(pending_lines))
+        "\nall %d Suricata cases passed (%d asserted, %d pending/excused lines, %d runtime controls)"
+        % (len(cases), asserted, len(pending_lines), rt_checked)
     )
     return 0
 

@@ -106,6 +106,7 @@
     ]
   },
   "recon_curl_rate": {
+    "note":  "60 次外部源使用 curl/8.5.0 请求 /api 且响应均为 404：9101028（外部源高频脚本化 HTTP 客户端）的 threshold type both / track by_src / count 50 / 60s 在请求侧第 50 条触发；9101109（外部源高频 403/404 响应）的响应侧状态码 pcre + recon_404.lua + threshold 50/60s / track by_dst 在第 50 个 404 响应触发。两条规则方向与统计维度不同（请求 UA vs 响应状态码），同一 PCAP 各自命中是设计而非重复。",
     "forbid": [
       9101029,
       9101103

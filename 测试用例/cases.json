@@ -46,6 +46,7 @@
                                  ]
                   },
     "cname_tunnel":  {
+                         "note":  "9109002：查询首标签是 32 位十六进制（PCAP 用 hex32 种子生成 <hex32>.evil.example），命中 32hex 首标签 pcre（结尾锚定、非 PTR、白名单外）；9109201：请求侧 Lua 对 32hex 编码首标签给结构/熵评分并置 flowbits dns_susp；9109202：响应 CNAME target 首标签为 32 字符随机串、熵达 CNAME 阈值，触发响应侧 Lua 的 CNAME 隧道评分；9109203：请求侧已置 dns_susp，响应侧异常 CNAME 构成请求+响应确认，升级为隧道确认。四条规则分别覆盖「字面 32hex / 请求 Lua / 响应 Lua / 联合确认」，不是重复断言。",
                          "require":  [
                                          9109002,
                                          9109201,
@@ -190,6 +191,7 @@
                                     ]
                      },
     "highfreq_long_positive":  {
+                                   "note":  "PCAP 在 20s 内发出 200 次 50+ 字符随机长域名 A 查询：9109007 的 threshold type both / track by_src / count 200 / 60s 正好在第 200 条触发一次（长标签、非 PTR、白名单外）；9109201 的请求侧 Lua 对高熵长标签给编码结构分并置 dns_susp。响应是普通 A 记录（无编码载荷/CNAME），故 9109203 不升级。这是阈值边界用例，不是「命中越多越好」。",
                                    "require":  [
                                                    9109007,
                                                    9109201

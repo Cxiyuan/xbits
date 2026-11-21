@@ -287,6 +287,55 @@ class TriageTests(unittest.TestCase):
         self.assertTrue(r["degraded"])
         self.assertIn("pefile", r["engine_errors"])
 
+    # ---- R8-4：semgrep JSON errors[] 非空 → ok=False + degraded（命中仍输出） ----
+    def test_semgrep_json_errors_mark_engine_failed_but_keep_findings(self) -> None:
+        """semgrep rc=2 且 JSON 带 errors[]：不得判 ok=True；命中结果照常输出（不丢证据）。"""
+        import unittest.mock as mock
+
+        payload = {
+            "results": [{"check_id": "probe.rce_rule", "path": "shell.php"}],
+            "errors": [
+                {"code": 3, "level": "warn", "type": "PartialParsing",
+                 "message": "partial parsing: syntax error", "path": "shell.php"},
+                {"code": 2, "level": "error", "message": "second failure"},
+            ],
+        }
+        proc = subprocess.CompletedProcess(
+            args=["semgrep"], returncode=2,
+            stdout=json.dumps(payload), stderr="semgrep stderr")
+        path = write_tmp(self.tmp, "semi.php", b"<?php eval($_POST['c']); ?>\n")
+        with mock.patch("triage.triage._which", return_value="C:/fake/semgrep"), \
+                mock.patch("triage.triage.subprocess.run", return_value=proc):
+            r = analyze(path, opts={"semgrep_cmd": "semgrep", "semgrep_config": "auto"})
+        st = r["engine_status"]["semgrep"]
+        self.assertTrue(st["present"])
+        self.assertFalse(st["ok"], f"JSON errors[] 非空时 semgrep.ok 必须为 False：{st}")
+        self.assertIn("json-errors: 2", st["error"])
+        self.assertIn("partial parsing", st["error"])
+        self.assertTrue(r["degraded"], "semgrep 部分失败必须置 degraded=True")
+        self.assertIn("semgrep", r["engine_errors"])
+        self.assertFalse(r["engines"]["semgrep"], "engines 摘要=present and ok，失败必须是 False")
+        # 证据不丢：命中照常输出
+        self.assertIn("semgrep.probe_rce_rule", {f["id"] for f in r["findings"]})
+        self.assertEqual(r["info"]["semgrep"]["result_count"], 1)
+        self.assertTrue(r["info"]["semgrep"]["errors"])
+
+    def test_semgrep_clean_run_without_errors_stays_ok(self) -> None:
+        """rc=1（semgrep 命中惯例）且 errors[] 为空 → 仍算真实执行成功（不误杀）。"""
+        import unittest.mock as mock
+
+        payload = {"results": [{"check_id": "probe.hit_rule", "path": "x.php"}], "errors": []}
+        proc = subprocess.CompletedProcess(args=["semgrep"], returncode=1,
+                                           stdout=json.dumps(payload), stderr="")
+        path = write_tmp(self.tmp, "ok.php", b"<?php echo 1;\n")
+        with mock.patch("triage.triage._which", return_value="C:/fake/semgrep"), \
+                mock.patch("triage.triage.subprocess.run", return_value=proc):
+            r = analyze(path, opts={"semgrep_cmd": "semgrep", "semgrep_config": "auto"})
+        st = r["engine_status"]["semgrep"]
+        self.assertTrue(st["present"] and st["ok"], st)
+        self.assertIsNone(st["error"])
+        self.assertNotIn("semgrep", r["engine_errors"])
+
     # ---- V-22：签名降级只认 signature_verified，证书表存在不得洗白 ----
     def test_signed_present_never_dampens_high_evidence(self) -> None:
         """pe.inject_* 高置信证据 + 证书表存在（signature_verified=False）→ 不许洗白成 clean。"""

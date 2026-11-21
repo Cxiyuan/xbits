@@ -242,6 +242,11 @@ xbits --hook-socket /var/run/xbits/hook.sock \
   `completed` 即使 triage 判 `clean` 也推，并在文档标记 `xbits.intel_conflict=true`，
   `xbits.verdict` 以情报为准（`malicious`）、原始 triage 结论保留在 `xbits.triage_verdict`；
   `failed`/`skipped` 阶段命中同样推 ES，避免已知恶意文件被超时/类别跳过静默丢弃。
+- **triage 输出 `engines[tool]` 的迁移提示（R8-5）**：该字段自 V-20 起是 `present and ok`
+  摘要，`false` 可能是"未安装/未启用"，也可能是"装了但本次执行失败/超时/规则缺失"；
+  外部脚本请改读 `engine_status[tool]` 的 `present` / `ok` / `error` 三态（详见
+  `triage/README.md` 的「引擎状态 schema」与「迁移提示」）。xbits 只把 triage 结果原样
+  透传，不按该字段做判定。
 
 **白名单只在 xbits 内部生效**：
 
@@ -535,7 +540,7 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 以下为历轮 QA（第五～十五轮）确认的遗留项，逐条如实记录（不隐藏，也不冒充已修）。
 每条给出一句准确描述与影响面；详细证据见 `qa/FIX_REVIEW.md` 对应轮次、`qa/QA_REPORT.md`。
 本清单随修复进度更新：**尚未修复项**仍如实保留、不隐瞒；本轮（low-cleanup 收口）修复的项标注
-"已修复（本轮 A1/A2/A3/D1）"，仍列出以留存历史审计轨迹，但不计入待修数。
+"已修复（本轮 A1/A2/A3/D1/t7/t9/t10）"，仍列出以留存历史审计轨迹，但不计入待修数。
 
 ### 引擎状态机与计数（第五～六轮）
 
@@ -597,27 +602,38 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 
 ### 测试与 CI 断言强度（第八～九轮）
 
-- **R8-4 semgrep JSON errors 未当失败**：`triage.py` 把 `errors[]` 只写进 `info.semgrep.errors`，
-  `engines["semgrep"].ok` 仍 True；rc≠0 但带 errors 的 JSON 会被当成"真实执行成功"。
-  *影响面*：脚本 AST 规则配置错误时 verdict 仍按"无情报"输出。
-- **R8-5 `engines[tool]` 语义变更的迁移提示**：该字段由"已安装"变为"present and ok"摘要，
-  Rust 侧不读（`xbits.triage` 原样透传）；外部脚本若按旧语义读会误判"组件缺失"。
-  *影响面*：仅影响仓库外消费方；README 已说明三态为主，建议再加迁移提示。
-- **R8-6 assert_hook_output 坏 JSON 行静默跳过**：坏行被跳过，只有匹配数不足时才失败；若告警行
-  被截断，报错是"0 matched"而非"行损坏"。
-  *影响面*：排障时无法从测试输出区分"没告警"与"告警格式坏"。
-- **R9-2 `known_extra` 可抵扣场景内未声明命中**：只要求一个自由文本 reason，机制上给"漏断言"
-  留了免检通道（当前仅 1 处跨场景用法）。
-  *影响面*：场景内多命中可能被 known_extra 掩盖而不触发 warning。
-- **R9-3 新增 require 缺逐条语义说明**：`cases/recon_cases/backdoor_cases.json` 8 处新增 require
-  是把 CI 基线命中固化为断言，仓库内无逐条"为何该 SID 应命中"的说明。
-  *影响面*：若其中某条本是规则误报，测试会把误报锁死。
-- **R9-4 对照门禁是静态的**：只证明"该 SID 在别处被 require"，运行时是否真的加载/命中仍靠正例与
-  `suricata -T`；单看负例本身无法区分"规则没加载"。
-  *影响面*：规则集整批未加载时，纯 forbid 负例仍可通过。
-- **R9-5 strict 模式 PASS 文案易误读**：strict 下仍打印"0 warnings not asserted as failures — run
-  with --strict-warnings to gate"，易被误读为"未启用 strict"。
-  *影响面*：仅是输出文案误导，不影响门禁行为。
+- **R8-4 semgrep JSON errors 未当失败 —— 已修复（本轮 t9）**：`triage.py::_semgrep_error_summary`
+  归一化 `errors[]` 单项摘要；`_semgrep_scan` 在 `errors` 非空时置 `engines["semgrep"].ok=False`、
+  `error="exit=<rc>; json-errors: N; first=..."` 并计入 `degraded`，命中结果照常输出（不丢证据）。
+  `triage/tests` 34 例 OK（含 semgrep errors 两例）。
+  *影响面（已消除）*：AST 规则配置错误不再被当成"无情报"输出。
+- **R8-5 `engines[tool]` 语义变更的迁移提示 —— 已修复（本轮 t9，文档）**：`triage/README.md` 与
+  `xbits/README.md` 写明 `engines[tool]` 自 V-20 起只是 `present and ok` 的向后兼容摘要（False 可能
+  = "已安装但执行失败"），迁移请读 `engine_status[tool]` 的 `present`/`ok`/`error`；schema 未改。
+  *影响面（已消除）*：按旧语义读而误判"组件缺失"的隐患已由文档点名。
+- **R8-6 assert_hook_output 坏 JSON 行静默跳过 —— 已修复（本轮 t9）**：`assert_hook_output.py` 统计
+  `bad-json-lines`：坏行打印 WARN；匹配数不足时 FAIL 点名 `bad-json-lines: N` 并给坏行预览（区分
+  "没告警"与"告警格式坏"）。self-test 5/5（全可解析 / 坏行仍 PASS 但 WARN / 坏行致不足 FAIL / 截断 FAIL）。
+  *影响面（已消除）*：排障可直接看出行损坏，而非误判 0 matched。
+- **R9-2 `known_extra` 可抵扣场景内未声明命中 —— 已修复（本轮 t10）**：
+  `qa_suricata_hook_matrix.py::evaluate_case` 收紧为 `known_extra` **仅抵扣跨场景命中**；场景内未声明
+  命中不再被扣除（必须 require/forbid），且当 known_extra 含场景内 SID 时 warning 点名
+  "R9-2 起不再抵扣"。self-test 15/15（新增"场景内 known_extra→warning""跨场景仍抵扣"两例）。
+  *影响面（已消除）*：不再给"漏断言"留免检通道。
+- **R9-3 新增 require 缺逐条语义说明 —— 已修复（本轮 t9）**：`cases.json`（2）、`recon_cases.json`（1）、
+  `backdoor_cases.json`（≥5）共 8 处新增 require 均补 `note`，逐条说明"为何该 SID 应命中"（lua/规则
+  语义与载荷依据）；require/forbid 断言未改。`assert_suricata --cases-only` 三文件 PASS。
+  *影响面（已消除）*：误报若被固化，可在 note 中被 review 发现。
+- **R9-4 对照门禁是静态的 —— 已修复（本轮 t10）**：`assert_suricata.py` 在静态对照外新增运行时对照
+  `runtime_control_failures()`：每个 forbid-only 负例的 forbid SID，其对照正例必须在**本次实跑**的
+  EVE 目录里确实命中，否则 FAIL 点名"对照未命中，可能规则未加载"；跨场景对照可在 cases 用
+  `control_in_other_scenario: {sid: reason}` 登记（静态放行 + 可见 EXCUSED，缺 reason 即 FAIL）。
+  self-test 13/13；并用假 EVE 端到端验证（正常→PASS/26 对照、全空 EVE→FAIL、删对照命中→FAIL）。
+  *影响面（已消除）*：规则整批未加载时纯 forbid 负例不再能假绿。
+- **R9-5 strict 模式 PASS 文案易误读 —— 已修复（本轮 t10）**：`qa_suricata_hook_matrix.py::pass_summary`
+  统一文案：strict 下打印 `strict-warnings: enabled (0 warnings)`；非 strict 才提示
+  "N warnings not asserted as failures — run with --strict-warnings to gate"。self-test 15/15 含两种模式断言。
+  *影响面（已消除）*：strict 生效时不再被误读为未启用。
 
 ### 缓存与转换器语义（第十～十二轮）
 
@@ -641,9 +657,11 @@ xbits --hook-socket /var/run/xbits/hook.sock \
   "1,546 条被剥离链（`flowbits-correlation` 670 + `dependency-correlation` 876）"与
   "产物 996 条响应→请求映射（以产物条目数为准）"。
   *影响面（已消除）*：不再维护两份会漂移的正文。
-- **R12-7 PCAP 每类 buffer 仅 1 对正负例**：`qa_converter_pcap_regression.py` 的 `CASES` 每类 buffer
-  仅 1 对（任务书建议 2~3 条），其余同 buffer 家族 SID 只靠 `-T` 加载校验。
-  *影响面*：同家族变体的命中语义未被逐一验证。
+- **R12-7 PCAP 每类 buffer 仅 1 对正负例 —— 已修复（本轮 t10）**：`qa_converter_pcap_regression.py`
+  的 `CASES` 由 9 组扩到 15 组：6 类 buffer 各补第 2 组（uri2 11021402 / raw2 11020049 / hdr2 11027642 /
+  method2 11021337 / stat2 10020255 / payload2 13020172），新增 12 个 PCAP；字节断言对含 `pkt_data`
+  的规则改为比对整条报文流。`--generate` 后 `--check-rule-bytes` PASS（30 组 pos/neg），self-test 13/13。
+  *影响面（已消除）*：同家族变体（不同 SID/载荷形态）的命中语义已有回归。
 
 ### 终轮新发现（第十三轮）
 

@@ -20,6 +20,9 @@ official-image-based `xbits-suricata` container:
       - 跨场景命中（命中别的规则目录的 SID，如 web 用例命中后门命令参数规则）
         一律打印 `::warning::`；若用例用 `known_extra` + `known_extra_reason`
         显式登记，则视为已知重叠，不再重复告警（但仍会打印）。
+      - R9-2 收紧：`known_extra` 只允许抵扣**跨场景**命中；场景内未声明命中
+        不允许用 known_extra 抵扣——要么补进 require（真实命中变断言）、
+        要么补进 forbid（误报）、要么保持 warning（strict 下失败）。
   * `--strict-warnings` 把上述 warning 升级为失败；CI 用 warning 模式收集一轮
     真实数据后再开（TODO 见 qa/QA_REPORT.md C8 跟踪项）。
 
@@ -192,13 +195,21 @@ def evaluate_case(
             )
     else:
         # 场景内未声明命中：真实命中就补进 require（把"会命中"变成断言），
-        # 误报才补进 forbid；两者都不做也可以用 known_extra+reason 显式登记为
-        # "已解释的多规则命中"。未处理的才升为 warning（strict 模式下失败）。
-        unasserted_in_scope = in_scope - require - forbid - known_extra
+        # 误报才补进 forbid。R9-2：known_extra **不再**抵扣场景内未声明命中
+        # （它只允许登记跨场景重叠——场景内的多规则命中必须被断言，否则给
+        # "漏断言"留了免检通道）；未处理的升为 warning（strict 模式下失败）。
+        unasserted_in_scope = in_scope - require - forbid
         if unasserted_in_scope:
+            hint = ""
+            in_registered = in_scope & known_extra
+            if in_registered:
+                hint = (
+                    f"（known_extra 里登记的 {sorted(in_registered)} 属于本场景 SID，"
+                    "R9-2 起不再抵扣场景内命中——请补 require/forbid，或移出 known_extra）"
+                )
             warnings.append(
-                "本场景内未声明命中（未在 require/forbid/known_extra 里）: "
-                f"{sorted(unasserted_in_scope)}"
+                "本场景内未声明命中（未在 require/forbid 里）: "
+                f"{sorted(unasserted_in_scope)}{hint}"
             )
 
     unexplained_out = out_scope - known_extra
@@ -212,8 +223,9 @@ def evaluate_case(
         explained_out = known_extra & out_scope
         notes.append(
             f"known_extra={sorted(known_extra)} "
-            f"(in-scope={sorted(explained_in)} cross-scenario={sorted(explained_out)}) "
-            f"reason={spec.get('known_extra_reason')}"
+            f"(cross-scenario={sorted(explained_out)}"
+            + (f"; in-scope={sorted(explained_in)} 不抵扣（R9-2）" if explained_in else "")
+            + f") reason={spec.get('known_extra_reason')}"
         )
         stale = known_extra - hits
         if stale:
@@ -320,6 +332,25 @@ def run_case(
     )
 
 
+def pass_summary(total_cases: int, exact_cases: int, warnings: list[str], strict: bool) -> str:
+    """PASS 行文案（R9-5）：strict 下必须显示 enabled，非 strict 才提示如何开启。
+
+    旧文案在 strict 模式也打印 "run with --strict-warnings to gate"，读者会误以为
+    strict 没生效（实际已生效，只是恰好 0 warning）。
+    """
+    if strict:
+        gate = "strict-warnings: enabled (0 warnings)"
+    else:
+        gate = (
+            f"{len(warnings)} warnings not asserted as failures — "
+            "run with --strict-warnings to gate"
+        )
+    return (
+        f"SURICATA HOOK MATRIX: PASS ({total_cases} cases, EVE == engine exactly; "
+        f"{exact_cases} cases use in-scope exact equality; {gate})"
+    )
+
+
 def self_test() -> int:
     """本地（无 docker）验证 evaluate_case 的判定语义。"""
     cat = {9103001, 9103008, 9103013, 9103015, 9103018, 9103101, 9103102, 9103103, 9103104}
@@ -367,20 +398,49 @@ def self_test() -> int:
     f, _, _ = evaluate_case("c", neg, cat, Counter(), Counter(), "", default_exact=True)
     checks.append(("负例默认 exact：零命中 → 通过", not f))
 
-    known_in = {"require": [9103015], "known_extra": [9103101], "known_extra_reason": "同 payload 多规则命中"}
+    known_in = {"require": [9103015], "known_extra": [9103101], "known_extra_reason": "旧用法：同场景多规则命中"}
     f, w, _ = evaluate_case("c", known_in, cat, extra_in, extra_in, "")
     checks.append(
-        ("场景内命中用 known_extra+reason 登记 → 不再 warning",
-         not f and not any("未声明命中" in x for x in w))
+        ("R9-2 负例：场景内命中用 known_extra+reason 登记 → 仍 warning（不得抵扣）",
+         not f and any("未声明命中" in x and "R9-2" in x and "9103101" in x for x in w))
     )
 
     stale = {"require": [9103015], "known_extra": [9103102], "known_extra_reason": "x"}
     f, w, _ = evaluate_case("c", stale, cat, ok_engine, ok_engine, "")
     checks.append(("known_extra 未再出现 → warning（strict 下失败）", any("未再出现" in x for x in w)))
 
+    # R9-2 正例：跨场景 known_extra 仍然抵扣跨场景 warning（语义未变）；
+    cross_ok = {"require": [9103015], "known_extra": [9104002], "known_extra_reason": "web_cmdi 与后门规则真实重叠"}
+    f, w, _ = evaluate_case("c", cross_ok, cat, cross, cross, "")
+    checks.append(
+        ("R9-2 正例：跨场景 known_extra 仍抵扣 → 无跨场景 warning",
+         not f and not any("跨场景" in x for x in w))
+    )
+
+    # R9-5：strict 模式的 PASS 行不得再提示"用 --strict-warnings 开启"（会误导成没启用）。
+    strict_line = pass_summary(18, 9, [], strict=True)
+    non_strict_line = pass_summary(18, 9, [f"w{i}" for i in range(2)], strict=False)
+    checks.append(
+        (
+            "R9-5 正例：strict 下 PASS 行含 strict-warnings: enabled 且不再提示开启",
+            "strict-warnings: enabled" in strict_line and "run with --strict-warnings" not in strict_line,
+            strict_line,
+        )
+    )
+    checks.append(
+        (
+            "R9-5 正例：非 strict 下 PASS 行如实给出 warnings 数与开启方式",
+            "2 warnings not asserted as failures" in non_strict_line
+            and "run with --strict-warnings to gate" in non_strict_line,
+            non_strict_line,
+        )
+    )
+
     bad = 0
-    for name, ok in checks:
-        print(("PASS " if ok else "FAIL ") + name)
+    for item in checks:
+        name, ok = item[0], item[1]
+        detail = item[2] if len(item) > 2 else ""
+        print(("PASS " if ok else "FAIL ") + name + ("" if ok else f"  [{detail[:160]}]"))
         bad += 0 if ok else 1
     print(f"\nSELF-TEST: {'PASS' if bad == 0 else 'FAIL'} ({len(checks) - bad}/{len(checks)})")
     return 0 if bad == 0 else 1
@@ -475,11 +535,7 @@ def main() -> int:
             print(" -", item, file=sys.stderr)
         return 1
 
-    print(
-        f"\nSURICATA HOOK MATRIX: PASS ({total_cases} cases, EVE == engine exactly; "
-        f"{exact_cases} cases use in-scope exact equality; "
-        f"{len(warnings)} warnings not asserted as failures — run with --strict-warnings to gate)"
-    )
+    print("\n" + pass_summary(total_cases, exact_cases, warnings, args.strict_warnings))
     return 0
 
 

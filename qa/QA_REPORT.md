@@ -350,19 +350,19 @@
 | R6-2 | **部分覆盖（A1/A3）** | `serve_stream` 层已有真实 UnixStream 单测：`long_connection_still_runs_maintenance_tick`（维护节拍 + 半行缓冲）与 `serve_stream_survives_overlong_line_and_processes_next_event`（>1 MiB 无换行输入后正常事件仍产出告警）；剩余缺口为 listener 外层 accept 轮询/空闲维护节拍的端到端断言 | 测试覆盖（部分） |
 | R6-3 | **已修复（A3）** | `hook.rs::serve_stream` 循环顶部按 `MAINTENANCE_TICK` 检查维护截止时间，长连接持续有数据时也执行 `engine.maintenance()`（超时分支保留空闲兜底）；单测 `long_connection_still_runs_maintenance_tick`（5ms tick + 20ms TTL + 持续写入）断言降级输出与 `pending_expired>=1` | 状态机（已修） |
 | R6-4 | **已修复（A1）** | `hook.rs::LineBuffer` 单行上限 1 MiB，超限整行丢弃 + 计数 + 限流日志（连接继续、后续行不受影响）；单测覆盖跨 chunk / EOF 尾行 / 超长 / 节流 | 健壮性（已修） |
-| R8-4 | **尚未修复** | semgrep JSON `errors[]` 仅写 info，rc≠0 带 errors 仍 ok=True | Python 判定 |
-| R8-5 | **尚未修复** | `engines[tool]` 语义从"已安装"变"present and ok"的迁移提示不足 | 文档 |
-| R8-6 | **尚未修复** | `assert_hook_output.py` 坏 JSON 行静默跳过（报 "0 matched" 而非"行损坏"） | 测试可观测 |
-| R9-2 | **尚未修复** | `known_extra` 可抵扣场景内未声明命中，仅要自由文本 reason | 测试断言 |
-| R9-3 | **尚未修复** | 8 处新增 require 无逐条"为何应命中"语义说明 | 测试文档 |
-| R9-4 | **尚未修复** | 对照门禁静态、单看 forbid 负例无法区分"规则没加载" | 测试断言 |
-| R9-5 | **尚未修复** | strict 模式 PASS 文案仍提示"未启用 strict-warnings"，易误读 | 测试文案 |
+| R8-4 | **已修复（t9）** | `triage.py::_semgrep_error_summary` + `_semgrep_scan`：`errors[]` 非空 → `engines["semgrep"].ok=False`、`error="exit=<rc>; json-errors: N; first=..."`、计 `degraded`，命中结果照常输出；`triage/tests` 34 例 OK | Python 判定（已修） |
+| R8-5 | **已修复（t9，文档）** | `triage/README.md` + `xbits/README.md` 写明 `engines[tool]` 自 V-20 起为 `present and ok` 摘要（False 可能=已安装但失败），迁移读 `engine_status[tool]` 的 present/ok/error；schema 未改 | 文档（已修） |
+| R8-6 | **已修复（t9）** | `assert_hook_output.py` 统计 `bad-json-lines`：坏行 WARN、匹配不足时 FAIL 点名 `bad-json-lines: N` + 预览；self-test 5/5（全可解析/坏行仍 PASS 但 WARN/坏行致不足 FAIL/截断 FAIL） | 测试可观测（已修） |
+| R9-2 | **已修复（t10）** | `qa_suricata_hook_matrix.py::evaluate_case` 收紧：`known_extra` 仅抵扣跨场景命中，场景内未声明命中必须 require/forbid（含场景内 SID 时 warning 点名 R9-2）；self-test 15/15 | 测试断言（已修） |
+| R9-3 | **已修复（t9）** | `cases.json`(2)/`recon_cases.json`(1)/`backdoor_cases.json`(≥5) 共 8 处新增 require 补 `note` 逐条说明命中原因；require/forbid 未改；`assert_suricata --cases-only` 三文件 PASS | 测试文档（已修） |
+| R9-4 | **已修复（t10）** | `assert_suricata.py::runtime_control_failures`：forbid SID 的对照正例必须本次实跑命中，否则 FAIL 点名"对照未命中，可能规则未加载"；跨场景可用 `control_in_other_scenario` 登记 reason；self-test 13/13 + 假 EVE 端到端三态验证 | 测试断言（已修） |
+| R9-5 | **已修复（t10）** | `qa_suricata_hook_matrix.py::pass_summary`：strict 下打印 `strict-warnings: enabled (0 warnings)`，非 strict 才提示开启方式；self-test 15/15 | 测试文案（已修） |
 | R11-1 | **尚未修复** | YARA 缓存键不覆盖跨目录 include（当前 triage/rules 未用，风险低） | 缓存 |
 | R12-2 | **尚未修复（已接受基线）** | 676 处 `content;buffer` 后置写法仍在转换规则库；已锁为棘轮基线 | 规则语义 |
 | R12-4 | **已修复（A1）** | `hook.rs::engine_failure_stats` 导出 `correlated_pairs`/`correlation_timeouts`/`correlation_overflow`，新增 `correlation_unmatched_responses`（响应无请求路径不再静默）；单测锁定 | 可观测（已修） |
 | R12-5 | **已修复（t55 / 规则检测侧）** | `规则检测/README.md` zeek 段现列 3 个行为脚本并指向 `allowlist/`、`threat-intel/`；`qa_zeek_file_set.py` 三层守卫接入 CI，不再有 `zeek/威胁情报/` 陈旧提法 | 文档（已修） |
 | R12-6 | **已修复（D1）** | `xbits/README.md` §8.2 为唯一主文（CLI/字段/配对算法/TTL/容量/计数/限制/CI 断言），§10 改为一句指针；数字口径统一（1,546 剥离链 vs 产物 996 条映射） | 文档（已修） |
-| R12-7 | **尚未修复** | PCAP 每类 buffer 仅 1 对正负例（建议 2~3） | 测试覆盖 |
+| R12-7 | **已修复（t10）** | `qa_converter_pcap_regression.py` CASES 9→15 组：6 类 buffer 各补第 2 组（11021402/11020049/11027642/11021337/10020255/13020172），新增 12 PCAP；`pkt_data` 规则按整条报文流断言；`--generate`+`--check-rule-bytes` PASS（30 组），self-test 13/13 | 测试覆盖（已修） |
 | R13-1 | **已修复（t51 / tests-auditor）** | `check_rule_pcap_bytes()` 按 SID 读规则原文与 PCAP 载荷做运行时断言（buffer/flow/content hex/pcre/URI），pos 必含 neg 必缺；接在 `--generate`/`--eve-root` 前；负例（改坏 PCAP、改坏规则）均 FAIL 点名 SID | 测试真实性 |
 | R13-2 | **已修复（本轮）** | `engine.rs::emits_alert` 预检已纳入 `benign`/`min_confidence`，与 `make_alert_full` 同口径；补测 `correlation_wait_not_registered_for_benign_or_below_min_confidence` | 关联状态机 |
 | R13-3 | **已修复（本轮）** | 本节 + `xbits/README.md` §11 全量清单即为该项修复 | 文档 |
@@ -382,6 +382,9 @@
 > **第十五轮（verifier）更新**：R6-2 改"部分覆盖"（A1/A3 已补真实 UnixStream 单测，缺口收窄为
 > accept 轮询/空闲维护端到端）；V-23 描述更新为当前实现（`IpSet` 只存合法 `IpAddr`，已无
 > `invalid_text`）；R15-1/2/3/6 均为文档过时表述修正；R15-4/R15-5 已随 t7 修复并补入索引（见上表）。
+> **B 批（t9+t10）更新**：R8-4/R8-5/R8-6/R9-3 已随 t9 修复；R9-2/R9-4/R9-5/R12-7 已随 t10 修复，
+> 八条均改为"已修复"（见上表）。R9-2/R9-4/R9-5 的自测分别为 15/15、13/13、13/13；R12-7 新增
+> 12 个 PCAP 并通过字节断言 30 组。
 
 ---
 

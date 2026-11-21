@@ -79,6 +79,12 @@ python3 triage/triage.py --stdin --all-engines --rules-dir triage/rules --semgre
 - `present=true, ok=false`：执行失败（rc!=0 / 超时 / 解析失败 / 目录或规则缺失）→ 计入顶层
   `degraded=true` 与 `engine_errors`。**"执行失败"与"扫描通过未检出"严格不同形**。
 
+**迁移提示（R8-5）**：`engines[tool]` 的语义已从旧版的"组件已安装"改为 **"present and ok"
+摘要**——`false` 不再等于"没装"，也可能是"装了但本次执行失败/超时/规则缺失"。依赖旧语义的
+外部脚本请改为读 `engine_status[tool]`：用 `present` 判断是否安装/启用，用 `ok` + `error`
+判断本次是否真实执行成功；只看 `engines[tool]` 会把"安装但失败"误判成"组件缺失"。
+本仓库 `xbits` 不按该字段做判定（`xbits.triage` 原样透传），此提示面向仓库外消费方。
+
 **YARA 部分失败语义（R8-3）**：三类失败分开报告，任何一类出现都 `engine_status["yara"].ok=false`
 且顶层 `degraded=true`——但**已编译成功的规则照常匹配**（可用部分生效，不会被跳过）：
 - `error` 字段：`compile-failed: <文件名,...>` / `unreadable: <原因>` / `match-errors: <n>` 组合；
