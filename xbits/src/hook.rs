@@ -1227,7 +1227,9 @@ mod tests {
         let mut data = vec![b'x'; MAX_LINE_BYTES + 1];
         data.push(b'\n');
         let got = lines.push(&data);
-        assert_eq!(got.len(), 1, "正常行不受影响（对照）");
+        // 对照（R15-5 修正）：这条超长行同样应被丢弃（不产出行），且丢弃计数
+        // 递增到 2；"正常行不受影响"改用下方的小行验证。
+        assert!(got.is_empty(), "超过 MAX_LINE_BYTES 的行必须被丢弃");
         emitter.record_line_drops(&lines);
         let snapshot = self::stats_snapshot_with_drops(
             None,
@@ -1240,6 +1242,14 @@ mod tests {
             snapshot.hook_lines_dropped, 2,
             "第二次丢弃必须递增计数"
         );
+
+        // 正常行不受影响：小行照常产出，丢弃计数不再变化。
+        let mut small = vec![b'k'; 16];
+        small.push(b'\n');
+        let got_small = lines.push(&small);
+        assert_eq!(got_small.len(), 1, "正常行不受影响（对照）");
+        emitter.record_line_drops(&lines);
+        assert_eq!(emitter.lines_dropped, 2, "正常行不得计入丢弃");
 
         // 序列化进单行 JSON 的字段可见。
         let json = serde_json::to_string(&snapshot).expect("serialize");
