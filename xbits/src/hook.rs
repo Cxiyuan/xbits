@@ -969,7 +969,7 @@ mod tests {
             r#"{"id":"r-ok","name":"ok","source":"suricata","kind":"alert","sid_in":[9103001],"score":20,"threshold":20}"#,
         )
         .expect("rule");
-        let (client, server) = UnixStream::pair().expect("socket pair");
+        let (mut client, server) = UnixStream::pair().expect("socket pair");
         let handle = std::thread::spawn(move || {
             let mut engine = Engine::new(vec![rule]);
             let mut out = Vec::new();
@@ -1024,7 +1024,7 @@ mod tests {
         )
         .expect("direct rule");
         let engine = Engine::new(vec![ctx_rule, direct_rule]).with_ttl(Duration::from_millis(20));
-        let (client, server) = UnixStream::pair().expect("socket pair");
+        let (mut client, server) = UnixStream::pair().expect("socket pair");
         let handle = std::thread::spawn(move || {
             let mut engine = engine;
             let mut out = Vec::new();
