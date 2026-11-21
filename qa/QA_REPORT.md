@@ -324,12 +324,12 @@
 
 | 编号 | 状态 | 修复任务 / commit / 复核轮次 | 说明 |
 |---|---|---|---|
-| V-10 | **Verified** | t35 C5-A（`7c4c752` 语义树转换）+ t38 C5-D 对称棘轮 + t46/t48 端口方向（`1374b4d`）；第十二/十三轮复核 | 5,544 条后置 buffer 反转已修、活动场景目录 0 违规、`dangling-http-uri` 消失。残留 R12-2（676 处 `content;buffer`，已锁为棘轮基线，不影响活动检测）见待修清单。 |
+| V-10 | **Verified** | t35 C5-A（`7c4c752` 语义树转换）+ t38 C5-D 对称棘轮 + t46/t48 端口方向（`1374b4d`）；第十二/十三轮复核 | 5,544 条后置 buffer 反转已修、活动场景目录 0 违规、`dangling-http-uri` 消失。残留 R12-2（676 处 `content;buffer`，已锁为棘轮基线，不影响活动检测）见状态索引，标注"已接受基线"。 |
 | V-11 | **Verified** | t35（`7c4c752`）stat_code 段前置 + 容量断言；第十二轮 | 17 条"永不命中"规则已修，抽样 5 条均为 `http.stat_code; content:"200"; pkt_data; …`。 |
 | V-12 | **Verified** | t36 C5-B（`6442408`）共享 `buffer_aliases.json` 单一真源；第十二/十三轮 | 15 条 `http.uri.raw` 保真，Python 17 例含 SharedAliases 契约全过。 |
 | V-13 | **Verified** | t37 C5-C（`7c4c752` 起 lua 前置 + t50 前 979 条处置）+ t48 PCAP 18 文件；第十二/十三轮 | `lua:` 且无 buffer == 0；946 条无法定位者剔除 lua（保留纯 content），33 条补 buffer。 |
 | V-14 | **Verified** | t39 C6-A + t40 C6-B（`3ce9521` cid-scoped 配对）；第十二/十三轮 | `success_rules.json` 已真实消费、cid 入 key、发告警才登记、同 key 多 sid。R13-2 已于本轮补 `benign`/`min_confidence` 预检（见下）。 |
-| V-15 | **Verified** | t37 C5-C + t38 C5-D + t40；第十二轮 | 18 reason 全有 owner/tested_by（后扩至 17 reason，见当前工作区）、未知 reason fail-fast、dead_rules 空转链路已删。R12-5 文档残留见待修清单。 |
+| V-15 | **Verified** | t37 C5-C + t38 C5-D + t40；第十二轮 | 18 reason 全有 owner/tested_by（后扩至 17 reason，见当前工作区）、未知 reason fail-fast、dead_rules 空转链路已删。R12-5 文档残留已修复，见状态索引。 |
 | V-16 | **Verified** | C7（`52fd837`）paths 覆盖 + 元测试；第四轮 | 7 个 workflow push==PR，triage/threat-intel/allowlist 与测试资源进 paths；元测试对抗 3/4 通过（`os.path.join` 动态路径盲区已记录）。 |
 | V-17 | **Verified** | t25 C8（`dcaae21`）覆盖门禁重写；第八轮 | `covered 74/17477 + excluded 11 dirs` 与磁盘一一对应，未分类目录/列表腐烂即 FAIL。 |
 | V-18 | **Verified** | t25 C8（`dcaae21`/`bb5e1c7`）弱断言替换；第八轮 | 5 处 sleep+grep 改 `assert_hook_output.py` 轮询+字段+exit/stderr；双空用例直接 FAIL。 |
@@ -338,16 +338,16 @@
 | V-21 | **Verified** | t52 C10-A（工作区，未单独 commit；本地自测 + 负控）；t58 接入 CI | 采集器重写为 `SourceResult{ok,fetched,http_code,error,last_success_utc}` + 最小产出阈值 + 同盘临时目录校验后逐文件 `os.replace`（失败回滚）；任一源失败非零退出且旧 data/exports 不被触碰，`collect_last_attempt.json` 记录失败。8 例本地自测全过，负控（把失败判定改 `ok=True`）4 例 FAIL。CI 实跑以 Actions 为准。 |
 | V-22 | **Verified** | t54 C10-C（工作区）+ captain 转 t58 CI 阻塞修复（同一 attempt 追加证据） | `refresh.py` 改 sources.json 唯一真源（type/path/output/kind/options 全校验）；ip.txt 只来自 custom/ip.txt，public_dns.txt 单向派生自 public_dns_servers.txt，交集非空 FAIL；`--check` 逐项比对 custom↔data，漂移非零。真实快照 ip.txt 15→0、public_dns 15 不变，交集 0；`--check` rc=0。15 例自测全过（含声明源缺失非零）。 |
 | V-23 | **Verified** | t26 C9（`dcaae21`）Python 侧 `canonical_ip()` + t53 C10-B（工作区）Rust 侧 `IpSet{parsed:HashSet<IpAddr>}` / `canonical_addr()`；第八/十轮复核；R14-2（A2）收紧非法输入策略 | add/refresh/query 与 xbits `intel.rs` 现均按地址值归一比较（IPv6 压缩小写、zone 拒绝）；`IpSet` 只存合法 `IpAddr`，非法条目加载期拒绝 + 计数（`invalid_ip_warnings`）且不参与匹配，非法查询值两侧都直接判不命中；端到端 `add public_dns 2001:db8::1 → refresh → query` 命中，展开式/大写写法亦命中。 |
-| V-24 | **Verified** | t55 C10-D（规则检测侧）+ t56 C10-E（文档收口，工作区） | 规则侧：`convert_probe_zeek.py` 删写盘逻辑变为纯解析工具，`qa_zeek_file_set.py` 三层守卫接入 CI，QA JSON 重生 3 个 zeek_scripts；文档侧：`xbits/README.md` 的 17,477 老数改为读产物的 19,447/6,094/app_tx_lua=0 并点名验证脚本，"绝不丢事件"改为 fail-closed+降级可见+§11 R6-2/3/4 边界；`threat-intel/README.md` xbits 行写明 V-14 `--success-rules` 与情报决策链已落地。R12-5 已随 t55 消除；R12-6（success_rules 章节重复）与 R12-7（PCAP 每类仅 1 对）为独立 low 项，仍列在下方索引。 |
+| V-24 | **Verified** | t55 C10-D（规则检测侧）+ t56 C10-E（文档收口，工作区） | 规则侧：`convert_probe_zeek.py` 删写盘逻辑变为纯解析工具，`qa_zeek_file_set.py` 三层守卫接入 CI，QA JSON 重生 3 个 zeek_scripts；文档侧：`xbits/README.md` 的 17,477 老数改为读产物的 19,447/6,094/app_tx_lua=0 并点名验证脚本，"绝不丢事件"改为 fail-closed+降级可见+§11 R6-2/3/4 边界；`threat-intel/README.md` xbits 行写明 V-14 `--success-rules` 与情报决策链已落地。R12-5 已随 t55 消除；R12-6 与 R12-7 后续分别随 D1/t10 修复，R12-2 作为已接受基线记录（见下方索引）。 |
 
-### 未修项索引（按 ID，来源：第五～十五轮 verifier 复核；含已修复项的最终状态）
+### 遗留项状态索引（按 ID，来源：第五～十五轮 verifier 复核；含已修复项与已接受基线的最终状态）
 
 | ID | 状态 | 一句话 | 归属 |
 |---|---|---|---|
 | R5-4 | **已修复（A1）** | `model.rs::validate_rules` + `main.rs::load_rules` 加载期 fail-fast：`threshold > score` 且无 `score_window_sec` 直接非零退出，错误点名 rule id / 数值 / 路径；`run_hook_listener_full` 库入口同样校验 | 引擎规则加载（已修） |
 | R5-5 | **已修复（A2）** | `hook.rs::stats_snapshot`/`stats_json` 输出稳定单行 `xbits.stats`（`analysis.*` 11 字段、`engine.*` 14 字段）；`--stats-interval N`（默认 0=关闭）+ `--stats-file PATH`，accept tick 与长连接 read_timeout tick 均输出；单测锁定 schema/字段/节流 | 可观测（已修） |
 | R5-6 | **已修复（A2）** | `analysis.rs::decision_reason` 合成单字段 `xbits.reason`：`intel-*+degraded-<label>`（如 `intel-threat+degraded-context-missing`）；单命中保持 `intel-*`/`degraded-*`，前缀兼容；单测覆盖组合+单命中+文档 | 可观测（已修） |
-| R6-2 | **部分覆盖（A1/A3）** | `serve_stream` 层已有真实 UnixStream 单测：`long_connection_still_runs_maintenance_tick`（维护节拍 + 半行缓冲）与 `serve_stream_survives_overlong_line_and_processes_next_event`（>1 MiB 无换行输入后正常事件仍产出告警）；剩余缺口为 listener 外层 accept 轮询/空闲维护节拍的端到端断言 | 测试覆盖（部分） |
+| R6-2 | **已修复（t12）** | 新增 listener 外层 accept/空闲维护端到端测试（真实 Unix socket）：`listener_idle_connection_still_runs_maintenance_tick`（发 alert 后保持空闲，断言 TTL 后输出 `degraded=context-missing`）与 `listener_accepts_second_connection_while_first_idle`（第一条空闲时第二条仍被 accept 并产出告警）；listener 改为非阻塞 accept drain + 多连接轮询，生产默认 200ms/60s 不变 | 测试覆盖（已修） |
 | R6-3 | **已修复（A3）** | `hook.rs::serve_stream` 循环顶部按 `MAINTENANCE_TICK` 检查维护截止时间，长连接持续有数据时也执行 `engine.maintenance()`（超时分支保留空闲兜底）；单测 `long_connection_still_runs_maintenance_tick`（5ms tick + 20ms TTL + 持续写入）断言降级输出与 `pending_expired>=1` | 状态机（已修） |
 | R6-4 | **已修复（A1）** | `hook.rs::LineBuffer` 单行上限 1 MiB，超限整行丢弃 + 计数 + 限流日志（连接继续、后续行不受影响）；单测覆盖跨 chunk / EOF 尾行 / 超长 / 节流 | 健壮性（已修） |
 | R8-4 | **已修复（t9）** | `triage.py::_semgrep_error_summary` + `_semgrep_scan`：`errors[]` 非空 → `engines["semgrep"].ok=False`、`error="exit=<rc>; json-errors: N; first=..."`、计 `degraded`，命中结果照常输出；`triage/tests` 34 例 OK | Python 判定（已修） |
@@ -357,8 +357,8 @@
 | R9-3 | **已修复（t9）** | `cases.json`(2)/`recon_cases.json`(1)/`backdoor_cases.json`(≥5) 共 8 处新增 require 补 `note` 逐条说明命中原因；require/forbid 未改；`assert_suricata --cases-only` 三文件 PASS | 测试文档（已修） |
 | R9-4 | **已修复（t10）** | `assert_suricata.py::runtime_control_failures`：forbid SID 的对照正例必须本次实跑命中，否则 FAIL 点名"对照未命中，可能规则未加载"；跨场景可用 `control_in_other_scenario` 登记 reason；self-test 13/13 + 假 EVE 端到端三态验证 | 测试断言（已修） |
 | R9-5 | **已修复（t10）** | `qa_suricata_hook_matrix.py::pass_summary`：strict 下打印 `strict-warnings: enabled (0 warnings)`，非 strict 才提示开启方式；self-test 15/15 | 测试文案（已修） |
-| R11-1 | **尚未修复** | YARA 缓存键不覆盖跨目录 include（当前 triage/rules 未用，风险低） | 缓存 |
-| R12-2 | **尚未修复（已接受基线）** | 676 处 `content;buffer` 后置写法仍在转换规则库；已锁为棘轮基线 | 规则语义 |
+| R11-1 | **已修复（t13）** | YARA 缓存键改为 `rules_dir` 目录级指纹（全部 `.yar/.yara` 递归 + include 文件含嵌套，relpath/mtime/size/状态排序）；include 必须在 rules_dir 内（realpath 拒绝逃逸），越界 error+degraded；单测覆盖 mtime 变化/新增 include 目标失效、无变化命中同一 compiled | 缓存（已修） |
+| R12-2 | **已接受基线（见 §11）** | 676 处 `content;buffer` 后置写法是转换器历史产物，`qa_converter_semantics.py` + `converter_semantics_baseline.json` 棘轮锁死（只许减少不许新增，新增即 CI FAIL；修复须同步收缩基线）；Suricata 8 仍按 payload 匹配，不回绑定；逐条评审源 Snort 语义属独立工程，故接受为已知基线 | 规则语义（已接受基线） |
 | R12-4 | **已修复（A1）** | `hook.rs::engine_failure_stats` 导出 `correlated_pairs`/`correlation_timeouts`/`correlation_overflow`，新增 `correlation_unmatched_responses`（响应无请求路径不再静默）；单测锁定 | 可观测（已修） |
 | R12-5 | **已修复（t55 / 规则检测侧）** | `规则检测/README.md` zeek 段现列 3 个行为脚本并指向 `allowlist/`、`threat-intel/`；`qa_zeek_file_set.py` 三层守卫接入 CI，不再有 `zeek/威胁情报/` 陈旧提法 | 文档（已修） |
 | R12-6 | **已修复（D1）** | `xbits/README.md` §8.2 为唯一主文（CLI/字段/配对算法/TTL/容量/计数/限制/CI 断言），§10 改为一句指针；数字口径统一（1,546 剥离链 vs 产物 996 条映射） | 文档（已修） |
@@ -377,14 +377,17 @@
 > PY-09/PY-10、PY-11）不再计入未修项。
 > **low 收口轮更新**：R5-4/R6-4/R12-4 已随 A1 修复、R5-5/R5-6/R14-2 已随 A2 修复、R12-6 已随 D1
 > 修复（§8.2 唯一主文、§10 变指针），上述七条已改为"已修复"；R14-2 为第十四轮新增项，本轮补录索引。
-> R6-3 已随 A3 修复。至此 A 批七项（R5-4/R5-5/R5-6/R6-3/R6-4/R12-4/R14-2）与 D 批 R12-6 全部"已修复"；
-> R12-7 仍为独立 low 遗留。
-> **第十五轮（verifier）更新**：R6-2 改"部分覆盖"（A1/A3 已补真实 UnixStream 单测，缺口收窄为
-> accept 轮询/空闲维护端到端）；V-23 描述更新为当前实现（`IpSet` 只存合法 `IpAddr`，已无
-> `invalid_text`）；R15-1/2/3/6 均为文档过时表述修正；R15-4/R15-5 已随 t7 修复并补入索引（见上表）。
+> R6-3 已随 A3 修复。至此 A 批七项（R5-4/R5-5/R5-6/R6-3/R6-4/R12-4/R14-2）与 D 批 R12-6 全部"已修复"。
+> **第十五轮（verifier）更新**：R6-2 曾为"部分覆盖"（A1/A3 已补真实 UnixStream 单测），低清理 t12
+> 补齐 listener accept/空闲维护端到端后已改"已修复"；V-23 描述更新为当前实现（`IpSet` 只存合法
+> `IpAddr`，已无 `invalid_text`）；R15-1/2/3/6 均为文档过时表述修正；R15-4/R15-5 已随 t7 修复并补入索引（见上表）。
 > **B 批（t9+t10）更新**：R8-4/R8-5/R8-6/R9-3 已随 t9 修复；R9-2/R9-4/R9-5/R12-7 已随 t10 修复，
-> 八条均改为"已修复"（见上表）。R9-2/R9-4/R9-5 的自测分别为 15/15、13/13、13/13；R12-7 新增
+> 八条均改为"已修复"（见上表）。R9-2/R9-4/R9-5 的自测分别为 15/15、13/13、15/15；R12-7 新增
 > 12 个 PCAP 并通过字节断言 30 组。
+> **low-cleanup 收口（t12/t13/t14）**：R6-2 随 t12 改为"已修复"（两条 listener 端到端测试），
+> R11-1 随 t13 改为"已修复"（YARA 目录级缓存指纹），R12-2 标"已接受基线（见 §11）"。
+> 至此本索引 **0 条待修**；R12-2 作为已接受基线单列，不计入待修数，但棘轮规则（新增即 CI FAIL、
+> 修复须同步收缩基线）继续生效。
 
 ---
 

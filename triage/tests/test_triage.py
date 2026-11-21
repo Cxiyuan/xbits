@@ -687,6 +687,124 @@ class TriageTests(unittest.TestCase):
             else:
                 tmod._YARA_CACHE[cache_key] = old_entry
 
+    # ---- R11-1：缓存键必须覆盖 include 依赖（方案 b：规则目录级指纹） ----
+    class _FakeYara:
+        """不依赖 yara-python 的假编译器：只数 compile 调用次数。"""
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def compile(self, *, filepath=None, source=None):
+            self.calls += 1
+            return object()
+
+    def test_yara_cache_invalidates_on_included_file_change_or_add(self) -> None:
+        """R11-1：被 include 文件 mtime 变化 / 新增被 include 文件 → 缓存失效重编译；
+        无变化 → 命中缓存（同一 compiled 对象）。用假编译器，无需安装 yara-python。"""
+        import triage.triage as tmod
+
+        rules_dir = os.path.join(self.tmp, "inc_rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        shared = os.path.join(rules_dir, "shared.inc")  # 非 .yar，只能靠 include 依赖入指纹
+        with open(shared, "w", encoding="utf-8") as fh:
+            fh.write("rule shared_probe { condition: true }\n")
+        main = os.path.join(rules_dir, "main.yar")
+        with open(main, "w", encoding="utf-8") as fh:
+            fh.write('include "shared.inc"\nrule main_probe { condition: true }\n')
+        # 另一条规则引用尚不存在的 include 目标，用于验证"新增被 include 文件"→失效
+        optional = os.path.join(rules_dir, "optional.inc")
+        second = os.path.join(rules_dir, "second.yar")
+        with open(second, "w", encoding="utf-8") as fh:
+            fh.write('include "optional.inc"\nrule second_probe { condition: true }\n')
+
+        cache_key = os.path.abspath(rules_dir)
+        old_entry = tmod._YARA_CACHE.pop(cache_key, None)
+        fake = self._FakeYara()
+        try:
+            c1, f1, u1 = tmod._compiled_yara_rules(fake, rules_dir)
+            self.assertEqual(fake.calls, 2, "两个根规则首次各编译一次")
+            self.assertEqual((f1, u1), ([], []))
+
+            # 无变化 → 命中缓存，返回同一 compiled 列表（同一实例）
+            c2, _, _ = tmod._compiled_yara_rules(fake, rules_dir)
+            self.assertIs(c1, c2, "无变化必须命中同一缓存对象")
+            self.assertEqual(fake.calls, 2, "缓存命中不得重复编译")
+
+            # 新增被 include 的文件（之前不存在）→ 签名变化 → 重编译
+            with open(optional, "w", encoding="utf-8") as fh:
+                fh.write("rule optional_probe { condition: true }\n")
+            c3, _, _ = tmod._compiled_yara_rules(fake, rules_dir)
+            self.assertIsNot(c1, c3, "新增被 include 文件后必须重编译")
+            self.assertEqual(fake.calls, 4, "新增 include 目标后两个根规则重编译")
+
+            # 被 include 文件 mtime 变化（规则文件自身 mtime/size 不变）→ 必须重编译
+            mtime = os.stat(shared).st_mtime + 10
+            os.utime(shared, (mtime, mtime))
+            c4, _, _ = tmod._compiled_yara_rules(fake, rules_dir)
+            self.assertIsNot(c3, c4, "include 目标 mtime 变化必须使缓存失效")
+            self.assertEqual(fake.calls, 6)
+
+            # 再次调用无变化 → 命中 c4
+            c5, _, _ = tmod._compiled_yara_rules(fake, rules_dir)
+            self.assertIs(c4, c5)
+            self.assertEqual(fake.calls, 6)
+        finally:
+            if old_entry is None:
+                tmod._YARA_CACHE.pop(cache_key, None)
+            else:
+                tmod._YARA_CACHE[cache_key] = old_entry
+
+    def test_yara_include_outside_rules_dir_is_degraded_not_silent(self) -> None:
+        """R11-1：include 目标越出 rules_dir → 该规则不编译、unreadable_errors 点名，
+        _yara_scan 因此 ok=False + degraded。"""
+        import triage.triage as tmod
+
+        base = os.path.join(self.tmp, "outside_inc")
+        rules_dir = os.path.join(base, "rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        outside = os.path.join(base, "outside.inc")
+        with open(outside, "w", encoding="utf-8") as fh:
+            fh.write("rule outside_probe { condition: true }\n")
+        main = os.path.join(rules_dir, "main.yar")
+        with open(main, "w", encoding="utf-8") as fh:
+            fh.write('include "../outside.inc"\nrule main_probe { condition: true }\n')
+
+        cache_key = os.path.abspath(rules_dir)
+        old_entry = tmod._YARA_CACHE.pop(cache_key, None)
+        fake = self._FakeYara()
+        try:
+            compiled, failed, unreadable = tmod._compiled_yara_rules(fake, rules_dir)
+            self.assertEqual(compiled, [], "越界 include 的规则不得编译")
+            self.assertEqual(fake.calls, 0, "越界 include 必须在编译前被拒绝")
+            self.assertTrue(
+                any("include-outside-rules-dir" in item for item in unreadable),
+                f"越界 include 必须进 unreadable_errors: {unreadable}",
+            )
+        finally:
+            if old_entry is None:
+                tmod._YARA_CACHE.pop(cache_key, None)
+            else:
+                tmod._YARA_CACHE[cache_key] = old_entry
+
+    def test_yara_include_outside_marks_engine_degraded(self) -> None:
+        """R11-1 端到端：越界 include 在 analyze 输出里必须是 ok=False + degraded（不静默）。"""
+        import importlib.util
+
+        if importlib.util.find_spec("yara") is None:
+            self.skipTest("yara-python 未安装（stdlib 路径）")
+        base = os.path.join(self.tmp, "outside_inc_scan")
+        rules_dir = os.path.join(base, "rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        with open(os.path.join(base, "outside.inc"), "w", encoding="utf-8") as fh:
+            fh.write("rule outside_probe { condition: true }\n")
+        with open(os.path.join(rules_dir, "main.yar"), "w", encoding="utf-8") as fh:
+            fh.write('include "../outside.inc"\nrule main_probe { condition: true }\n')
+        sample = write_tmp(self.tmp, "outside_sample.php", b"<?php echo 1; ?>\n")
+        r = analyze(sample, rules_dir=rules_dir)
+        st = r["engine_status"]["yara"]
+        self.assertFalse(st["ok"], f"越界 include 必须 ok=False: {st}")
+        self.assertTrue(r["degraded"], "越界 include 必须置顶层 degraded=True")
+        self.assertIn("include-outside-rules-dir", st["error"] or "", st)
+
     def test_hash_intel_local_match_marks_malicious(self) -> None:
         data = b"\x7fELF\x02\x01\x01\x00 suspicious payload"
         path = write_tmp(self.tmp, "z.bin", data)

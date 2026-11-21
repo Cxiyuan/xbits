@@ -16,6 +16,9 @@ use crate::model::{HookEvent, Rule};
 const MAINTENANCE_TICK: Duration = Duration::from_millis(200);
 /// accept 空闲时的轮询间隔（无连接时也要按 tick 推进维护，但不忙等）。
 const ACCEPT_IDLE_SLEEP: Duration = Duration::from_millis(20);
+/// listener 同时服务的活动连接上限（R6-2）：有界，避免连接洪泛耗尽内存；
+/// 超限只丢弃新连接并打印，不影响已接入连接。
+const MAX_ACTIVE_CONNECTIONS: usize = 256;
 /// hook 行缓冲的单行上限（R6-4）。
 ///
 /// 正常 hook 事件远小于该值：Suricata EVE 的 payload / HTTP body 在分析层受
@@ -303,10 +306,17 @@ impl StatsEmitter {
         }
     }
 
-    /// R15-5：`serve_stream` 在检测到新的超长行丢弃时调用（增量累计）。
-    fn record_line_drops(&mut self, lines: &LineBuffer) {
-        self.lines_dropped = self.lines_dropped.max(lines.dropped_lines);
-        self.lines_dropped_bytes = self.lines_dropped_bytes.max(lines.dropped_bytes);
+    /// R15-5：多连接事件循环按连接累计新的丢弃量（增量累加）。
+    fn record_line_drops(&mut self, lines: u64, bytes: u64) {
+        self.lines_dropped = self.lines_dropped.saturating_add(lines);
+        self.lines_dropped_bytes = self.lines_dropped_bytes.saturating_add(bytes);
+    }
+
+    /// R15-5：用「当前所有连接的总丢弃数」覆盖式写入（单调不减），
+    /// 供 listener 事件循环在活动连接集合变化时避免重复累加/漏计。
+    fn set_line_drops_total(&mut self, lines: u64, bytes: u64) {
+        self.lines_dropped = self.lines_dropped.max(lines);
+        self.lines_dropped_bytes = self.lines_dropped_bytes.max(bytes);
     }
 
     fn maybe_emit(
@@ -656,6 +666,9 @@ fn handle_line<W: Write + ?Sized>(
 /// 循环顶部按 `maintenance_tick` 截止时间检查，即使读取一直有数据也按时调用
 /// [`maintenance`]（降级告警照常写回 `writer` 并投递流水线）。超时分支仍保留一次维护，
 /// 保证空闲连接也按 tick 推进。
+/// 生产 listener 已改用 [`run_listener_event_loop`]（多连接轮询）；本函数保留为
+/// 单连接参考实现，被下面的 UnixStream 单测直接调用（R6-3/R6-4 回归）。
+#[allow(dead_code)]
 fn serve_stream<W: Write + ?Sized>(
     stream: UnixStream,
     engine: &mut Engine,
@@ -671,6 +684,8 @@ fn serve_stream<W: Write + ?Sized>(
     // R6-4：残留半行缓冲带单行上限；超长行整行丢弃并计数，连接继续服务后续行。
     let mut lines = LineBuffer::new();
     let mut reported_drops: u64 = 0;
+    let mut stats_dropped_lines: u64 = 0;
+    let mut stats_dropped_bytes: u64 = 0;
     let mut last_maintenance = Instant::now();
     let mut chunk = [0u8; 8192];
     loop {
@@ -705,7 +720,13 @@ fn serve_stream<W: Write + ?Sized>(
                 }
                 report_line_drops(&lines, &mut reported_drops);
                 // R15-5：丢弃计数进 stats（限流 stderr 之外的稳定可解析出口）。
-                stats.record_line_drops(&lines);
+                let new_lines = lines.dropped_lines.saturating_sub(stats_dropped_lines);
+                let new_bytes = lines.dropped_bytes.saturating_sub(stats_dropped_bytes);
+                if new_lines > 0 || new_bytes > 0 {
+                    stats.record_line_drops(new_lines, new_bytes);
+                    stats_dropped_lines = lines.dropped_lines;
+                    stats_dropped_bytes = lines.dropped_bytes;
+                }
             }
             Err(err)
                 if err.kind() == io::ErrorKind::WouldBlock
@@ -724,6 +745,245 @@ fn serve_stream<W: Write + ?Sized>(
         }
     }
     Ok(())
+}
+
+/// 事件循环里一个已接入连接的状态（R6-2）：非阻塞读取 + 跨轮询保留的半行缓冲。
+struct ActiveConnection {
+    stream: UnixStream,
+    lines: LineBuffer,
+    /// 已写进 StatsEmitter 的累计丢弃数（避免每轮重复累加）。
+    stats_dropped_lines: u64,
+    stats_dropped_bytes: u64,
+    reported_drops: u64,
+}
+
+enum PollOutcome {
+    Data,
+    Idle,
+    Eof,
+}
+
+impl ActiveConnection {
+    fn new(stream: UnixStream) -> io::Result<Self> {
+        stream.set_nonblocking(true)?;
+        Ok(Self {
+            stream,
+            lines: LineBuffer::new(),
+            stats_dropped_lines: 0,
+            stats_dropped_bytes: 0,
+            reported_drops: 0,
+        })
+    }
+
+    /// 非阻塞读**一次**（最多一个 chunk），保证多连接轮询公平、accept 不被单个连接饿死。
+    fn poll_once<W: Write + ?Sized>(
+        &mut self,
+        chunk: &mut [u8],
+        engine: &mut Engine,
+        pipeline: Option<&AnalysisPipeline>,
+        writer: &mut W,
+        stats: &mut StatsEmitter,
+    ) -> io::Result<PollOutcome> {
+        match self.stream.read(chunk) {
+            Ok(0) => Ok(PollOutcome::Eof),
+            Ok(n) => {
+                for line_bytes in self.lines.push(&chunk[..n]) {
+                    let line = String::from_utf8_lossy(&line_bytes);
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    handle_line(trimmed, engine, pipeline, writer)?;
+                }
+                report_line_drops(&self.lines, &mut self.reported_drops);
+                // R15-5：按连接累计写入 stats（多连接时由下方 totals 汇总）。
+                let new_lines = self
+                    .lines
+                    .dropped_lines
+                    .saturating_sub(self.stats_dropped_lines);
+                let new_bytes = self
+                    .lines
+                    .dropped_bytes
+                    .saturating_sub(self.stats_dropped_bytes);
+                if new_lines > 0 || new_bytes > 0 {
+                    stats.record_line_drops(new_lines, new_bytes);
+                    self.stats_dropped_lines = self.lines.dropped_lines;
+                    self.stats_dropped_bytes = self.lines.dropped_bytes;
+                }
+                Ok(PollOutcome::Data)
+            }
+            Err(err)
+                if err.kind() == io::ErrorKind::WouldBlock
+                    || err.kind() == io::ErrorKind::TimedOut =>
+            {
+                Ok(PollOutcome::Idle)
+            }
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => Ok(PollOutcome::Idle),
+            Err(err) => {
+                eprintln!("xbits: hook read error: {err}");
+                Ok(PollOutcome::Eof)
+            }
+        }
+    }
+
+    fn finish<W: Write + ?Sized>(
+        &mut self,
+        engine: &mut Engine,
+        pipeline: Option<&AnalysisPipeline>,
+        writer: &mut W,
+    ) -> io::Result<()> {
+        if let Some(line_bytes) = self.lines.finish() {
+            let line = String::from_utf8_lossy(&line_bytes);
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                handle_line(trimmed, engine, pipeline, writer)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// accept + 多连接轮询事件循环（R6-2）。
+///
+/// 旧实现一次只 `serve_stream` 一条连接：第一条连接不发数据也不断开时，accept 永远
+/// 不会执行，第二条连接即使已在 backlog 里也拿不到服务。这里改成非阻塞 accept +
+/// 轮询所有连接（每连接每轮最多读一个 chunk），维护 tick 在外层独立推进：
+/// - 空闲连接不会饿死 accept，也不会饿死维护（每 `maintenance_tick` 执行 `maintenance`）；
+/// - 引擎仍是单线程 `&mut Engine`，不引入跨线程锁，保持判定顺序与单一状态源；
+/// - `stop` 仅测试注入（生产传 None），用于让端到端测试优雅收尾。
+fn run_listener_event_loop<W: Write + ?Sized>(
+    socket_path: &str,
+    mut engine: Engine,
+    writer: &mut W,
+    pipeline: Option<&AnalysisPipeline>,
+    mut stats: StatsEmitter,
+    maintenance_tick: Duration,
+    stop: Option<&std::sync::atomic::AtomicBool>,
+) -> io::Result<()> {
+    let path = Path::new(socket_path);
+    if path.exists() {
+        let ft = std::fs::metadata(path)?.file_type();
+        if !ft.is_socket() {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                format!("{socket_path} exists and is not a Unix socket"),
+            ));
+        }
+        std::fs::remove_file(path)?;
+    }
+    let listener = UnixListener::bind(path)?;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o666))?;
+    let _guard = SocketFile {
+        path: path.to_path_buf(),
+    };
+    listener.set_nonblocking(true)?;
+
+    let mut connections: Vec<ActiveConnection> = Vec::new();
+    let mut last_maintenance = Instant::now();
+    // R15-5：已关闭连接的累计丢弃数（事件循环全程单调累加，避免关闭后从 stats 回落）。
+    let mut closed_dropped_lines: u64 = 0;
+    let mut closed_dropped_bytes: u64 = 0;
+    let mut chunk = [0u8; 8192];
+    loop {
+        if let Some(stop) = stop {
+            if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
+            }
+        }
+        stats.maybe_emit(pipeline, &engine)?;
+        if last_maintenance.elapsed() >= maintenance_tick {
+            maintenance(&mut engine, pipeline, writer)?;
+            last_maintenance = Instant::now();
+        }
+
+        let mut did_work = false;
+        // 非阻塞 drain accept：第二条连接不会被第一条空闲连接挡住。
+        loop {
+            match listener.accept() {
+                Ok((stream, _)) => {
+                    ensure_pipeline_healthy(pipeline, Some(&engine))?;
+                    if connections.len() >= MAX_ACTIVE_CONNECTIONS {
+                        eprintln!(
+                            "xbits: hook active connection limit reached ({MAX_ACTIVE_CONNECTIONS}); dropping new connection"
+                        );
+                        drop(stream);
+                    } else {
+                        connections.push(ActiveConnection::new(stream)?);
+                    }
+                    did_work = true;
+                }
+                Err(err) if err.kind() == io::ErrorKind::WouldBlock => break,
+                Err(err) if err.kind() == io::ErrorKind::Interrupted => break,
+                Err(err) => return Err(err),
+            }
+        }
+
+        // 轮询所有连接：每轮每连接最多读一个 chunk，避免某条连接独占循环。
+        let mut i = 0;
+        while i < connections.len() {
+            match connections[i].poll_once(&mut chunk, &mut engine, pipeline, writer, &mut stats)? {
+                PollOutcome::Data => {
+                    did_work = true;
+                    i += 1;
+                }
+                PollOutcome::Idle => i += 1,
+                PollOutcome::Eof => {
+                    connections[i].finish(&mut engine, pipeline, writer)?;
+                    closed_dropped_lines = closed_dropped_lines
+                        .saturating_add(connections[i].lines.dropped_lines);
+                    closed_dropped_bytes = closed_dropped_bytes
+                        .saturating_add(connections[i].lines.dropped_bytes);
+                    connections.swap_remove(i);
+                    did_work = true;
+                }
+            }
+        }
+        // R15-5：stats 里的 hook 行丢弃是跨连接累计；活动连接逐连接累加，关闭时并入 closed_*。
+        // 用「当前总丢弃数」覆盖式写入（单调不减），避免多连接下重复累加。
+        let mut total_lines = 0u64;
+        let mut total_bytes = 0u64;
+        for conn in &connections {
+            total_lines = total_lines.saturating_add(conn.lines.dropped_lines);
+            total_bytes = total_bytes.saturating_add(conn.lines.dropped_bytes);
+        }
+        stats.set_line_drops_total(
+            total_lines.saturating_add(closed_dropped_lines),
+            total_bytes.saturating_add(closed_dropped_bytes),
+        );
+
+        if !did_work {
+            std::thread::sleep(ACCEPT_IDLE_SLEEP);
+        }
+    }
+
+    // 停止时收尾所有连接（处理无换行的尾行），测试可据此安全 join。
+    for mut conn in connections {
+        conn.finish(&mut engine, pipeline, writer)?;
+    }
+    Ok(())
+}
+
+/// 测试专用 listener 入口（R6-2）：可注入短 TTL / tick 与 stop 标志。
+/// 生产入口仍用 60s TTL + 200ms tick（`run_hook_listener_full` 不暴露这些参数）。
+#[cfg(test)]
+fn run_hook_listener_for_test<W: Write + ?Sized>(
+    socket_path: &str,
+    rules: Vec<Rule>,
+    writer: &mut W,
+    ttl: Duration,
+    maintenance_tick: Duration,
+    stop: &std::sync::atomic::AtomicBool,
+) -> io::Result<()> {
+    let engine = Engine::new(rules).with_ttl(ttl);
+    run_listener_event_loop(
+        socket_path,
+        engine,
+        writer,
+        None,
+        StatsEmitter::disabled(),
+        maintenance_tick,
+        Some(stop),
+    )
 }
 
 struct SocketFile {
@@ -790,24 +1050,7 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
             stats_config.interval
         );
     }
-    let mut stats = StatsEmitter::new(stats_config)?;
-    let path = Path::new(socket_path);
-    if path.exists() {
-        let ft = std::fs::metadata(path)?.file_type();
-        if !ft.is_socket() {
-            return Err(io::Error::new(
-                io::ErrorKind::AlreadyExists,
-                format!("{socket_path} exists and is not a Unix socket"),
-            ));
-        }
-        std::fs::remove_file(path)?;
-    }
-
-    let listener = UnixListener::bind(path)?;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o666))?;
-    let _guard = SocketFile {
-        path: path.to_path_buf(),
-    };
+    let stats = StatsEmitter::new(stats_config)?;
 
     let mut engine = Engine::new(rules);
     if let Some(ref intel) = intel {
@@ -840,42 +1083,77 @@ pub fn run_hook_listener_full<W: Write + ?Sized>(
         intel_state
     );
 
-    // R5-1：listener 需要"无事件也按 tick 维护"。accept 设为非阻塞，用短睡眠轮询，
-    // 空闲时按 MAINTENANCE_TICK 节流地推进引擎维护（挂起告警的 TTL 不再依赖下一条事件）。
-    listener.set_nonblocking(true)?;
-    let mut last_maintenance = Instant::now();
-    loop {
-        // R5-5：无连接时的统计节拍与维护节拍一起推进（正常态也有可观测出口）。
-        stats.maybe_emit(pipeline, &engine)?;
-        match listener.accept() {
-            Ok((stream, _)) => {
-                // 新连接时复查分析流水线健康（线程可能已在无流量期间退出）。
-                ensure_pipeline_healthy(pipeline, Some(&engine))?;
-                serve_stream(
-                    stream,
-                    &mut engine,
-                    pipeline,
-                    writer,
-                    &mut stats,
-                    MAINTENANCE_TICK,
-                )?;
-            }
-            Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
-                if last_maintenance.elapsed() >= MAINTENANCE_TICK {
-                    maintenance(&mut engine, pipeline, writer)?;
-                    last_maintenance = Instant::now();
-                }
-                std::thread::sleep(ACCEPT_IDLE_SLEEP);
-            }
-            Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
-            Err(err) => return Err(err),
-        }
-    }
+    // R5-1/R6-2：非阻塞 accept + 多连接轮询；维护 tick 在事件循环外层独立推进，
+    // 空闲连接既不会饿死 accept，也不会饿死维护。
+    run_listener_event_loop(
+        socket_path,
+        engine,
+        writer,
+        pipeline,
+        stats,
+        MAINTENANCE_TICK,
+        None,
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    /// 测试用共享输出缓冲：listener 线程写、测试主线程随时读（R6-2 端到端）。
+    #[derive(Clone, Default)]
+    struct SharedBuf(Arc<Mutex<Vec<u8>>>);
+
+    impl SharedBuf {
+        fn text(&self) -> String {
+            let guard = self.0.lock().expect("shared buf");
+            String::from_utf8_lossy(guard.as_slice()).into_owned()
+        }
+    }
+
+    impl Write for SharedBuf {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.0.lock().expect("shared buf").extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn temp_socket_path(tag: &str) -> PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "xbits-hook-{tag}-{}-{nanos}.sock",
+            std::process::id()
+        ))
+    }
+
+    fn wait_for_socket(path: &Path) {
+        for _ in 0..300 {
+            if path.exists() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        panic!("listener socket not created: {}", path.display());
+    }
+
+    fn wait_until<F: Fn() -> bool>(timeout: Duration, predicate: F) -> bool {
+        let start = Instant::now();
+        while start.elapsed() < timeout {
+            if predicate() {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        predicate()
+    }
 
     #[test]
     fn line_buffer_splits_complete_lines_across_chunks() {
@@ -1080,6 +1358,112 @@ mod tests {
         );
     }
 
+    // ---- R6-2：listener 外层 accept / 空闲维护的端到端覆盖（真实 Unix socket） ----
+
+    #[test]
+    fn listener_idle_connection_still_runs_maintenance_tick() {
+        // R6-2 场景①：客户端发一条 alert 后保持空闲（不断开、不再发数据），
+        // listener 外层维护 tick 仍须在 TTL 后输出 degraded=context-missing。
+        let ctx_rule: Rule = serde_json::from_str(
+            r#"{"id":"r-ctx","name":"ctx","source":"suricata","kind":"alert","sid_in":[9103001],"score":20,"threshold":20,"reason":"ctx","require_context":true}"#,
+        )
+        .expect("ctx rule");
+        let path = temp_socket_path("idle-maint");
+        let path_string = path.to_string_lossy().into_owned();
+        let out = SharedBuf::default();
+        let out_thread = out.clone();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop_thread = stop.clone();
+        let handle = std::thread::spawn(move || {
+            let mut writer = out_thread;
+            run_hook_listener_for_test(
+                &path_string,
+                vec![ctx_rule],
+                &mut writer,
+                Duration::from_millis(20),
+                Duration::from_millis(5),
+                &stop_thread,
+            )
+        });
+
+        wait_for_socket(&path);
+        let mut client = UnixStream::connect(&path).expect("connect");
+        client
+            .write_all(
+                br#"{"source":"suricata","kind":"alert","sid":9103001,"signature":"SQL","community_id":"1:cid="}"#,
+            )
+            .expect("write alert");
+        client.write_all(b"\n").expect("newline");
+        // 保持连接空闲（不发数据、不 shutdown）。
+        let ok = wait_until(Duration::from_secs(3), || {
+            out.text().contains("\"degraded\":\"context-missing\"")
+        });
+        assert!(
+            ok,
+            "空闲连接期间 listener 维护 tick 必须执行并输出降级告警: {}",
+            out.text()
+        );
+
+        stop.store(true, Ordering::Relaxed);
+        handle.join().expect("listener thread").expect("listener ok");
+        drop(client);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn listener_accepts_second_connection_while_first_idle() {
+        // R6-2 场景②：第一条连接不发任何数据直接空闲，accept 侧仍能接入并服务第二个连接
+        // （旧单连接 serve_stream 实现会一直卡在第一条连接，第二个连接永远不被 accept）。
+        let direct_rule: Rule = serde_json::from_str(
+            r#"{"id":"r-direct","name":"direct","source":"suricata","kind":"alert","sid_in":[9103002],"score":20,"threshold":20,"reason":"direct"}"#,
+        )
+        .expect("direct rule");
+        let path = temp_socket_path("idle-accept");
+        let path_string = path.to_string_lossy().into_owned();
+        let out = SharedBuf::default();
+        let out_thread = out.clone();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop_thread = stop.clone();
+        let handle = std::thread::spawn(move || {
+            let mut writer = out_thread;
+            run_hook_listener_for_test(
+                &path_string,
+                vec![direct_rule],
+                &mut writer,
+                Duration::from_secs(60),
+                Duration::from_millis(5),
+                &stop_thread,
+            )
+        });
+
+        wait_for_socket(&path);
+        let idle_first = UnixStream::connect(&path).expect("first connect");
+        // 让 listener 先 accept 并进入对第一条连接的轮询（保持空闲）。
+        std::thread::sleep(Duration::from_millis(80));
+
+        let mut second = UnixStream::connect(&path).expect("second connect");
+        second
+            .write_all(
+                br#"{"source":"suricata","kind":"alert","sid":9103002,"signature":"DIRECT","community_id":"1:cid2="}"#,
+            )
+            .expect("write second alert");
+        second.write_all(b"\n").expect("newline");
+        let ok = wait_until(Duration::from_secs(3), || {
+            out.text().contains("\"signature_id\":9103002")
+        });
+        assert!(
+            ok,
+            "第一条空闲连接不得饿死 accept：第二个连接必须被服务并产出告警: {}",
+            out.text()
+        );
+
+        stop.store(true, Ordering::Relaxed);
+        handle.join().expect("listener thread").expect("listener ok");
+        drop(idle_first);
+        drop(second);
+        let _ = std::fs::remove_file(&path);
+    }
+
     #[test]
     fn stats_json_has_stable_schema_and_fields() {
         // R5-5：单行 JSON 的字段固定（无流水线时 analysis=null，schema 仍在）。
@@ -1208,7 +1592,7 @@ mod tests {
         for _ in 0..64 {
             assert!(lines.push(&chunk).is_empty());
         }
-        emitter.record_line_drops(&lines);
+        emitter.set_line_drops_total(lines.dropped_lines, lines.dropped_bytes);
         let snapshot = self::stats_snapshot_with_drops(
             None,
             &engine,
@@ -1230,7 +1614,7 @@ mod tests {
         // 对照（R15-5 修正）：这条超长行同样应被丢弃（不产出行），且丢弃计数
         // 递增到 2；"正常行不受影响"改用下方的小行验证。
         assert!(got.is_empty(), "超过 MAX_LINE_BYTES 的行必须被丢弃");
-        emitter.record_line_drops(&lines);
+        emitter.set_line_drops_total(lines.dropped_lines, lines.dropped_bytes);
         let snapshot = self::stats_snapshot_with_drops(
             None,
             &engine,
@@ -1248,7 +1632,7 @@ mod tests {
         small.push(b'\n');
         let got_small = lines.push(&small);
         assert_eq!(got_small.len(), 1, "正常行不受影响（对照）");
-        emitter.record_line_drops(&lines);
+        emitter.set_line_drops_total(lines.dropped_lines, lines.dropped_bytes);
         assert_eq!(emitter.lines_dropped, 2, "正常行不得计入丢弃");
 
         // 序列化进单行 JSON 的字段可见。

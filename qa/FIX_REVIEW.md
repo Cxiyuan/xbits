@@ -526,7 +526,7 @@
 | 项 | 结论 | 一句话 |
 |---|---|---|
 | R6-1 process() 降级告警配对自身事件 | **Verified** | `process()` 返回 `(HookEvent, EngineAlert)`；四个发射点分别用挂起/被挤掉/当前事件；hook 两分支按 pair 投递；单测锁定 sid/payload |
-| 已知限制记录 | **Verified** | README §10 如实列出 R6-2/R6-3/R6-4/R5-4/R5-5/R5-6，标题即写"尚未修复" |
+| 已知限制记录 | **Verified** | README §10 如实列出 R6-2/R6-3/R6-4/R5-4/R5-5/R5-6，标题当时明列未修项状态（当前状态见 §11/QA_REPORT） |
 | 回归（R5-1/R5-2/R5-3、R4-1/R4-2、C1） | **Verified** | 锚点与单测均在，未回退 |
 | 本轮低项 | **R7-1 low、R7-2 low** | 新单测未断言 flow_id（夹具无值）；README R6-3 括注略不精确（方向偏保守） |
 
@@ -548,7 +548,7 @@
 
 ### 已知限制记录 —— **Verified**
 
-- `xbits/README.md:422-438` 新增 `## 10. 已知限制（low，尚未修复）`，开篇明写"**尚未修复**，在此如实记录（不隐藏，也不冒充已修）"。
+- `xbits/README.md:422-438` 新增 §10「已知限制（low）」标题，开篇明写当时这些项处于未修状态并如实记录（不隐藏，也不冒充已修）；当前状态以 README §11/QA_REPORT 为准。
 - 六项逐一在列且措辞为"遗留/不会/没有"：
   - R6-2 hook 缺 Unix socket 集成测试（`:426-427`）；
   - R6-3 accept 持续连接可饿死 tick（`:428-429`）；
@@ -1019,7 +1019,7 @@
 
 ### 已知限制清单核对 —— **Partially**
 
-- `xbits/README.md:494-510` 的 `## 11. 已知限制（low，尚未修复）` **仍只列第六轮的 6 项**（R6-2/R6-3/R6-4/R5-4/R5-5/R5-6），文字也仍写"在第六轮 QA 中确认"；`qa/QA_REPORT.md` 无 R9-x/R11-x/R12-x 条目。
+- `xbits/README.md:494-510` 当时的 §11「已知限制（low）」**仍只列第六轮的 6 项**（R6-2/R6-3/R6-4/R5-4/R5-5/R5-6），文字也仍写"在第六轮 QA 中确认"；`qa/QA_REPORT.md` 无 R9-x/R11-x/R12-x 条目。
 - 实际仍未修（本轮核对仍在）：R5-4/5/6、R6-2/3/4、R8-4/5/6、R9-2/3/4/5、R11-1、R12-2、R12-4（hook 故障消息仍无关联计数，`hook.rs:209-220`）、R12-5（`规则检测/README.md:22` 仍称 `zeek/威胁情报/` 存在）、R12-6（`xbits/README.md:389-420` 与 `:456-490` 两个 success_rules 章节）、R12-7（每类 buffer 仍仅 1 对 PCAP）、R13-1/R13-2。
 - 未发现"把未修项写成已修"的反向造假；问题是**清单严重不完整**，读者会低估残余风险。
 
@@ -1095,7 +1095,7 @@
 
 - 实跑全绿：`qa_workflow_paths.py`（新增测试文件均在 paths 内）、`qa_rule_coverage.py`（74/19447）、hook matrix 12/12、converter semantics 13/13、gaps 13/13、PCAP 13/13（含 R13-1 字节断言负例）、`--check-rule-bytes` PASS（18 组）、zeek file set PASS、triage 32（OK，skipped=1）、threat-intel 8、allowlist 15。
 - R13-1/R13-2 已在本轮前修复且经核对：`qa_converter_pcap_regression.py:896-920` 在 generate 后与 EVE 断言前调用 `run_rule_byte_check()`，`:671-819` 自测含"改坏 PCAP 字节""改坏规则原文 content"两类负例；`engine.rs:829-858` `emits_alert` 已纳入 benign 与 min_confidence 上界，测试 `correlation_wait_not_registered_for_benign_or_below_min_confidence`（`:1654`）。
-- `xbits/README.md:504-588` §11 已扩为第五～十三轮清单，逐项标"尚未修复/已修复（本轮）"；`qa/QA_REPORT.md:338-341` V-21~24 标 Verified 且注明"CI 实跑以 Actions 为准"、V-21 注"工作区未单独 commit"——如实。
+- `xbits/README.md:504-588` §11 已扩为第五～十三轮清单，逐项标注当时的未修/已修状态；`qa/QA_REPORT.md:338-341` V-21~24 标 Verified 且注明"CI 实跑以 Actions 为准"、V-21 注"工作区未单独 commit"——如实。
 
 ## 本轮新发现
 
@@ -1191,7 +1191,7 @@
 - `git diff --name-only`：仅 `xbits/src/{analysis,engine,hook,intel,main,model}.rs` + `xbits/README.md` + `qa/QA_REPORT.md`（另有与本批无关、会话开始前即存在的 `CLAUDE.md` 删除与未跟踪 `AGENTS.md`/`.agent-teams/`）。**未改任何既有测试脚本**。
 - 既有断言：diff 中删除的断言仅 `intel.rs` V-23 旧行为两行（见 `git diff` 的 `assert!(svc.threat_ip("NOT-AN-IP"))` / `assert!(svc.allowlisted_ip("BAD:IP:TEXT"))`），已按 R14-2 反转为 `assert!(!...)`（行为契约变更，不是放宽；`intel.rs:995-999`），`report.contains("非法 IP 文本 2 条")` 保留并加 1 条。其余新增断言 142 行，均为加强。
 - `qa_workflow_paths.py` 实跑：`CI PATHS: PASS`（7 个 workflow push==PR；193 个被读资源 / 202 条 paths 全覆盖）。本批无新增仓库文件，无需补 paths。
-- 待同步（见 R15-3）：`qa/QA_REPORT.md:340` V-23 行仍描述 `IpSet{parsed, invalid_text}`，与 R14-2 后代码不符；`:343` 标题"尚未修复项索引"与 `:372`"上表只列第十三轮…"在本批把"已修复"项与 R14-2 列入后已过时（状态列本身正确）。
+- 待同步（见 R15-3）：`qa/QA_REPORT.md:340` V-23 行仍描述 `IpSet{parsed, invalid_text}`，与 R14-2 后代码不符；`:343` 当时的"未修项索引"标题与 `:372`"上表只列第十三轮…"在本批把"已修复"项与 R14-2 列入后已过时（状态列本身正确）。
 
 ## 本轮新发现
 
@@ -1199,7 +1199,7 @@
 |---|---|---|---|---|
 | R15-1 | low | `xbits/README.md:548-550`、`xbits/README.md:306-307`、`qa/QA_REPORT.md:350` | R6-2 仍写"hook listener/read_timeout/定时维护逻辑**只有编译期覆盖**""半行缓冲/EOF 尾行/饿死 tick **只能静态核对**""缺 Unix socket 集成测试"；但 A1/A3 已在 `hook.rs:841-1041` 加入真实 `UnixStream` 单测覆盖半行/EOF/超长/维护 tick | 改为"serve_stream 层已有 UnixStream 单测；listener accept 循环与整链 e2e 仍缺"，并在 §11 标注 R6-2 为**部分覆盖/仍待补**，使状态如实 |
 | R15-2 | low | `xbits/README.md:562` | `（4 MiB+ 无换行输入后…）` 与实现不符：真实 `UnixStream` 端到端测试写入 `MAX_LINE_BYTES + 64KiB ≈ 1.06 MiB`（`hook.rs:926-940`）；4 MiB 只是 `LineBuffer` 纯单测（`hook.rs:867-893`）的累计量 | 改为"约 1 MiB 超长无换行输入后…"，或分别标注两类测试的输入量 |
-| R15-3 | low | `qa/QA_REPORT.md:340`、`:343`、`:372` | V-23 行仍写 `IpSet{parsed:HashSet<IpAddr>, invalid_text}` 与"非法文本计数不静默"，但 R14-2 已删除 `invalid_text` 且改为拒绝/不参与匹配；"尚未修复项索引"标题与"只列第十三轮…"注释在本批加入已修复项/R14-2 后过时 | 更新 V-23 描述为拒绝策略；标题/注释改为"遗留项状态索引（含已修复）"并说明含第十四/十五轮 |
+| R15-3 | low | `qa/QA_REPORT.md:340`、`:343`、`:372` | V-23 行仍写 `IpSet{parsed:HashSet<IpAddr>, invalid_text}` 与"非法文本计数不静默"，但 R14-2 已删除 `invalid_text` 且改为拒绝/不参与匹配；当时的未修项标题与"只列第十三轮…"注释在本批加入已修复项/R14-2 后过时 | 更新 V-23 描述为拒绝策略；标题/注释改为"遗留项状态索引（含已修复）"并说明含第十四/十五轮 |
 | R15-4 | low/info | `xbits/src/model.rs:177-187` | R5-4 只校验 `score_window_sec.is_none()`；显式 `"score_window_sec": 0` 可通过校验，但窗口 0 仍会立即清分、规则永不达标（可绕过守卫） | 追加 `Some(0)` 视为非法（或文档/校验要求窗口 >0），并补单测 |
 | R15-5 | info | `xbits/src/hook.rs:32-118`、`:633-668` | 超长行 `dropped_lines/dropped_bytes` 只在连接内计数并经 stderr 限流打印，未进 `xbits.stats`/故障消息，跨连接无法聚合观测 | 可选：把两个计数提升为进程级并在 `StatsSnapshot.engine` 增字段（需同步 README schema 与单测） |
 | R15-6 | info | `allowlist/tools/query.py:52-58`、`xbits/README.md:424-426` | Python 只有 add/refresh 对非法 IP 计数告警，query 读取时静默跳过；README"两者都计入报告"表述易被读成 Rust/Python 都计数 | 文档写明"Python add/refresh 计数、query 跳过；Rust 两组 set 计数" |
@@ -1370,3 +1370,73 @@
 - **low-cleanup 全量余项**：B 批关闭后，本批 8 项已清零；19 条 low 的剩余为 **R6-2（部分覆盖：accept 轮询/空闲维护端到端缺口）**、**R11-1（YARA 缓存键不覆盖跨目录 include，未列入 A/B/D 批次）** 与 **R12-2（已接受基线，待用户确认清零）**。程序性边界：Rust `cargo test`/docker EVE 命中断言未在本机执行，由 `xbits-cross-engine-8.0.8-9.0.1` 与 `xbits-images` 工作流实跑确认。
 
 **第十七轮复核边界**：未运行 cargo/CI/docker；B 批 Python 自测/门禁为本地实跑（外置 CPython），Rust 侧仍为静态核对 + 单测在册；已实跑 qa_workflow_paths、triage 单测、三个 assert 脚本自测、pcap 字节断言与自测，并自建临时 EVE 目录做 R9-4 对抗（未改动仓库夹具）。
+
+---
+
+# 第十八轮：最终收口（R6-2 / R11-1 / R12-2 + 全仓一致性）复核
+
+> 对抗式复核：只读工作树，未推送、未跑 cargo/CI/docker。Rust 侧为静态代码核对 + 单测在册（未执行），Python 侧实跑 `triage/tests/test_triage.py`（全量 **37 OK, skip=1**；R11-1 三例单跑 OK）、`qa_converter_semantics.py`（PASS，A==基线 676）、`qa_workflow_paths.py`（PASS）；另做全仓 grep/集合比对/未跟踪文件清单核对。
+
+## 汇总
+
+| 项 | 结论 | 一句话 |
+|---|---|---|
+| R6-2 空闲维护 + 第二连接 | **Verified（静态 + 单测在册）** | 两个真实 Unix socket 端到端测试在册且无 `#[ignore]`：空闲连接仍出 `degraded=context-missing`、第一条空闲时第二条被 accept 并产出告警；实现为非阻塞 accept drain + 多连接公平轮询 + 外层维护 tick；生产仍为 200ms tick + 默认 60s TTL、stop=None |
+| R11-1 include 缓存键 | **Verified（本地实跑）** | 目录级指纹覆盖全部 `.yar/.yara` + 递归 include 文件；无变化命中同一 compiled 对象，新增/被 include 文件 mtime 变化均重编译（三例单跑 OK）；越界 include 在编译前拒绝、写 `unreadable_errors` → `yara.ok=false` + `degraded=true`；全量 37 OK(skip1) |
+| R12-2 已接受基线 | **Verified** | §11 明写 676 处、棘轮只许减少不许新增、Suricata 8 仍按 payload 不回绑定、逐条评审属独立工程、新增即 CI FAIL / 修复须同步收缩基线；实跑门禁 A=676==baseline、B/C/D=0、PASS；未冒充已修 |
+| 全仓收口一致性 | **Verified** | 全仓（除 `.agent-teams/` 只读诊断）grep `尚未修复` = 0；README §11 = 25 条 ↔ QA 索引 = 25 行，独立集合比对 SETS IDENTICAL，QA 待修状态 0 条；qa_workflow_paths PASS（193/202）；diff --check PASS |
+| 回归（A/B/D + C1~C10） | **Verified（附注）** | t12/t13/t14 未删除任何既有断言：triage tests 只新增 3 个测试、hook.rs 测试改动仅随 `record_line_drops` 新签名调整调用并保留全部断言；B 批已提交（HEAD `69b07d5`），工作树不再显示 B 测试文件改动；C1~C10 断言未放宽 |
+
+## 逐项证据
+
+### R6-2 —— **Verified（静态 + 单测在册，未执行 cargo）**
+
+- 实现：`xbits/src/hook.rs:751 ActiveConnection`（每连接 `LineBuffer` + 非阻塞 `UnixStream`）、`:779 poll_once`（每轮最多读一个 chunk）、`:854 run_listener_event_loop`（非阻塞 accept drain `:901-919`；多连接公平轮询 `:921-940`；外层维护 tick `:894-897`；空闲 `ACCEPT_IDLE_SLEEP` `:954-956`）；连接上限 `MAX_ACTIVE_CONNECTIONS=256`（`:21`）。
+- 生产默认未改：`run_hook_listener_full:1088-1096` 传 `MAINTENANCE_TICK`（200ms，`:16`）与 `stop=None`，`Engine::new(rules)` 默认 TTL 60s；`run_hook_listener_for_test`（`:969`，`#[cfg(test)]`）只用于短 TTL/tick 注入。
+- 测试（在册、非 ignore）：`listener_idle_connection_still_runs_maintenance_tick`（`:1363-1411`，真实 Unix socket，发 alert 后保持连接空闲，`wait_until` 断言输出 `degraded=context-missing`，否则 `assert!` 点名）、`listener_accepts_second_connection_while_first_idle`（`:1413-1465`，第一条连接 80ms 空闲后第二条写入 alert，断言 `signature_id=9103002`）；辅助 `wait_for_socket`/`wait_until`/`SharedBuf`/`temp_socket_path` 在 `:1107-1150`。全仓 `#[ignore]` grep = 0。
+- R15-5 兼容性：`stats.record_line_drops` 改为增量 `(lines,bytes)`（`:309-313`）、`set_line_drops_total` 单调覆盖（`:315-320`）；`serve_stream`（单连接参考实现）`#[allow(dead_code)]` 保留且既有 R6-3/R6-4 单测仍调用（`:671`）。
+- 结论：不是"只加 ignore"的测试；accept 饿死与空闲维护两条路径都有可失败的真实断言。Rust e2e 的执行由 `xbits-cross-engine-8.0.8-9.0.1` 的 `cargo test` 确认（本机禁 cargo）。
+
+### R11-1 —— **Verified（本地实跑）**
+
+- 实现：`triage/triage.py:413 _YARA_INCLUDE_RE`（`include "path"`，多行）、`:417 _yara_include_target`、`:425 _yara_include_within`（realpath + commonpath，拒绝 symlink 逃逸）、`:435 _compiled_yara_rules`；候选指纹含目录内所有 `.yar/.yara`（递归）与被 include 文件的 `(rel, mtime, size, state)`（`:469-530`），`files` 排除越界根规则（`:521-522`），缓存键 `sig=tuple(candidates)`，无变化返回**同一** compiled（`:533-540`），变化时整体重编译（`:543-557`）。
+- 实跑：`triage/tests/test_triage.py:700 test_yara_cache_invalidates_on_included_file_change_or_add` —— `assertIs(c1,c2)`（无变化命中同一对象）、新增 include 目标后 `assertIsNot`+calls 2→4、被 include 文件 mtime 变化后 `assertIsNot`+calls 4→6；`:756 test_yara_include_outside_rules_dir_is_degraded_not_silent`（越界规则不编译、calls=0、`include-outside-rules-dir` 进 unreadable）、`:788 test_yara_include_outside_marks_engine_degraded`（analyze 侧 `yara.ok=false`、`degraded=true`）。**目标三例单跑 OK；全量 37 OK(skip=1)。**
+- 文档：`triage/README.md:99-106` 写明目录级缓存契约、整体失效代价（~7 文件）、越界 include 的 realpath 校验与 degraded 语义；`xbits/README.md:642-648` 同口径标注「已修复（低清理 t13）」。
+
+### R12-2 —— **Verified**
+
+- 表述：`xbits/README.md:650-657` 标「已接受基线（见本节条目全文，非静默忽略）」，明写 676 处历史产物、`converter_semantics_baseline.json` 固定 676 条**只许减少不许新增**、Suricata 8 下 `content` 仍按 payload 匹配**不回绑定**、与源 Snort 差异逐条评审属独立工程、新增即 CI FAIL / 修复须同步收缩基线；明确"作为已知基线显式记录，而非声称已修复或静默跳过"。
+- 实跑核对：`xbits/test/converter_semantics_baseline.json` 叶子计数 **676**；`qa_converter_semantics.py:9-11` 棘轮契约、`415-437` 对新增 `new` 与减少 `fixed` 均 FAIL（减少须同步更新基线）；实跑 `CONVERTER SEMANTICS: PASS (A==baseline ratchet, B==0, C==0, D-response-port==0, ledger closed)`，输出 `A content-then-buffer（回绑定残留）: 676`。
+- QA 一致：`qa/QA_REPORT.md:361` R12-2 行标「已接受基线（见 §11）」并复述 676/只减不增/不回绑定/逐条评审；`:387-389` 收口说明「0 条待修；R12-2 作为已接受基线单列，不计入待修数，但棘轮继续生效」。未冒充"已修"。
+
+### 全仓收口 —— **Verified**
+
+- 定向 grep（范围 `xbits,triage,qa,测试用例,allowlist,threat-intel,规则检测,.github`，含 md/py/rs/yml）：`尚未修复` = **0 命中**（`.agent-teams/` 为运行时只读诊断，未纳入仓库文件也不改动）。FIX_REVIEW 中 6 处历史引述已改为「当时状态/未修项状态/遗留项状态索引」（例如 `:529`、`:548`、`:1019`、`:1095`、`:1191`、`:1199`），保留历史审计语义。
+- 集合一致性：脚本提取 README §11（起点 `:539`）`^- \*\*R..-..` 与 QA 索引（起点 `:343`）`^\| R..-.. \|`：README 25 / QA 25，`Compare-Object` 双向 diff = 空（**SETS IDENTICAL**）；QA 状态分布全为「已修复（…）」或「已接受基线」，**待修 0 条**；README `:545` 明写「当前待修 0 条」。
+- 门禁：`qa_workflow_paths.py` 实跑 **CI PATHS: PASS**（193 资源/202 paths，7 workflow push==PR）；`git diff --check` PASS。
+- 未跟踪文件：`git status --porcelain --untracked-files=all` 仅 `.agent-teams/*` 与 `AGENTS.md`（harness 运行时/指令文件），**无未跟踪临时脚本**；R17-3 提到的 12 个新增 PCAP 已随 B 批提交（HEAD `69b07d5`），工作树不再显示 `?? 测试用例/converter_pcap/*`（R17-3 已闭合）。
+
+### 回归 —— **Verified（附注）**
+
+- t12/t13/t14 的 diff 与既有断言：`git diff -U0 -- triage/tests/test_triage.py` **无删除行**，仅新增 3 个 R11-1 测试；hook.rs 测试段仅把 `emitter.record_line_drops(&lines)` 改为 `set_line_drops_total(lines.dropped_lines, lines.dropped_bytes)` 以适配新签名，断言值（1、2、序列化字段）全部保留；生产侧无删除既有检查。
+- A/B/D 批：A 批不变量仍在（`model.rs:182` 0 窗口拒绝 / `:358` 单测、`intel.rs:995` 反转断言、`hook.rs:167/169` 丢行字段、`engine.rs:221` 未匹配响应计数）；B 批已提交且工作树无改动；D 文档状态仍如实（R12-6 唯一主文 + 数字口径未回退）。
+- C1~C10：B 批提交后路径门禁 PASS；本轮 t12/t13 只动 hook.rs/triage，未触及 C1~C10 既有测试断言。
+
+## 本轮新发现（均为 info，不阻塞收口）
+
+| # | 严重度 | 位置 | 问题 | 建议 |
+|---|---|---|---|---|
+| R18-1 | info | `xbits/src/hook.rs:21`、`:905-909` | 新事件循环对活动连接设上限 256，超限新连接被 drop 并打 stderr；README §11 R6-2 行只写"多连接轮询"，未提该上限 | 可选：在 §7.1/§11 注明上限与超限行为（便于运维排查） |
+| R18-2 | info | `xbits/src/hook.rs:969-987`、`:1363-1465` | 两条 R6-2 e2e 用 `StatsEmitter::disabled()`，未把 R15-5 的多连接丢行汇总纳入端到端断言（仅单测覆盖 `set_line_drops_total`） | 可选：后续给 listener 测试加 `--stats-interval` 变体验证跨连接累计 |
+| R18-3 | info | `triage/triage.py:469-530` | 缓存指纹基于 mtime/size；若被 include 文件内容变化但 mtime/size 均被人为保持不变，缓存仍命中（常规编辑器不会如此） | 可选：对极高安全场景追加内容 hash；当前取舍已在 `triage/README.md:99-106` 写明 |
+
+## 收口结论
+
+**low 清理全部关闭（R12-2 为已接受基线）**：
+
+- 最后三项 R6-2（t12，两个真实 Unix socket 端到端测试 + accept/维护解耦）、R11-1（t13，目录级 include 缓存指纹 + 越界拒绝/degraded）、R12-2（t14，明确"已接受基线"并保留 676 棘轮）均已核实，R12-2 不冒充已修。
+- 全仓收口成立：`尚未修复` = 0，README §11 25 条 ↔ QA 索引 25 行集合一致、待修 0 条，paths gate PASS，diff --check PASS，无未跟踪临时脚本。
+- A/B/D 与前序 C1~C10 断言未放宽；R17-1（QA 尾注已改 15/13/15）、R17-2（uri2 注释已删 `pkt_data`）、R17-3（12 个 PCAP 已随 B 批提交）均已闭合；R18-1~R18-3 为可选 info。
+- **程序性边界**：未跑 `cargo test`/CI/docker；Rust 新增两个 listener e2e 测试与 YARA 全量单测需分别由 `xbits-cross-engine-8.0.8-9.0.1` 与 `xbits-ci.yml` 工作流实跑确认；推送按 AGENTS.md 完成判据执行。
+
+**第十八轮复核边界**：只读工作树，未推送、未跑 cargo/CI/docker；已实跑 triage 全量/目标单测、converter semantics 门禁、qa_workflow_paths，并完成全仓 grep、§11↔QA 索引集合比对、未跟踪文件清单与 diff --check。

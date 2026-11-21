@@ -409,27 +409,59 @@ def _elf_scan(path: str, data: bytes, engines: dict, status: dict, findings: lis
 
 # ---------------- 可选：YARA ----------------
 _YARA_CACHE: dict = {}
+# YARA include 语法：`include "path"`（YARA 只支持双引号；路径相对当前规则文件目录，
+# 本文件同时兼容以 rules_dir 为基准的写法）。
+_YARA_INCLUDE_RE = re.compile(r'^\s*include\s+"([^"]+)"', re.MULTILINE)
+
+
+def _yara_include_target(including_file: str, inc: str, rules_dir: str) -> str:
+    """解析 include 目标：优先相对当前规则文件目录，其次相对 rules_dir。"""
+    p = os.path.normpath(os.path.join(os.path.dirname(including_file), inc))
+    if os.path.exists(p):
+        return p
+    return os.path.normpath(os.path.join(rules_dir, inc))
+
+
+def _yara_include_within(rules_dir: str, target: str) -> bool:
+    """include 目标必须落在 rules_dir 内（resolved realpath，拒绝 symlink 逃逸）。"""
+    root = os.path.realpath(rules_dir)
+    path = os.path.realpath(target)
+    try:
+        return os.path.commonpath([root, path]) == root
+    except ValueError:  # Windows 跨盘符等
+        return False
 
 
 def _compiled_yara_rules(yara_mod, rules_dir: str) -> tuple[list, list[str], list[str]]:
-    """编译目录（递归含子目录）下所有 YARA 规则；带 mtime 缓存；兼容非 ASCII 路径。
+    """编译目录（递归含子目录）下所有 YARA 规则；带 R11-1 目录级缓存；兼容非 ASCII 路径。
 
-    返回 (compiled, failed_paths, unreadable_errors)（R8-3/V-19/V-20，R9-1/R10-1 修复）——三类失败必须可区分：
+    返回 (compiled, failed_paths, unreadable_errors)（R8-3/V-19/V-20，R9-1/R10-1/R11-1）：
       * 目录/文件不可读：进 unreadable_errors（walk 失败＝无法枚举；单文件 stat 失败＝该条规则
         无法确认，不进 failed_paths，避免双重计数）；
       * 规则文件编译失败：文件名进 failed_paths（部分失败 ≠ 全部生效）；
+      * include 越界（目标不在 rules_dir 内）：该规则不编译，计入 unreadable_errors
+        （error 可见 + 顶层 degraded），绝不静默忽略；
       * 匹配异常由 _yara_scan 计数（不在此层）。
-    不允许"规则编不出来 = 没有命中 = 干净"。
 
-    缓存键（R10-1）：由**枚举到的全部 .yar 文件**组成，含 stat 失败的条目
-    （relpath + 失败类型/errno），而非只含 stat 成功的文件。这样坏文件被删除/恢复/权限变化
-    都会改变键 → 旧的 stat-failed/unreadable 不会滞留缓存；规则全好时键仍稳定，正常命中率不降。
+    R11-1 缓存契约（方案 b）：缓存键 = rules_dir 下所有 `.yar/.yara`（递归）**以及被 include
+    引用的文件**的 `(relpath, mtime, size, 状态)` 排序元组。任一规则文件或被 include 文件
+    变化（含新增/删除/权限变化）→ 签名变化 → 整体重编译；完全无变化 → 命中缓存返回**同一**
+    compiled 对象。代价：任一规则变化会让整个规则集缓存失效（当前 ~7 个规则文件，可接受）。
     """
     failed: list[str] = []
     unreadable_errors: list[str] = []
+    candidates: list[tuple] = []  # 目录级指纹：排序后的 (rel, mtime, size, 状态)
+    seen_candidates: set[tuple] = set()
+
+    def add_candidate(rel: str, mtime, size, state: str) -> None:
+        item = (rel, mtime, size, state)
+        if item not in seen_candidates:
+            seen_candidates.add(item)
+            candidates.append(item)
+
     try:
-        files = []
-        candidates: list[tuple] = []  # 缓存键：枚举到的每个 .yar（含 stat 失败）
+        roots: list[tuple[str, str, float, int]] = []
+        files: list[tuple[str, float, int]] = []
         for dp, _dirs, fnames in os.walk(rules_dir):
             for name in sorted(fnames):
                 if name.endswith(".yar") or name.endswith(".yara"):
@@ -437,20 +469,65 @@ def _compiled_yara_rules(yara_mod, rules_dir: str) -> tuple[list, list[str], lis
                     rel = os.path.relpath(fp, rules_dir)
                     try:
                         st = os.stat(fp)
-                        files.append((fp, st.st_mtime, st.st_size))
-                        candidates.append((rel, st.st_mtime, st.st_size, "ok"))
                     except OSError as exc:
                         # 单个文件 stat 失败（权限/竞态）：该条规则不可用，只记不可读原因（R9-1）
                         unreadable_errors.append(f"stat-failed: {fp}: {exc}")
                         # 失败条目也进缓存键（R10-1）：否则删除坏文件后旧结果会一直命中
-                        candidates.append(
-                            (rel, None, None, f"stat-failed:{exc.errno}:{type(exc).__name__}"))
+                        add_candidate(
+                            rel, None, None,
+                            f"stat-failed:{exc.errno}:{type(exc).__name__}",
+                        )
                         continue
+                    roots.append((fp, rel, st.st_mtime, st.st_size))
+                    files.append((fp, st.st_mtime, st.st_size))
+                    add_candidate(rel, st.st_mtime, st.st_size, "ok")
+
+        # R11-1：解析 include 依赖（含嵌套），把 rules_dir 内被 include 文件纳入指纹；
+        # 越界 include 标记所属根规则为坏规则（不编译，错误/降级可见）。
+        bad_roots: set[str] = set()
+        parsed: set[str] = set()
+        queue: list[tuple[str, str]] = [(fp, fp) for fp, _rel, _m, _s in roots]
+        while queue:
+            current, root = queue.pop()
+            if current in parsed:
+                continue
+            parsed.add(current)
+            try:
+                with open(current, "rb") as fh:
+                    text = fh.read().decode("utf-8", "replace")
+            except OSError:
+                # 规则文件本身读不了会让后面的 compile 失败；这里不重复记 unreadable。
+                continue
+            for inc in _YARA_INCLUDE_RE.findall(text):
+                target = _yara_include_target(current, inc, rules_dir)
+                if not _yara_include_within(rules_dir, target):
+                    bad_roots.add(root)
+                    unreadable_errors.append(
+                        "include-outside-rules-dir: "
+                        f"{os.path.relpath(root, rules_dir)} -> {inc}"
+                    )
+                    add_candidate(f"include:{inc}", None, None, "include-outside-rules-dir")
+                    continue
+                rel = os.path.relpath(target, rules_dir)
+                try:
+                    st = os.stat(target)
+                except OSError as exc:
+                    add_candidate(
+                        rel, None, None,
+                        f"include-stat-failed:{exc.errno}:{type(exc).__name__}",
+                    )
+                    continue
+                add_candidate(rel, st.st_mtime, st.st_size, "include")
+                queue.append((target, root))
+
+        if bad_roots:
+            files = [item for item in files if item[0] not in bad_roots]
         files.sort()
         candidates.sort(key=lambda c: c[0])
     except OSError as exc:
         # 目录本身不可读：规则集完全不可用（不写缓存，下次必然重试）
         return [], [], [f"walk-failed: {rules_dir}: {exc}"]
+
     key = os.path.abspath(rules_dir)
     sig = tuple(candidates)
     cached = _YARA_CACHE.get(key)

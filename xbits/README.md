@@ -308,9 +308,10 @@ sticky buffer == 0、buffer 顺序棘轮基线）与 `qa_xbits_match_context.py 
   引擎侧计数为 `pending_expired`；**待处理队列满时**同样产出可见降级告警（`degraded=pending-overflow`）
   并计数 `pending_overflow`，不再只计数/打日志。
   降级告警是"无法判定"的可见事实，**不套用规则的 `min_confidence`**（它始终带 `degraded` 标记）。
-- **边界（已知限制，见 §11）**：维护节拍与半行缓冲已有真实 UnixStream 单测（R6-2 部分覆盖：
-  `long_connection_still_runs_maintenance_tick`、`serve_stream_survives_overlong_line_and_processes_next_event`），
-  剩余缺口为 listener 外层 accept 轮询/空闲维护的端到端断言。半行缓冲本身有**单行上限**
+- **边界（已消除，见 §11）**：维护节拍与半行缓冲有真实 UnixStream 单测
+  （`long_connection_still_runs_maintenance_tick`、`serve_stream_survives_overlong_line_and_processes_next_event`），
+  R6-2 另补 listener 外层 accept/空闲维护端到端测试（`listener_idle_connection_still_runs_maintenance_tick`、
+  `listener_accepts_second_connection_while_first_idle`）。半行缓冲本身有**单行上限**
   （`MAX_LINE_BYTES = 1MiB`，R6-4）：超限整行丢弃并计数 + 限流 stderr（首次必打、之后每 1000 行
   汇总），连接继续服务后续行，不会因无换行超长输入无限占内存。
   因此这里只承诺"挂起有界、超时/溢出可见降级、计数可观察"，**不承诺"绝不丢事件"**。
@@ -539,8 +540,9 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 
 以下为历轮 QA（第五～十五轮）确认的遗留项，逐条如实记录（不隐藏，也不冒充已修）。
 每条给出一句准确描述与影响面；详细证据见 `qa/FIX_REVIEW.md` 对应轮次、`qa/QA_REPORT.md`。
-本清单随修复进度更新：**尚未修复项**仍如实保留、不隐瞒；本轮（low-cleanup 收口）修复的项标注
-"已修复（本轮 A1/A2/A3/D1/t7/t9/t10）"，仍列出以留存历史审计轨迹，但不计入待修数。
+本清单随修复进度更新：仍保留历史条目与最终状态，**未结项**如实列出、不隐瞒；
+low-cleanup 收口修复的项标注"已修复（A1/A2/A3/D1/t7/t9/t10/t12/t13）"，
+R12-2 标注"已接受基线（见本节条目全文）"，均不计入待修数（当前待修 0 条）。
 
 ### 引擎状态机与计数（第五～六轮）
 
@@ -561,15 +563,15 @@ xbits --hook-socket /var/run/xbits/hook.sock \
   （validator 仍不覆盖）；单命中仍是 `intel-*` / `degraded-*`，`xbits.degraded` 与 evidence 保留
   明细字段。单测覆盖组合、两种单命中与归一化文档断言。
   *影响面（已消除）*：下游只读 `xbits.reason` 即可得到完整语义。
-- **R6-2 hook 接线的 Unix socket 运行时覆盖（部分覆盖，本轮 A1/A3 已补真实单测；剩余缺口为
-  listener 外层 accept 轮询/空闲维护节拍的端到端）**：`serve_stream` 层已有运行时真实 socket 覆盖——
-  `long_connection_still_runs_maintenance_tick`（真实 `UnixStream::pair`：5ms tick + 20ms TTL + 持续
-  写入断言降级告警与 `pending_expired>=1`、半行缓冲不丢数据）与
-  `serve_stream_survives_overlong_line_and_processes_next_event`（真实 Unix stream：>1 MiB 无换行
-  输入后正常事件仍产出告警）覆盖了维护节拍、半行缓冲与超长行恢复；e2e（`qa_*.py`）走整链，仍不断言
-  listener 外层的 accept 轮询间隔与空闲侧维护节拍。
-  *剩余影响面*：accept 轮询/空闲维护节拍的端到端断言仍只能静态核对；半行缓冲/EOF 尾行/饿死
-  tick 三类缺陷已有运行时单测兜底。
+- **R6-2 hook 接线的 Unix socket 运行时覆盖 —— 已修复（低清理 t12）**：`hook.rs` 在原有
+  `serve_stream` 真实 socket 单测（`long_connection_still_runs_maintenance_tick` 覆盖维护节拍 +
+  半行缓冲、`serve_stream_survives_overlong_line_and_processes_next_event` 覆盖 >1 MiB 无换行恢复）
+  之外，新增 listener 外层 accept/空闲维护端到端测试：`listener_idle_connection_still_runs_maintenance_tick`
+  （客户端发一条 alert 后保持空闲，断言 TTL 后输出 `degraded=context-missing`）与
+  `listener_accepts_second_connection_while_first_idle`（第一条不发数据空闲时第二条仍被 accept 并产出
+  告警）。实现上 listener 改为非阻塞 accept drain + 多连接轮询，`MAINTENANCE_TICK` 在外层独立推进；
+  生产默认仍是 200ms tick / 60s TTL（测试专用入口注入短值）。
+  *影响面（已消除）*：accept 轮询与空闲维护节拍已有端到端断言，空闲连接不再饿死 accept。
 - **R6-3 accept 持续连接可饿死 tick —— 已修复（本轮 A3）**：`hook.rs::serve_stream` 在读取循环
   每次迭代检查维护截止时间，即使客户端持续有数据（`read` 永不超时）也按 `MAINTENANCE_TICK`
   （默认 200ms）执行 `engine.maintenance()`，降级告警照常写回输出；超时分支保留一次维护作为空闲
@@ -637,13 +639,21 @@ xbits --hook-socket /var/run/xbits/hook.sock \
 
 ### 缓存与转换器语义（第十～十二轮）
 
-- **R11-1 YARA 缓存键不覆盖跨目录 include**：缓存键只覆盖规则目录内枚举到的 `.yar`；若某规则
-  `include` 了目录外文件，被 include 文件变化而自身 mtime/size 不变时缓存不失效（既有设计）。
-  *影响面*：当前 `triage/rules` 未使用跨目录 include，风险低。
-- **R12-2 676 处 `content;buffer` 后置写法仍在转换规则库**：V-10 的"`content;buffer` == 0"
-  未全局达成；仅影响加载校验用规则，活动场景目录 0 违规（该 0 违规是静态核对结论，
-  CI 只锁转换库侧的棘轮基线，不直接断言场景目录的后置写法）。
-  *影响面*：与任务口径有差距；已作为棘轮基线锁死（第十三轮 A=676 与 baseline 相等），需单独立项清零。
+- **R11-1 YARA 缓存键不覆盖跨目录 include —— 已修复（低清理 t13）**：缓存键改为
+  `rules_dir` 目录级指纹（全部 `.yar/.yara` 递归 + 被 `include` 引用文件含嵌套，按
+  相对路径/mtime/size/状态排序）；`include` 目标必须在 `rules_dir` 内（realpath 校验，拒绝
+  symlink 逃逸），越界 include 编译前拒绝并写 `unreadable_errors` → `yara.ok=false` +
+  `degraded=true`，不静默忽略。代价：任一规则变化整体重编译（~7 文件可接受）。
+  单测 `test_yara_cache_invalidates_on_included_file_change_or_add`（无变化命中同一 compiled；
+  include 目标 mtime 变化/新增目标触发重编译）与两条越界 include error+degraded 用例。
+  *影响面（已消除）*：被 include 文件变化不再滞留旧编译结果，越界 include 可见。
+- **R12-2 676 处 `content;buffer` 后置写法 —— 已接受基线（见本节条目全文，非静默忽略）**：
+  判定依据：这 676 处是转换器历史产物，已由 `xbits/test/qa_converter_semantics.py` 棘轮锁死
+  （`converter_semantics_baseline.json` 固定 676 条，**只许减少不许新增**）；Suricata 8 语义下
+  这些 `content` 仍按 payload 匹配（**不回绑定**到声明的 sticky buffer），与源 Snort 语义的差异
+  需逐条评审，属独立大工程。CI 规则：基线数新增一处即 FAIL；任何修复必须同步收缩基线文件，
+  不得只改规则不改基线。活动场景目录 0 违规是静态核对结论，CI 锁的是转换库侧棘轮。
+  *影响面（已接受）*：作为已知基线显式记录，而非声称已修复或静默跳过。
 - **R12-4 关联计数未进 hook 故障消息 —— 已修复（本轮 A1）**：`hook.rs::engine_failure_stats` 现导出
   `correlated_pairs` / `correlation_timeouts` / `correlation_overflow`，并新增
   `correlation_unmatched_responses`（响应侧命中但无可配对请求等待，以前完全静默）——计数 + 限流

@@ -96,6 +96,15 @@ python3 triage/triage.py --stdin --all-engines --rules-dir triage/rules --semgre
 - 单测：`test_yara_partial_compile_failure_is_degraded_and_valid_rules_still_hit`（合法规则仍命中、
   ok=False、degraded=True、error 含坏文件名）、`test_yara_unreadable_rules_dir_is_reported`。
 
+**YARA 编译缓存契约（R11-1）**：缓存键采用**规则目录级指纹**——`rules_dir` 下所有
+`.yar/.yara`（递归）**以及被 `include "..."` 引用的文件**的 `(相对路径, mtime, size, 状态)`
+排序元组；任一条目变化（含被 include 文件 mtime 变化、新增/删除被 include 文件、权限变化）
+都会让整个规则集缓存失效并重编译。代价是任一规则文件变化会整体失效——当前规则集约 7 个
+文件，可接受；换来的是 include 依赖（含子目录/嵌套 include）不会再漏检。
+`include` 目标必须落在 `rules_dir` 内（按 realpath 校验，拒绝 symlink 逃逸）；越界 include
+直接让该规则不编译并把 `include-outside-rules-dir: <rule> -> <target>` 计入
+`engine_status["yara"].unreadable_errors`，从而 `ok=false` + 顶层 `degraded=true`，不静默忽略。
+
 **签名语义（V-22）**：`info.pe.signed_present` 仅表示 Authenticode 证书表非空（存在性探测，
 可被伪造）；`info.pe.signature_verified` 才表示可信验证——本工具不做证书链/信任校验，
 `signature_verified` 恒为 `false`，因此**证书表存在绝不触发 verdict 降级**（旧 `signed` 字段
